@@ -1,18 +1,17 @@
 import { and, asc, desc, eq } from "drizzle-orm";
-import { drizzle } from "drizzle-orm/mysql2";
-<<<<<<< HEAD
-import { colleges, governmentExams, InsertCollege, InsertGovernmentExam, InsertMarkStatement, InsertStudentAttendance, InsertStudentProject, InsertUser, InsertScheduleSession, markStatements, scheduleSessions, studentAttendance, studentProjects, users } from "../drizzle/schema";
-=======
-import { InsertScheduleSession, InsertStudentAttendance, InsertSubject, InsertUser, scheduleSessions, studentAttendance, subjects, users } from "../drizzle/schema";
->>>>>>> origin/main
+import { drizzle } from "drizzle-orm/postgres-js";
+import postgres from "postgres";
+import { colleges, governmentExams, InsertCollege, InsertGovernmentExam, InsertMarkStatement, InsertStudentAttendance, InsertStudentProject, InsertUser, InsertScheduleSession, markStatements, scheduleSessions, studentAttendance, studentProjects, subjects, InsertSubject, users } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
+let _client: ReturnType<typeof postgres> | null = null;
 
 export async function getDb() {
   if (!_db && process.env.DATABASE_URL) {
     try {
-      _db = drizzle(process.env.DATABASE_URL);
+      _client = postgres(process.env.DATABASE_URL);
+      _db = drizzle(_client);
     } catch (error) {
       console.warn("[Database] Failed to connect:", error);
       _db = null;
@@ -28,36 +27,28 @@ export async function upsertUser(user: InsertUser): Promise<void> {
     console.warn("[Database] Cannot upsert user: database not available");
     return;
   }
-  const values: InsertUser = { openId: user.openId };
+  const values: InsertUser = { openId: user.openId } as any;
   const updateSet: Record<string, unknown> = {};
   const textFields = ["name", "email", "loginMethod"] as const;
   textFields.forEach(field => {
-    const value = user[field];
+    const value = user[field as keyof InsertUser];
     if (value !== undefined) {
       const normalized = value ?? null;
-      values[field] = normalized;
+      (values as any)[field] = normalized;
       updateSet[field] = normalized;
-<<<<<<< HEAD
-    };
-
-    textFields.forEach(assignNullable);
-
-    if (user.linkedStudentEmail !== undefined) {
-      values.linkedStudentEmail = user.linkedStudentEmail ?? null;
-      updateSet.linkedStudentEmail = user.linkedStudentEmail ?? null;
-    }
-
-    if (user.lastSignedIn !== undefined) {
-      values.lastSignedIn = user.lastSignedIn;
-      updateSet.lastSignedIn = user.lastSignedIn;
-=======
->>>>>>> origin/main
     }
   });
+
+  if (user.linkedStudentEmail !== undefined) {
+    values.linkedStudentEmail = user.linkedStudentEmail ?? null;
+    updateSet.linkedStudentEmail = user.linkedStudentEmail ?? null;
+  }
+
   if (user.lastSignedIn !== undefined) {
     values.lastSignedIn = user.lastSignedIn;
     updateSet.lastSignedIn = user.lastSignedIn;
   }
+
   if (user.role !== undefined) {
     values.role = user.role;
     updateSet.role = user.role;
@@ -67,7 +58,7 @@ export async function upsertUser(user: InsertUser): Promise<void> {
   }
   if (!values.lastSignedIn) values.lastSignedIn = new Date();
   if (Object.keys(updateSet).length === 0) updateSet.lastSignedIn = new Date();
-  await db.insert(users).values(values).onDuplicateKeyUpdate({ set: updateSet });
+  await db.insert(users).values(values).onConflictDoUpdate({ target: users.openId, set: updateSet });
 }
 
 export async function getUserByOpenId(openId: string) {
@@ -77,14 +68,14 @@ export async function getUserByOpenId(openId: string) {
   return result.length > 0 ? result[0] : undefined;
 }
 
-<<<<<<< HEAD
 export async function setUserRoleByEmail(email: string, role: "user" | "admin" | "student" | "parent", linkedStudentEmail?: string) {
   const db = await getDb();
   if (!db) return undefined;
   await db.update(users).set({ role, linkedStudentEmail: linkedStudentEmail ?? null }).where(eq(users.email, email));
   const result = await db.select().from(users).where(eq(users.email, email)).limit(1);
   return result[0];
-=======
+}
+
 export async function listFeaturedSubjects() {
   const db = await getDb();
   if (!db) return [];
@@ -100,8 +91,8 @@ export async function listSubjects() {
 export async function createSubject(subject: InsertSubject) {
   const db = await getDb();
   if (!db) throw new Error("Database is not available");
-  const result = await db.insert(subjects).values(subject);
-  return Number(result[0].insertId);
+  const result = await db.insert(subjects).values(subject).returning({ id: subjects.id });
+  return result[0].id;
 }
 
 export async function updateSubject(id: number, subject: Partial<InsertSubject>) {
@@ -114,7 +105,6 @@ export async function deleteSubject(id: number) {
   const db = await getDb();
   if (!db) throw new Error("Database is not available");
   await db.delete(subjects).where(eq(subjects.id, id));
->>>>>>> origin/main
 }
 
 export async function listStudentAttendance(studentEmail: string) {
@@ -131,8 +121,8 @@ export async function upsertStudentAttendance(record: InsertStudentAttendance) {
     await db.update(studentAttendance).set({ status: record.status }).where(eq(studentAttendance.id, existing[0].id));
     return { ...existing[0], status: record.status };
   }
-  const result = await db.insert(studentAttendance).values(record);
-  return { ...record, id: Number(result[0].insertId) };
+  const result = await db.insert(studentAttendance).values(record).returning({ id: studentAttendance.id });
+  return { ...record, id: result[0].id };
 }
 
 export async function listScheduleSessions(studentEmail: string) {
@@ -153,8 +143,8 @@ export async function upsertScheduleSession(record: InsertScheduleSession & { id
     await db.update(scheduleSessions).set({ subject: record.subject, exercise: record.exercise, sessionTime: record.sessionTime }).where(eq(scheduleSessions.id, existing[0].id));
     return { ...existing[0], subject: record.subject, exercise: record.exercise, sessionTime: record.sessionTime };
   }
-  const result = await db.insert(scheduleSessions).values(record);
-  return { ...record, id: Number(result[0].insertId) };
+  const result = await db.insert(scheduleSessions).values(record).returning({ id: scheduleSessions.id });
+  return { ...record, id: result[0].id };
 }
 
 export async function listMarkStatements(studentEmail: string, assessmentType?: "weekly" | "monthly") {
@@ -172,8 +162,8 @@ export async function upsertMarkStatement(record: InsertMarkStatement) {
     await db.update(markStatements).set({ score: record.score, maxScore: record.maxScore }).where(eq(markStatements.id, existing[0].id));
     return { ...existing[0], score: record.score, maxScore: record.maxScore };
   }
-  const result = await db.insert(markStatements).values(record);
-  return { ...record, id: Number(result[0].insertId) };
+  const result = await db.insert(markStatements).values(record).returning({ id: markStatements.id });
+  return { ...record, id: result[0].id };
 }
 
 export async function listStudentProjects(studentEmail: string) {
@@ -190,8 +180,8 @@ export async function upsertStudentProject(record: InsertStudentProject) {
     await db.update(studentProjects).set({ subject: record.subject, dueDate: record.dueDate, status: record.status, progress: record.progress }).where(eq(studentProjects.id, existing[0].id));
     return { ...existing[0], subject: record.subject, dueDate: record.dueDate, status: record.status, progress: record.progress };
   }
-  const result = await db.insert(studentProjects).values(record);
-  return { ...record, id: Number(result[0].insertId) };
+  const result = await db.insert(studentProjects).values(record).returning({ id: studentProjects.id });
+  return { ...record, id: result[0].id };
 }
 
 export async function listColleges() {
@@ -208,8 +198,8 @@ export async function upsertCollege(record: InsertCollege) {
     await db.update(colleges).set({ tier: record.tier, category: record.category, cutoff: record.cutoff }).where(eq(colleges.id, existing[0].id));
     return { ...existing[0], tier: record.tier, category: record.category, cutoff: record.cutoff };
   }
-  const result = await db.insert(colleges).values(record);
-  return { ...record, id: Number(result[0].insertId) };
+  const result = await db.insert(colleges).values(record).returning({ id: colleges.id });
+  return { ...record, id: result[0].id };
 }
 
 export async function listGovernmentExams() {
@@ -226,6 +216,6 @@ export async function upsertGovernmentExam(record: InsertGovernmentExam) {
     await db.update(governmentExams).set({ groupName: record.groupName, qualification: record.qualification, maxMarks: record.maxMarks, benchmark: record.benchmark }).where(eq(governmentExams.id, existing[0].id));
     return { ...existing[0], groupName: record.groupName, qualification: record.qualification, maxMarks: record.maxMarks, benchmark: record.benchmark };
   }
-  const result = await db.insert(governmentExams).values(record);
-  return { ...record, id: Number(result[0].insertId) };
+  const result = await db.insert(governmentExams).values(record).returning({ id: governmentExams.id });
+  return { ...record, id: result[0].id };
 }
