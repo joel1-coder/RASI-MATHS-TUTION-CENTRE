@@ -1,0 +1,1 @@
+ALTER TABLE `users` ADD `linkedStudentEmail` varchar(320);
