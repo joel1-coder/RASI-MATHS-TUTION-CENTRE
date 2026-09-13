@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
-<<<<<<< HEAD
-import { demoUsers } from "../client/src/pages/Home";
+import { DEFAULT_SUBJECTS } from "../client/src/pages/Home";
 import { appRouter } from "./routers";
 import type { TrpcContext } from "./_core/context";
 
@@ -9,9 +8,6 @@ const context = (role: "user" | "admin" | "student" | "parent" | undefined): Trp
   req: { protocol: "https", headers: {} } as TrpcContext["req"],
   res: {} as TrpcContext["res"],
 });
-=======
-import { DEFAULT_SUBJECTS } from "../client/src/pages/Home";
->>>>>>> origin/main
 
 describe("question paper subjects", () => {
   it("exposes exactly the three required featured subjects", () => {

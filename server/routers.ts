@@ -1,17 +1,11 @@
 import { COOKIE_NAME } from "@shared/const";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
-<<<<<<< HEAD
 import { adminProcedure, protectedProcedure, publicProcedure, router } from "./_core/trpc";
 import { TRPCError } from "@trpc/server";
-import { listColleges, listGovernmentExams, listMarkStatements, listScheduleSessions, listStudentAttendance, listStudentProjects, setUserRoleByEmail, upsertCollege, upsertGovernmentExam, upsertMarkStatement, upsertScheduleSession, upsertStudentAttendance, upsertStudentProject } from "./db";
-=======
-import { adminProcedure, publicProcedure, router } from "./_core/trpc";
-import { createSubject, deleteSubject, getDb, listFeaturedSubjects, listScheduleSessions, listStudentAttendance, listSubjects, updateSubject, upsertScheduleSession, upsertStudentAttendance } from "./db";
+import { createSubject, deleteSubject, getDb, listFeaturedSubjects, listScheduleSessions, listStudentAttendance, listSubjects, updateSubject, upsertScheduleSession, upsertStudentAttendance, listColleges, listGovernmentExams, listMarkStatements, listStudentProjects, setUserRoleByEmail, upsertCollege, upsertGovernmentExam, upsertMarkStatement, upsertStudentProject } from "./db";
 import { subjects } from "../drizzle/schema";
 import { eq } from "drizzle-orm";
-import { TRPCError } from "@trpc/server";
->>>>>>> origin/main
 import { z } from "zod";
 
 const subjectFields = {

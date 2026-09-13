@@ -1,15 +1,9 @@
-<<<<<<< HEAD
 import { useEffect, useMemo, useState } from "react";
 import { startLogin } from "@/const";
 import { useAuth } from "@/_core/hooks/useAuth";
-import { ArrowRight, BarChart3, BookOpen, CalendarDays, Check, ChevronRight, ClipboardCheck, GraduationCap, LayoutDashboard, Loader2, LogOut, Menu, MessageCircle, NotebookPen, ShieldCheck, Sparkles, Users, X } from "lucide-react";
+import { ArrowRight, ArrowUpRight, BarChart3, BookOpen, CalendarDays, Check, ChevronRight, ClipboardCheck, Clock3, FileText, GraduationCap, LayoutDashboard, Loader2, LogOut, Menu, MessageCircle, NotebookPen, ShieldCheck, Sparkles, Users, X } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { parseAttendanceCsv, summarizeAttendance } from "@shared/portalData";
-=======
-import { trpc } from "@/lib/trpc";
-import { ArrowUpRight, BookOpen, Clock3, FileText, Menu, ShieldCheck, Sparkles } from "lucide-react";
-import { useState } from "react";
->>>>>>> origin/main
 
 export type SubjectRecord = {
   id: number;
@@ -174,7 +168,7 @@ export default function Home() {
     </div>
   );
 }
-<<<<<<< HEAD
+
 
 const navItems = (role: Role) => role === "admin" ? ["Overview", "Students", "Attendance", "Marks", "Materials", "Announcements"] : role === "student" ? ["Overview", "Attendance", "Mark statement", "Timetable", "Study materials", "Projects"] : ["Overview", "Attendance", "Performance", "Projects", "Announcements", "Career guidance"];
 
