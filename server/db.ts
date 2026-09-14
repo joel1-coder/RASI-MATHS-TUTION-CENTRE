@@ -68,7 +68,7 @@ export async function getUserByOpenId(openId: string) {
   return result.length > 0 ? result[0] : undefined;
 }
 
-export async function setUserRoleByEmail(email: string, role: "user" | "admin" | "student" | "parent", linkedStudentEmail?: string) {
+export async function setUserRoleByEmail(email: string, role: "user" | "admin" | "student" | "parent" | "teacher", linkedStudentEmail?: string) {
   const db = await getDb();
   if (!db) return undefined;
   await db.update(users).set({ role, linkedStudentEmail: linkedStudentEmail ?? null }).where(eq(users.email, email));

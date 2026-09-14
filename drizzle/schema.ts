@@ -1,6 +1,6 @@
 import { serial, pgEnum, pgTable, text, timestamp, varchar, integer } from "drizzle-orm/pg-core";
 
-export const roleEnum = pgEnum("role", ["user", "admin", "student", "parent"]);
+export const roleEnum = pgEnum("role", ["user", "admin", "student", "parent", "teacher"]);
 export const attendanceStatusEnum = pgEnum("status", ["present", "late", "absent"]);
 export const assessmentTypeEnum = pgEnum("assessmentType", ["weekly", "monthly"]);
 

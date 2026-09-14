@@ -57,7 +57,7 @@ export const defaultSiteData: SiteData = {
   contact: {
     address: "24, 12th Main\nIndiranagar, Bengaluru",
     phone: "+91 80 1234 5678",
-    email: "hello@thestudyroom.in",
+    email: "rasimathstutioncentre@gmail.com",
     hours: "Mon–Sat · 9:00 AM–7:00 PM",
   },
   questionPapers: [
