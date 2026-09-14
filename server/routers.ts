@@ -3,10 +3,13 @@ import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { adminProcedure, protectedProcedure, publicProcedure, router } from "./_core/trpc";
 import { TRPCError } from "@trpc/server";
-import { createSubject, deleteSubject, getDb, listFeaturedSubjects, listScheduleSessions, listStudentAttendance, listSubjects, updateSubject, upsertScheduleSession, upsertStudentAttendance, listColleges, listGovernmentExams, listMarkStatements, listStudentProjects, setUserRoleByEmail, upsertCollege, upsertGovernmentExam, upsertMarkStatement, upsertStudentProject } from "./db";
+import { createSubject, deleteSubject, getDb, listFeaturedSubjects, listScheduleSessions, listStudentAttendance, listSubjects, updateSubject, upsertScheduleSession, upsertStudentAttendance, listColleges, listGovernmentExams, listMarkStatements, listStudentProjects, setUserRoleByEmail, upsertCollege, upsertGovernmentExam, upsertMarkStatement, upsertStudentProject, upsertUser } from "./db";
 import { subjects } from "../drizzle/schema";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
+import { cloudinaryRouter } from "./cloudinaryRouter";
+import { sdk } from "./_core/sdk";
+import { ENV } from "./_core/env";
 
 const subjectFields = {
   name: z.string().trim().min(2).max(80),
@@ -22,6 +25,12 @@ const subjectFields = {
 const subjectInput = z.object(subjectFields);
 const subjectUpdateInput = subjectInput.partial().extend({ id: z.number().int().positive() });
 
+const VALID_CREDENTIALS: Record<string, { role: "student" | "parent" | "admin"; name: string; email: string; password: string; linkedStudentEmail?: string }> = {
+  "student@portal.com": { role: "student", name: "Ananya Sharma", email: "student@portal.com", password: "student123" },
+  "parent@portal.com":  { role: "parent",  name: "Ramesh Sharma",  email: "parent@portal.com",  password: "parent123", linkedStudentEmail: "student@portal.com" },
+  "admin@portal.com":   { role: "admin",   name: "Centre Admin",  email: "admin@portal.com",   password: "admin123" },
+};
+
 async function getFeaturedCount() {
   const db = await getDb();
   if (!db) return 0;
@@ -31,8 +40,70 @@ async function getFeaturedCount() {
 
 export const appRouter = router({
   system: systemRouter,
+  cloudinary: cloudinaryRouter,
   auth: router({
     me: publicProcedure.query(opts => opts.ctx.user),
+    login: publicProcedure
+      .input(z.object({
+        email: z.string().email(),
+        password: z.string().min(1),
+        role: z.enum(["student", "parent", "admin"]).optional(),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const emailKey = input.email.trim().toLowerCase();
+        const cred = VALID_CREDENTIALS[emailKey];
+
+        if (!cred || cred.password !== input.password) {
+          throw new TRPCError({
+            code: "UNAUTHORIZED",
+            message: "Invalid email or password. Access denied.",
+          });
+        }
+
+        if (input.role && cred.role !== input.role) {
+          throw new TRPCError({
+            code: "UNAUTHORIZED",
+            message: `This account is not registered for the ${input.role} role.`,
+          });
+        }
+
+        const openId = `portal_user_${emailKey.replace(/[^a-z0-9]/g, "_")}`;
+
+        try {
+          await upsertUser({
+            openId,
+            email: cred.email,
+            name: cred.name,
+            role: cred.role,
+            linkedStudentEmail: cred.linkedStudentEmail ?? null,
+            loginMethod: "password",
+          });
+        } catch (e) {
+          console.warn("[Auth Login Upsert Warning]", e);
+        }
+
+        const token = await sdk.signSession({
+          openId,
+          appId: ENV.appId,
+          name: cred.name,
+        });
+
+        const cookieOptions = getSessionCookieOptions(ctx.req);
+        ctx.res.cookie(COOKIE_NAME, token, cookieOptions);
+
+        return {
+          success: true,
+          token,
+          user: {
+            id: 1,
+            openId,
+            email: cred.email,
+            name: cred.name,
+            role: cred.role,
+            linkedStudentEmail: cred.linkedStudentEmail ?? null,
+          },
+        };
+      }),
     logout: publicProcedure.mutation(({ ctx }) => {
       const cookieOptions = getSessionCookieOptions(ctx.req);
       ctx.res.clearCookie(COOKIE_NAME, { ...cookieOptions, maxAge: -1 });

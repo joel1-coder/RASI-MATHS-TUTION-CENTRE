@@ -7,6 +7,7 @@ import superjson from "superjson";
 import App from "./App";
 import { startLogin } from "./const";
 import "./index.css";
+import "./portfolio.css";
 
 const queryClient = new QueryClient();
 
@@ -47,6 +48,7 @@ const trpcClient = trpc.createClient({
         // (Safari ITP / private browsing / WebView), the runtime mirrors the
         // session into sessionStorage so we can forward it as a Bearer token.
         // The regular OAuth cookie flow keeps working and takes priority server-side.
+        const headersMap: Record<string, string> = {};
         try {
           const raw = sessionStorage.getItem("manus-cookie");
           if (raw) {
@@ -54,13 +56,17 @@ const trpcClient = trpc.createClient({
             const pair = raw.split(";").find(s => s.trim().startsWith(prefix));
             const token = pair?.trim().slice(prefix.length);
             if (token) {
-              return { Authorization: `Bearer ${token}` };
+              headersMap["Authorization"] = `Bearer ${token}`;
             }
+          }
+          const demoUser = sessionStorage.getItem("demo-user-email");
+          if (demoUser) {
+            headersMap["x-demo-user"] = demoUser;
           }
         } catch {
           // sessionStorage unavailable
         }
-        return {};
+        return headersMap;
       },
       fetch(input, init) {
         return globalThis.fetch(input, {
