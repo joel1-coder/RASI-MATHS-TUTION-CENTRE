@@ -25,9 +25,10 @@ const subjectFields = {
 const subjectInput = z.object(subjectFields);
 const subjectUpdateInput = subjectInput.partial().extend({ id: z.number().int().positive() });
 
-const VALID_CREDENTIALS: Record<string, { role: "student" | "parent" | "admin"; name: string; email: string; password: string; linkedStudentEmail?: string }> = {
+const VALID_CREDENTIALS: Record<string, { role: "student" | "parent" | "admin" | "teacher"; name: string; email: string; password: string; linkedStudentEmail?: string }> = {
   "student@portal.com": { role: "student", name: "Ananya Sharma", email: "student@portal.com", password: "student123" },
   "parent@portal.com":  { role: "parent",  name: "Ramesh Sharma",  email: "parent@portal.com",  password: "parent123", linkedStudentEmail: "student@portal.com" },
+  "teacher@portal.com": { role: "teacher", name: "Prof. Aarav Menon", email: "teacher@portal.com", password: "teacher123" },
   "admin@portal.com":   { role: "admin",   name: "Centre Admin",  email: "admin@portal.com",   password: "admin123" },
 };
 
@@ -47,7 +48,7 @@ export const appRouter = router({
       .input(z.object({
         email: z.string().email(),
         password: z.string().min(1),
-        role: z.enum(["student", "parent", "admin"]).optional(),
+        role: z.enum(["student", "parent", "admin", "teacher"]).optional(),
       }))
       .mutation(async ({ input, ctx }) => {
         const emailKey = input.email.trim().toLowerCase();
@@ -162,7 +163,7 @@ export const appRouter = router({
     project: adminProcedure.input(z.object({ studentEmail: z.string().email(), title: z.string().min(1), subject: z.string().min(1), dueDate: z.string().min(1), status: z.string().min(1), progress: z.number().int().min(0).max(100) })).mutation(({ input }) => upsertStudentProject(input)),
     college: adminProcedure.input(z.object({ tier: z.string().min(1), name: z.string().min(1), category: z.string().min(1), cutoff: z.string().min(1) })).mutation(({ input }) => upsertCollege(input)),
     exam: adminProcedure.input(z.object({ groupName: z.string().min(1), name: z.string().min(1), qualification: z.string().min(1), maxMarks: z.string().min(1), benchmark: z.string().min(1) })).mutation(({ input }) => upsertGovernmentExam(input)),
-    setUserRole: adminProcedure.input(z.object({ email: z.string().email(), role: z.enum(["user", "admin", "student", "parent"]), linkedStudentEmail: z.string().email().optional() })).mutation(({ input }) => setUserRoleByEmail(input.email, input.role, input.linkedStudentEmail)),
+    setUserRole: adminProcedure.input(z.object({ email: z.string().email(), role: z.enum(["user", "admin", "student", "parent", "teacher"]), linkedStudentEmail: z.string().email().optional() })).mutation(({ input }) => setUserRoleByEmail(input.email, input.role, input.linkedStudentEmail)),
   }),
 
   guidance: router({

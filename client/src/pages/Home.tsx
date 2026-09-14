@@ -8,7 +8,7 @@ import { parseAttendanceCsv, summarizeAttendance } from "@shared/portalData";
 import { COOKIE_NAME } from "@shared/const";
 import { readSiteData } from "@/lib/siteData";
 
-export type Role = "student" | "parent" | "admin";
+export type Role = "student" | "parent" | "admin" | "teacher";
 
 export type User = {
   role: Role;
@@ -19,6 +19,7 @@ export type User = {
 
 export const demoUsers: Record<string, User & { password: string }> = {
   "student@portal.com": { role: "student", name: "Ananya Sharma", email: "student@portal.com", password: "student123" },
+  "teacher@portal.com": { role: "teacher", name: "Prof. Aarav Menon", email: "teacher@portal.com", password: "teacher123" },
   "parent@portal.com":  { role: "parent",  name: "Ramesh Sharma",  email: "parent@portal.com",  password: "parent123"  },
   "admin@portal.com":   { role: "admin",   name: "Centre Admin",  email: "admin@portal.com",   password: "admin123"   },
 };
@@ -76,17 +77,49 @@ export type SubjectRecord = {
   sortOrder: number;
 };
 
-
-
-const navItems = (role: Role) => role === "admin" ? ["Overview", "Students", "Attendance", "Marks", "Materials", "Announcements"] : role === "student" ? ["Overview", "Attendance", "Mark statement", "Timetable", "Study materials", "Projects"] : ["Overview", "Attendance", "Performance", "Projects", "Announcements", "Career guidance"];
+const navItems = (role: Role) => role === "admin" ? ["Overview", "Students", "Attendance", "Marks", "Materials", "Announcements"] : role === "teacher" ? ["Home", "Attendance Records", "Marks Portal", "Mark Record"] : role === "student" ? ["Overview", "Attendance", "Mark statement", "Timetable", "Study materials", "Projects"] : ["Overview", "Attendance", "Performance", "Projects", "Announcements", "Career guidance"];
 
 function RoleChooser({ onChoose, onClose }: { onChoose: (role: Role) => void; onClose: () => void }) {
   const roles: { role: Role; title: string; description: string; icon: React.ReactNode }[] = [
     { role: "student", title: "Student login", description: "View your learning plan, attendance, marks and materials.", icon: <GraduationCap size={22} /> },
+    { role: "teacher", title: "Teacher login", description: "Take batch attendance, enter test marks and check mark records.", icon: <ClipboardCheck size={22} /> },
     { role: "parent", title: "Parent login", description: "Follow your child’s progress, projects and guidance updates.", icon: <Users size={22} /> },
     { role: "admin", title: "Admin login", description: "Manage students, marks, attendance and centre updates.", icon: <ShieldCheck size={22} /> },
   ];
-  return <div className="fixed inset-0 z-50 grid place-items-center bg-[#21193a]/50 p-4 backdrop-blur-sm"><div className="relative w-full max-w-2xl rounded-[28px] bg-[#fffdfb] p-7 shadow-2xl"><button onClick={onClose} className="absolute right-5 top-5 rounded-full p-2 text-[#897c99] hover:bg-[#f2edf7]"><X size={18} /></button><div className="mb-7"><Pill>Rasi Maths portal</Pill><h2 className="mt-4 text-3xl font-semibold text-[#241b3d]">Choose your login.</h2><p className="mt-2 text-sm text-[#81758e]">Each view keeps the right information in the right hands.</p></div><div className="grid gap-3 md:grid-cols-3">{roles.map(item => <button key={item.role} onClick={() => onChoose(item.role)} className="group rounded-2xl border border-[#e8deeb] bg-[#faf7fc] p-5 text-left transition hover:-translate-y-1 hover:border-[#b99cda] hover:bg-[#f4edf9]"><span className="grid h-11 w-11 place-items-center rounded-2xl bg-[#e9ddf4] text-[#6d4b9f]">{item.icon}</span><h3 className="mt-5 font-semibold text-[#34244d]">{item.title}</h3><p className="mt-2 text-xs leading-5 text-[#82758e]">{item.description}</p><span className="mt-5 block text-xs font-semibold text-[#6d4b9f]">Continue <ArrowRight className="ml-1 inline transition group-hover:translate-x-1" size={13} /></span></button>)}</div></div></div>;
+  return (
+    <div className="fixed inset-0 z-50 grid place-items-center bg-[#21193a]/50 p-4 backdrop-blur-sm">
+      <div className="relative w-full max-w-4xl rounded-[28px] bg-[#fffdfb] p-7 shadow-2xl">
+        <button onClick={onClose} className="absolute right-5 top-5 rounded-full p-2 text-[#897c99] hover:bg-[#f2edf7]">
+          <X size={18} />
+        </button>
+        <div className="mb-7">
+          <Pill>Rasi Maths portal</Pill>
+          <h2 className="mt-4 text-3xl font-semibold text-[#241b3d]">Choose your login.</h2>
+          <p className="mt-2 text-sm text-[#81758e]">Each view keeps the right information in the right hands.</p>
+        </div>
+        <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-4">
+          {roles.map(item => (
+            <button
+              key={item.role}
+              onClick={() => onChoose(item.role)}
+              className="group flex flex-col justify-between rounded-2xl border border-[#e8deeb] bg-[#faf7fc] p-5 text-left transition hover:-translate-y-1 hover:border-[#b99cda] hover:bg-[#f4edf9]"
+            >
+              <div>
+                <span className="grid h-11 w-11 place-items-center rounded-2xl bg-[#e9ddf4] text-[#6d4b9f]">
+                  {item.icon}
+                </span>
+                <h3 className="mt-5 font-semibold text-[#34244d]">{item.title}</h3>
+                <p className="mt-2 text-xs leading-5 text-[#82758e]">{item.description}</p>
+              </div>
+              <span className="mt-5 block text-xs font-semibold text-[#6d4b9f]">
+                Continue <ArrowRight className="ml-1 inline transition group-hover:translate-x-1" size={13} />
+              </span>
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
 }
 
 function RoleLoginPage({ role, onLogin, onBack }: { role: Role; onLogin: (user: User) => void; onBack: () => void }) {
@@ -97,7 +130,13 @@ function RoleLoginPage({ role, onLogin, onBack }: { role: Role; onLogin: (user: 
   const utils = trpc.useUtils();
   const loginMutation = trpc.auth.login.useMutation();
 
-  const config = role === "student" ? { label: "Student portal", title: "Your learning, in one place.", accent: "See your next step clearly — from attendance to mark statements and study materials." } : role === "parent" ? { label: "Parent portal", title: "Stay close to the progress.", accent: "A calm, private view of your child’s attendance, performance, projects and future options." } : { label: "Admin portal", title: "Run the centre with clarity.", accent: "Manage the people, records and updates that keep every learning journey moving." };
+  const config = role === "student"
+    ? { label: "Student portal", title: "Your learning, in one place.", accent: "See your next step clearly — from attendance to mark statements and study materials." }
+    : role === "teacher"
+    ? { label: "Teacher portal", title: "Classroom & evaluation hub.", accent: "Take daily LAB attendance with roll chips, enter student test marks, and review performance records." }
+    : role === "parent"
+    ? { label: "Parent portal", title: "Stay close to the progress.", accent: "A calm, private view of your child’s attendance, performance, projects and future options." }
+    : { label: "Admin portal", title: "Run the centre with clarity.", accent: "Manage the people, records and updates that keep every learning journey moving." };
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -123,7 +162,78 @@ function RoleLoginPage({ role, onLogin, onBack }: { role: Role; onLogin: (user: 
     }
   };
 
-  return <div className="min-h-screen bg-[#f5f0f8] text-[#271f3c]"><div className="mx-auto grid min-h-screen max-w-6xl items-center gap-10 px-5 py-8 md:grid-cols-[.9fr_1.1fr] md:px-10"><div className="hidden md:block"><Logo /><div className="mt-20 max-w-md"><Pill>{config.label}</Pill><h1 className="mt-6 text-6xl font-semibold leading-[1.02] tracking-[-0.06em]">{config.title.split(", ")[0]}<br /><em className="font-serif font-normal text-[#7455b2]">{config.title.includes(", ") ? config.title.split(", ")[1] : ""}</em></h1><p className="mt-6 text-base leading-7 text-[#766a88]">{config.accent}</p><div className="mt-10 flex items-center gap-3 text-xs text-[#877b91]"><ShieldCheck size={16} className="text-[#ef8656]" /> Your role controls what you can view and manage.</div></div></div><div className="mx-auto w-full max-w-md"><button onClick={onBack} className="mb-6 flex items-center gap-2 text-xs font-semibold text-[#6d4b9f]"><ArrowRight className="rotate-180" size={14} /> Choose another login</button><div className="rounded-[28px] bg-[#fffdfb] p-7 shadow-xl shadow-[#b7a6c8]/20"><div className="md:hidden"><Logo /><div className="mt-7" /></div><Pill>{config.label}</Pill><h2 className="mt-4 text-3xl font-semibold text-[#241b3d]">Sign in securely.</h2><p className="mt-2 text-sm text-[#81758e]">Use your {role} account to continue.</p><div className="mt-3"></div><form onSubmit={submit} className="mt-7 space-y-4"><label className="block text-xs font-semibold uppercase tracking-[0.15em] text-[#776c88]">Email<input value={email} onChange={e => setEmail(e.target.value)} className="mt-2 w-full rounded-2xl border border-[#e6deeb] bg-white px-4 py-3 text-sm outline-none focus:border-[#8c68cf]" /></label><label className="block text-xs font-semibold uppercase tracking-[0.15em] text-[#776c88]">Password<input type="password" value={password} onChange={e => setPassword(e.target.value)} className="mt-2 w-full rounded-2xl border border-[#e6deeb] bg-white px-4 py-3 text-sm outline-none focus:border-[#8c68cf]" /></label>{error && <p className="rounded-xl bg-red-50 px-3 py-2 text-xs font-semibold text-red-600">{error}</p>}<button disabled={loginMutation.isPending} className="flex w-full items-center justify-center gap-2 rounded-2xl bg-[#5b3b92] py-3.5 text-sm font-semibold text-white transition hover:bg-[#482c7c] disabled:opacity-60">{loginMutation.isPending ? <Loader2 className="animate-spin" size={16} /> : null}Sign in to {role} portal <ArrowRight size={16} /></button></form><div className="mt-6 rounded-2xl bg-[#f7f2fb] p-4 text-xs text-[#746785]"><p className="mb-2 font-semibold text-[#44325f]">Authorized {role} credentials</p><p>ID: {account.email}</p><p>Password: {account.password}</p></div></div></div></div></div>;
+  return (
+    <div className="min-h-screen bg-[#f5f0f8] text-[#271f3c]">
+      <div className="mx-auto grid min-h-screen max-w-6xl items-center gap-10 px-5 py-8 md:grid-cols-[.9fr_1.1fr] md:px-10">
+        <div className="hidden md:block">
+          <Logo />
+          <div className="mt-20 max-w-md">
+            <Pill>{config.label}</Pill>
+            <h1 className="mt-6 text-6xl font-semibold leading-[1.02] tracking-[-0.06em]">
+              {config.title.split(", ")[0]}<br />
+              <em className="font-serif font-normal text-[#7455b2]">{config.title.includes(", ") ? config.title.split(", ")[1] : ""}</em>
+            </h1>
+            <p className="mt-6 text-base leading-7 text-[#766a88]">{config.accent}</p>
+            <div className="mt-10 flex items-center gap-3 text-xs text-[#877b91]">
+              <ShieldCheck size={16} className="text-[#ef8656]" /> Your role controls what you can view and manage.
+            </div>
+          </div>
+        </div>
+        <div className="mx-auto w-full max-w-md">
+          <button onClick={onBack} className="mb-6 flex items-center gap-2 text-xs font-semibold text-[#6d4b9f]">
+            <ArrowRight className="rotate-180" size={14} /> Choose another login
+          </button>
+          <div className="rounded-[28px] bg-[#fffdfb] p-7 shadow-xl shadow-[#b7a6c8]/20">
+            <div className="md:hidden">
+              <Logo />
+              <div className="mt-7" />
+            </div>
+            <Pill>{config.label}</Pill>
+            <h2 className="mt-4 text-3xl font-semibold text-[#241b3d]">Sign in securely.</h2>
+            <p className="mt-2 text-sm text-[#81758e]">Use your {role} account to continue.</p>
+            <div className="mt-3"></div>
+            <form onSubmit={submit} className="mt-7 space-y-4">
+              <label className="block text-xs font-semibold uppercase tracking-[0.15em] text-[#776c88]">
+                Email
+                <input
+                  type="email"
+                  required
+                  value={email}
+                  onChange={e => setEmail(e.target.value)}
+                  placeholder={account.email}
+                  className="mt-2 w-full rounded-2xl border border-[#e6deeb] bg-white px-4 py-3 text-sm outline-none focus:border-[#8c68cf]"
+                />
+              </label>
+              <label className="block text-xs font-semibold uppercase tracking-[0.15em] text-[#776c88]">
+                Password
+                <input
+                  type="password"
+                  required
+                  value={password}
+                  onChange={e => setPassword(e.target.value)}
+                  placeholder="••••••••"
+                  className="mt-2 w-full rounded-2xl border border-[#e6deeb] bg-white px-4 py-3 text-sm outline-none focus:border-[#8c68cf]"
+                />
+              </label>
+              {error && <p className="rounded-xl bg-red-50 px-3 py-2 text-xs font-semibold text-red-600">{error}</p>}
+              <button
+                disabled={loginMutation.isPending}
+                className="flex w-full items-center justify-center gap-2 rounded-2xl bg-[#5b3b92] py-3.5 text-sm font-semibold text-white transition hover:bg-[#482c7c] disabled:opacity-60"
+              >
+                {loginMutation.isPending ? <Loader2 className="animate-spin" size={16} /> : null}
+                Sign in to {role} portal <ArrowRight size={16} />
+              </button>
+            </form>
+            <div className="mt-6 rounded-2xl bg-[#f7f2fb] p-4 text-xs text-[#746785]">
+              <p className="mb-2 font-semibold text-[#44325f]">Authorized {role} credentials</p>
+              <p>ID: {account.email}</p>
+              <p>Password: {account.password}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 
@@ -311,17 +421,17 @@ const INITIAL_SECTIONS: SectionItem[] = [
 ];
 
 const INITIAL_STUDENTS: ManagedStudent[] = [
-  // BCA Section A (10 students matching chips 001 - 010)
-  { id: "bca-1", studentId: "001", name: "Aarav Sharma", email: "aarav001@portal.com", department: "BCA", section: "A", status: "active", joinedDate: "2026-01-10" },
-  { id: "bca-2", studentId: "002", name: "Ananya Patel", email: "ananya002@portal.com", department: "BCA", section: "A", status: "active", joinedDate: "2026-01-10" },
-  { id: "bca-3", studentId: "003", name: "Devansh Rao", email: "devansh003@portal.com", department: "BCA", section: "A", status: "active", joinedDate: "2026-01-10" },
-  { id: "bca-4", studentId: "004", name: "Ishaan Gupta", email: "ishaan004@portal.com", department: "BCA", section: "A", status: "active", joinedDate: "2026-01-10" },
-  { id: "bca-5", studentId: "005", name: "Kavya Natarajan", email: "kavya005@portal.com", department: "BCA", section: "A", status: "active", joinedDate: "2026-01-10" },
-  { id: "bca-6", studentId: "006", name: "Meera Krishnan", email: "meera006@portal.com", department: "BCA", section: "A", status: "active", joinedDate: "2026-01-10" },
-  { id: "bca-7", studentId: "007", name: "Pranav Sundaram", email: "pranav007@portal.com", department: "BCA", section: "A", status: "active", joinedDate: "2026-01-10" },
-  { id: "bca-8", studentId: "008", name: "Riya Sen", email: "riya008@portal.com", department: "BCA", section: "A", status: "active", joinedDate: "2026-01-10" },
-  { id: "bca-9", studentId: "009", name: "Siddharth Verma", email: "siddharth009@portal.com", department: "BCA", section: "A", status: "active", joinedDate: "2026-01-10" },
-  { id: "bca-10", studentId: "010", name: "Tanvi Reddy", email: "tanvi010@portal.com", department: "BCA", section: "A", status: "active", joinedDate: "2026-01-10" },
+  // BCA Section A (10 students matching user screenshots BCAA001 - BCAA010)
+  { id: "bca-1", studentId: "BCAA001", name: "Arun Kumar", email: "arun.kumar@portal.com", department: "BCA", section: "A", status: "active", joinedDate: "2026-01-10" },
+  { id: "bca-2", studentId: "BCAA002", name: "Bala Kumar", email: "bala.kumar@portal.com", department: "BCA", section: "A", status: "active", joinedDate: "2026-01-10" },
+  { id: "bca-3", studentId: "BCAA003", name: "Divya Kumar", email: "divya.kumar@portal.com", department: "BCA", section: "A", status: "active", joinedDate: "2026-01-10" },
+  { id: "bca-4", studentId: "BCAA004", name: "Elan Kumar", email: "elan.kumar@portal.com", department: "BCA", section: "A", status: "active", joinedDate: "2026-01-10" },
+  { id: "bca-5", studentId: "BCAA005", name: "Fathima Kumar", email: "fathima.kumar@portal.com", department: "BCA", section: "A", status: "active", joinedDate: "2026-01-10" },
+  { id: "bca-6", studentId: "BCAA006", name: "Ganesh Kumar", email: "ganesh.kumar@portal.com", department: "BCA", section: "A", status: "active", joinedDate: "2026-01-10" },
+  { id: "bca-7", studentId: "BCAA007", name: "Harish Kumar", email: "harish.kumar@portal.com", department: "BCA", section: "A", status: "active", joinedDate: "2026-01-10" },
+  { id: "bca-8", studentId: "BCAA008", name: "Ishwarya Kumar", email: "ishwarya.kumar@portal.com", department: "BCA", section: "A", status: "active", joinedDate: "2026-01-10" },
+  { id: "bca-9", studentId: "BCAA009", name: "Janani Kumar", email: "janani.kumar@portal.com", department: "BCA", section: "A", status: "active", joinedDate: "2026-01-10" },
+  { id: "bca-10", studentId: "BCAA010", name: "Kavitha Kumar", email: "kavitha.kumar@portal.com", department: "BCA", section: "A", status: "active", joinedDate: "2026-01-10" },
 
   // BSc(CS) Section A
   { id: "bsc-1", studentId: "001", name: "Aditya Nair", email: "aditya001@portal.com", department: "BSc(CS)", section: "A", status: "active", joinedDate: "2026-01-12" },
@@ -1894,6 +2004,1113 @@ function AdminWorkspace({ user, onLogout }: { user: User; onLogout: () => void }
   </div>;
 }
 
+export interface TeacherExamMarkEntry {
+  studentId: string;
+  studentName: string;
+  mark: number;
+}
+
+export interface TeacherExamRecord {
+  id: string;
+  department: string;
+  section: string;
+  date: string;
+  examDescription: string;
+  maxMarks: number;
+  entries: TeacherExamMarkEntry[];
+  recordedAt: string;
+}
+
+const INITIAL_TEACHER_EXAM_RECORDS: TeacherExamRecord[] = [
+  {
+    id: "mark-rec-1",
+    department: "BCA",
+    section: "A",
+    date: "2026-09-14",
+    examDescription: "Lab Test 1, Unit Exam",
+    maxMarks: 100,
+    recordedAt: "11:15 AM",
+    entries: [
+      { studentId: "BCAA001", studentName: "Arun Kumar", mark: 88 },
+      { studentId: "BCAA002", studentName: "Bala Kumar", mark: 76 },
+      { studentId: "BCAA003", studentName: "Divya Kumar", mark: 95 },
+      { studentId: "BCAA004", studentName: "Elan Kumar", mark: 82 },
+      { studentId: "BCAA005", studentName: "Fathima Kumar", mark: 90 },
+      { studentId: "BCAA006", studentName: "Ganesh Kumar", mark: 85 },
+      { studentId: "BCAA007", studentName: "Harish Kumar", mark: 79 },
+      { studentId: "BCAA008", studentName: "Ishwarya Kumar", mark: 94 },
+      { studentId: "BCAA009", studentName: "Janani Kumar", mark: 87 },
+      { studentId: "BCAA010", studentName: "Kavitha Kumar", mark: 91 },
+    ],
+  },
+  {
+    id: "mark-rec-2",
+    department: "BSc(CS)",
+    section: "A",
+    date: "2026-09-13",
+    examDescription: "Linear Algebra & Calculus Practical",
+    maxMarks: 100,
+    recordedAt: "03:45 PM",
+    entries: [
+      { studentId: "001", studentName: "Aditya Nair", mark: 92 },
+      { studentId: "002", studentName: "Bhavna Jain", mark: 86 },
+      { studentId: "003", studentName: "Chetan Deshmukh", mark: 80 },
+    ],
+  },
+];
+
+function TeacherWorkspace({ user, onLogout }: { user: User; onLogout: () => void }) {
+  const [activeTab, setActiveTab] = useState<"home" | "attendance_records" | "marks_portal" | "mark_record">("marks_portal");
+
+  // Load shared departments, sections and students
+  const [departments] = useState<string[]>(() => {
+    try {
+      const saved = localStorage.getItem("rasi_admin_departments");
+      return saved ? JSON.parse(saved) : INITIAL_DEPARTMENTS;
+    } catch {
+      return INITIAL_DEPARTMENTS;
+    }
+  });
+
+  const [sections] = useState<SectionItem[]>(() => {
+    try {
+      const saved = localStorage.getItem("rasi_admin_sections");
+      return saved ? JSON.parse(saved) : INITIAL_SECTIONS;
+    } catch {
+      return INITIAL_SECTIONS;
+    }
+  });
+
+  const [students] = useState<ManagedStudent[]>(() => {
+    try {
+      const saved = localStorage.getItem("rasi_admin_students");
+      return saved ? JSON.parse(saved) : INITIAL_STUDENTS;
+    } catch {
+      return INITIAL_STUDENTS;
+    }
+  });
+
+  // Toast notification state
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const showToast = (msg: string) => {
+    setToastMessage(msg);
+    setTimeout(() => setToastMessage(null), 3500);
+  };
+
+  // --- ATTENDANCE STATE (Home Tab) ---
+  const [attendanceDate, setAttendanceDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [selectedDept, setSelectedDept] = useState("BCA");
+  const [selectedSection, setSelectedSection] = useState("A");
+  const [attendanceDescription, setAttendanceDescription] = useState("");
+  const [attendanceState, setAttendanceState] = useState<Record<string, "present" | "absent">>({});
+  const [sessionLogs, setSessionLogs] = useState<AttendanceSessionRecord[]>(() => {
+    try {
+      const saved = localStorage.getItem("rasi_attendance_sessions");
+      return saved ? JSON.parse(saved) : INITIAL_ATTENDANCE_SESSIONS;
+    } catch {
+      return INITIAL_ATTENDANCE_SESSIONS;
+    }
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem("rasi_attendance_sessions", JSON.stringify(sessionLogs));
+    } catch {}
+  }, [sessionLogs]);
+
+  // Available sections for chosen department
+  const availableSections = useMemo(() => {
+    const matched = sections.filter(s => s.department === selectedDept);
+    return matched.length > 0 ? matched : [{ id: "default-a", name: "A", department: selectedDept }];
+  }, [sections, selectedDept]);
+
+  useEffect(() => {
+    if (availableSections.length > 0 && !availableSections.some(s => s.name === selectedSection)) {
+      setSelectedSection(availableSections[0].name);
+    }
+  }, [availableSections, selectedSection]);
+
+  const batchStudents = useMemo(() => {
+    return students.filter(
+      s => s.department.toLowerCase() === selectedDept.toLowerCase() &&
+           s.section.toLowerCase() === selectedSection.toLowerCase()
+    );
+  }, [students, selectedDept, selectedSection]);
+
+  useEffect(() => {
+    const initialMap: Record<string, "present" | "absent"> = {};
+    batchStudents.forEach(s => {
+      initialMap[s.studentId] = "present";
+    });
+    setAttendanceState(initialMap);
+  }, [batchStudents]);
+
+  const toggleStudentAttendance = (studentId: string) => {
+    setAttendanceState(prev => ({
+      ...prev,
+      [studentId]: prev[studentId] === "absent" ? "present" : "absent",
+    }));
+  };
+
+  const markAllPresent = () => {
+    const updated: Record<string, "present" | "absent"> = {};
+    batchStudents.forEach(s => {
+      updated[s.studentId] = "present";
+    });
+    setAttendanceState(updated);
+  };
+
+  const markAllAbsent = () => {
+    const updated: Record<string, "present" | "absent"> = {};
+    batchStudents.forEach(s => {
+      updated[s.studentId] = "absent";
+    });
+    setAttendanceState(updated);
+  };
+
+  const presentCount = batchStudents.filter(s => (attendanceState[s.studentId] ?? "present") === "present").length;
+  const absentCount = batchStudents.filter(s => attendanceState[s.studentId] === "absent").length;
+  const absentIds = batchStudents.filter(s => attendanceState[s.studentId] === "absent").map(s => s.studentId);
+
+  const handleSubmitAttendance = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (batchStudents.length === 0) {
+      showToast("No students found in this department and section.");
+      return;
+    }
+    const newRecord: AttendanceSessionRecord = {
+      id: `att-sess-${Date.now()}`,
+      date: attendanceDate,
+      department: selectedDept,
+      section: selectedSection,
+      description: attendanceDescription.trim() || "Daily attendance record",
+      totalStudents: batchStudents.length,
+      presentCount,
+      absentCount,
+      absentStudentIds: absentIds,
+      recordedAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+    };
+    setSessionLogs([newRecord, ...sessionLogs]);
+    showToast(`✅ Attendance saved for ${selectedDept} Sec ${selectedSection} (${presentCount} Present, ${absentCount} Absent)`);
+    setAttendanceDescription("");
+  };
+
+  const handleDeleteAttendance = (id: string) => {
+    if (confirm("Delete this attendance log?")) {
+      setSessionLogs(sessionLogs.filter(s => s.id !== id));
+      showToast("Attendance record deleted.");
+    }
+  };
+
+  // --- MARKS PORTAL STATE (Enter Marks Tab - Screenshot 1) ---
+  const [marksDept, setMarksDept] = useState("BCA");
+  const [marksSection, setMarksSection] = useState("A");
+  const [examDescription, setExamDescription] = useState("Lab Test 1, Unit Exam");
+  const [examDate, setExamDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [maxMarks, setMaxMarks] = useState<number>(100);
+  const [marksInputMap, setMarksInputMap] = useState<Record<string, number>>({});
+
+  // Stored Exam Records
+  const [examRecords, setExamRecords] = useState<TeacherExamRecord[]>(() => {
+    try {
+      const saved = localStorage.getItem("rasi_teacher_marks_records");
+      return saved ? JSON.parse(saved) : INITIAL_TEACHER_EXAM_RECORDS;
+    } catch {
+      return INITIAL_TEACHER_EXAM_RECORDS;
+    }
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem("rasi_teacher_marks_records", JSON.stringify(examRecords));
+    } catch {}
+  }, [examRecords]);
+
+  // Available students for Marks Entry
+  const marksStudents = useMemo(() => {
+    return students.filter(
+      s => s.department.toLowerCase() === marksDept.toLowerCase() &&
+           s.section.toLowerCase() === marksSection.toLowerCase()
+    );
+  }, [students, marksDept, marksSection]);
+
+  // Populate or reset marks inputs when batch changes
+  useEffect(() => {
+    const initialMap: Record<string, number> = {};
+    marksStudents.forEach(s => {
+      initialMap[s.studentId] = 0;
+    });
+    setMarksInputMap(initialMap);
+  }, [marksStudents]);
+
+  const handleMarkChange = (studentId: string, val: string) => {
+    const num = Math.max(0, Math.min(maxMarks, Number(val) || 0));
+    setMarksInputMap(prev => ({
+      ...prev,
+      [studentId]: num,
+    }));
+  };
+
+  const handleSaveMarks = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (marksStudents.length === 0) {
+      showToast("No students in this department and section to save marks for.");
+      return;
+    }
+
+    const entries: TeacherExamMarkEntry[] = marksStudents.map(s => ({
+      studentId: s.studentId,
+      studentName: s.name,
+      mark: marksInputMap[s.studentId] ?? 0,
+    }));
+
+    const newRecord: TeacherExamRecord = {
+      id: `mark-rec-${Date.now()}`,
+      department: marksDept,
+      section: marksSection,
+      date: examDate,
+      examDescription: examDescription.trim() || "Unit Exam / Lab Test",
+      maxMarks,
+      entries,
+      recordedAt: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+    };
+
+    setExamRecords([newRecord, ...examRecords]);
+    showToast(`✅ Marks successfully saved for ${marksDept} Sec ${marksSection} (${marksStudents.length} students)!`);
+  };
+
+  const quickFillSample = () => {
+    const sampleScores = [88, 76, 95, 82, 90, 85, 79, 94, 87, 91, 84, 89];
+    const newMap: Record<string, number> = {};
+    marksStudents.forEach((s, idx) => {
+      newMap[s.studentId] = sampleScores[idx % sampleScores.length];
+    });
+    setMarksInputMap(newMap);
+    showToast("Filled sample test marks.");
+  };
+
+  const quickResetMarks = () => {
+    const newMap: Record<string, number> = {};
+    marksStudents.forEach(s => {
+      newMap[s.studentId] = 0;
+    });
+    setMarksInputMap(newMap);
+    showToast("Reset all student marks to 0.");
+  };
+
+  // --- MARK RECORD STATE (Search & Analytics Tab - Screenshot 2) ---
+  const [fetchDept, setFetchDept] = useState("BCA");
+  const [fetchSection, setFetchSection] = useState("A");
+  const [fetchDate, setFetchDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [hasFetched, setHasFetched] = useState(true);
+  const [fetchedRecords, setFetchedRecords] = useState<TeacherExamRecord[]>([]);
+
+  // Filter records based on fetch parameters
+  const handleFetchRecords = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    setHasFetched(true);
+    const matched = examRecords.filter(
+      r => r.department.toLowerCase() === fetchDept.toLowerCase() &&
+           r.section.toLowerCase() === fetchSection.toLowerCase() &&
+           (!fetchDate || r.date === fetchDate)
+    );
+    // If no exact date match, fall back to all records for that department & section so teacher sees past history
+    if (matched.length > 0) {
+      setFetchedRecords(matched);
+      showToast(`Found ${matched.length} mark record(s) for ${fetchDept} Sec ${fetchSection}`);
+    } else {
+      const allBatch = examRecords.filter(
+        r => r.department.toLowerCase() === fetchDept.toLowerCase() &&
+             r.section.toLowerCase() === fetchSection.toLowerCase()
+      );
+      setFetchedRecords(allBatch);
+      if (allBatch.length > 0) {
+        showToast(`Showing all ${allBatch.length} saved record(s) for ${fetchDept} Sec ${fetchSection}`);
+      } else {
+        showToast(`No mark records found for ${fetchDept} Sec ${fetchSection}.`);
+      }
+    }
+  };
+
+  // Automatically fetch on mount or when examRecords change
+  useEffect(() => {
+    const matched = examRecords.filter(
+      r => r.department.toLowerCase() === fetchDept.toLowerCase() &&
+           r.section.toLowerCase() === fetchSection.toLowerCase()
+    );
+    setFetchedRecords(matched);
+  }, [examRecords, fetchDept, fetchSection]);
+
+  const handleDeleteExamRecord = (id: string) => {
+    if (confirm("Delete this test mark record?")) {
+      setExamRecords(examRecords.filter(r => r.id !== id));
+      showToast("Mark record removed.");
+    }
+  };
+
+  // Helper date formatters
+  const formatDateDisplay = (dateStr: string) => {
+    try {
+      const [y, m, d] = dateStr.split("-");
+      return `${d}/${m}/${y}`;
+    } catch {
+      return dateStr;
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-[#f8f9fb] text-[#1c2434]">
+      {/* Toast Notification */}
+      {toastMessage && (
+        <div className="fixed bottom-6 right-6 z-50 flex items-center gap-3 rounded-2xl bg-[#0c2340] px-5 py-3.5 text-sm font-medium text-white shadow-2xl transition-all">
+          <CheckCircle2 className="text-[#48bb78]" size={18} />
+          {toastMessage}
+        </div>
+      )}
+
+      {/* TOP NAVBAR (Navy background matching screenshots) */}
+      <header className="sticky top-0 z-40 bg-[#0c2444] text-white shadow-md">
+        <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3.5 sm:px-6 lg:px-8">
+          {/* Logo & Brand */}
+          <div className="flex items-center gap-3">
+            <div className="grid h-9 w-9 place-items-center rounded-full bg-[#1e3a61] text-xs font-bold text-white shadow-inner">
+              <ClipboardCheck size={18} className="text-[#f6ae8a]" />
+            </div>
+            <span className="text-base font-bold tracking-tight text-white sm:text-lg">
+              LAB Attendance
+            </span>
+          </div>
+
+          {/* Navigation Links */}
+          <nav className="flex items-center gap-1 sm:gap-4 md:gap-7 text-xs sm:text-sm font-medium">
+            <button
+              type="button"
+              onClick={() => setActiveTab("home")}
+              className={`relative px-2 py-1 transition ${
+                activeTab === "home"
+                  ? "font-bold text-white after:absolute after:bottom-[-14px] after:left-0 after:right-0 after:h-[3px] after:rounded-t-full after:bg-[#f59e0b]"
+                  : "text-[#9cb3d1] hover:text-white"
+              }`}
+            >
+              Home
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setActiveTab("attendance_records")}
+              className={`relative px-2 py-1 transition ${
+                activeTab === "attendance_records"
+                  ? "font-bold text-white after:absolute after:bottom-[-14px] after:left-0 after:right-0 after:h-[3px] after:rounded-t-full after:bg-[#f59e0b]"
+                  : "text-[#9cb3d1] hover:text-white"
+              }`}
+            >
+              Attendance Records
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setActiveTab("marks_portal")}
+              className={`relative px-2 py-1 transition ${
+                activeTab === "marks_portal"
+                  ? "font-bold text-white after:absolute after:bottom-[-14px] after:left-0 after:right-0 after:h-[3px] after:rounded-t-full after:bg-[#f59e0b]"
+                  : "text-[#9cb3d1] hover:text-white"
+              }`}
+            >
+              Marks Portal
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setActiveTab("mark_record")}
+              className={`relative px-2 py-1 transition ${
+                activeTab === "mark_record"
+                  ? "font-bold text-white after:absolute after:bottom-[-14px] after:left-0 after:right-0 after:h-[3px] after:rounded-t-full after:bg-[#f59e0b]"
+                  : "text-[#9cb3d1] hover:text-white"
+              }`}
+            >
+              Mark Record
+            </button>
+
+            {/* Blue Logout Button */}
+            <button
+              type="button"
+              onClick={onLogout}
+              className="ml-2 rounded-xl bg-[#1b55a8] px-4 py-2 text-xs font-bold text-white shadow-sm transition hover:bg-[#14478a] sm:ml-4 sm:px-5"
+            >
+              Logout
+            </button>
+          </nav>
+        </div>
+      </header>
+
+      {/* MAIN CONTENT AREA */}
+      <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+        {/* ========================================================= */}
+        {/* TAB 1: HOME (LAB Attendance Taking with Chips)           */}
+        {/* ========================================================= */}
+        {activeTab === "home" && (
+          <div className="space-y-8">
+            <div className="rounded-3xl border border-[#eedfce] bg-white p-6 shadow-xs md:p-8">
+              {/* Header with Title and Date Badge */}
+              <div className="flex flex-wrap items-center justify-between gap-4 border-b border-[#f3ebf6] pb-6">
+                <div>
+                  <h1 className="text-2xl font-bold tracking-tight text-[#1b3a6b]">
+                    LAB Attendance
+                  </h1>
+                  <div className="mt-1.5 h-1 w-14 rounded-full bg-[#ef8656]"></div>
+                  <p className="mt-2 text-xs text-[#81758e]">
+                    Teacher roll chip marking for daily lab & classroom sessions.
+                  </p>
+                </div>
+
+                {/* Date Selector Badge */}
+                <div className="relative flex items-center gap-2 rounded-2xl border border-[#d8cfe0] bg-[#f8f5fc] px-4 py-2 text-xs font-semibold text-[#5b3b92]">
+                  <CalendarDays size={16} className="text-[#1b55a8]" />
+                  <span>Date: {formatDateDisplay(attendanceDate)}</span>
+                  <input
+                    type="date"
+                    value={attendanceDate}
+                    onChange={e => setAttendanceDate(e.target.value)}
+                    className="absolute inset-0 cursor-pointer opacity-0"
+                    title="Click to change date"
+                  />
+                </div>
+              </div>
+
+              {/* Form Selectors */}
+              <form onSubmit={handleSubmitAttendance} className="mt-6 space-y-6">
+                <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+                  <div>
+                    <label className="block text-xs font-bold uppercase tracking-[0.14em] text-[#4a3e5c]">
+                      DEPARTMENT:
+                    </label>
+                    <select
+                      value={selectedDept}
+                      onChange={e => setSelectedDept(e.target.value)}
+                      className="mt-2 w-full rounded-2xl border border-[#e4dce9] bg-white px-4 py-3 text-sm text-[#2a203e] shadow-xs focus:border-[#1b55a8] focus:outline-none"
+                    >
+                      {departments.map(dept => (
+                        <option key={dept} value={dept}>{dept}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold uppercase tracking-[0.14em] text-[#4a3e5c]">
+                      SECTION:
+                    </label>
+                    <select
+                      value={selectedSection}
+                      onChange={e => setSelectedSection(e.target.value)}
+                      className="mt-2 w-full rounded-2xl border border-[#e4dce9] bg-white px-4 py-3 text-sm text-[#2a203e] shadow-xs focus:border-[#1b55a8] focus:outline-none"
+                    >
+                      {availableSections.map(sec => (
+                        <option key={sec.id} value={sec.name}>{sec.name}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="sm:col-span-2 lg:col-span-1">
+                    <label className="block text-xs font-bold uppercase tracking-[0.14em] text-[#4a3e5c]">
+                      DESCRIPTION:
+                    </label>
+                    <input
+                      type="text"
+                      value={attendanceDescription}
+                      onChange={e => setAttendanceDescription(e.target.value)}
+                      placeholder="e.g. Lab Session 1, Practical Exercises"
+                      className="mt-2 w-full rounded-2xl border border-[#e4dce9] bg-white px-4 py-3 text-sm text-[#2a203e] shadow-xs placeholder:text-[#a89cb3] focus:border-[#1b55a8] focus:outline-none"
+                    />
+                  </div>
+                </div>
+
+                {/* Chip Attendance Marking Section */}
+                {batchStudents.length === 0 ? (
+                  <div className="my-8 rounded-3xl border border-dashed border-[#d8c89b] bg-[#fdfcf7] p-10 text-center">
+                    <p className="italic text-[#7a6f58]">
+                      No students found for {selectedDept} — Section {selectedSection}
+                    </p>
+                    <p className="mt-2 text-xs text-[#a0947e]">
+                      Switch department/section above, or ask Admin to enroll students.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-6 pt-2">
+                    {/* Summary Bar */}
+                    <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-[#eee6f0] bg-[#faf7fd] p-4">
+                      <div className="flex flex-wrap items-center gap-4">
+                        <span className="flex items-center gap-1.5 text-xs font-bold text-[#1b55a8]">
+                          <span className="h-2.5 w-2.5 rounded-full bg-[#1b55a8]"></span>
+                          Present: {presentCount}
+                        </span>
+                        <span className="flex items-center gap-1.5 text-xs font-bold text-[#d93838]">
+                          <span className="h-2.5 w-2.5 rounded-full bg-[#d93838]"></span>
+                          Absent: {absentCount}
+                        </span>
+                        <span className="rounded-lg bg-[#fffdf5] px-2.5 py-1 text-xs font-serif font-bold tracking-wider text-[#b8860b] shadow-2xs">
+                          {selectedDept.replace(/\s+/g, '')}{selectedSection}
+                        </span>
+                      </div>
+
+                      <div className="flex items-center gap-3">
+                        <span className="hidden text-xs text-[#8d8197] md:inline">
+                          Tap a chip to mark absent (red)
+                        </span>
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={markAllPresent}
+                            className="rounded-xl bg-[#0f4c81] px-4 py-2 text-xs font-bold text-white shadow-sm transition hover:bg-[#0b3860]"
+                          >
+                            All Present
+                          </button>
+                          <button
+                            type="button"
+                            onClick={markAllAbsent}
+                            className="rounded-xl bg-[#0f4c81] px-4 py-2 text-xs font-bold text-white shadow-sm transition hover:bg-[#0b3860]"
+                          >
+                            All Absent
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Student Chips Grid */}
+                    <div className="flex flex-wrap gap-3">
+                      {batchStudents.map(student => {
+                        const isAbsent = attendanceState[student.studentId] === "absent";
+                        const shortId = student.studentId.replace(/^[A-Za-z]+/, "");
+                        return (
+                          <button
+                            key={student.id}
+                            type="button"
+                            onClick={() => toggleStudentAttendance(student.studentId)}
+                            className={`group relative flex min-w-[72px] items-center justify-center rounded-2xl border px-4 py-3 text-sm font-semibold transition-all ${
+                              isAbsent
+                                ? "border-[#ef4444] bg-[#fef2f2] text-[#dc2626] shadow-sm"
+                                : "border-[#d6c796] bg-[#fffdf8] text-[#1b3a6b] shadow-2xs hover:border-[#1b55a8] hover:bg-white"
+                            }`}
+                            title={`${student.name} (${student.email}) - Click to toggle attendance`}
+                          >
+                            <span>{shortId || student.studentId}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    {/* Submit Button */}
+                    <div className="pt-4">
+                      <button
+                        type="submit"
+                        className="rounded-2xl bg-[#0f4c81] px-8 py-3.5 text-sm font-bold tracking-wide text-white shadow-md transition hover:bg-[#0b3860]"
+                      >
+                        Submit Attendance
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* ========================================================= */}
+        {/* TAB 2: ATTENDANCE RECORDS (Full History)                  */}
+        {/* ========================================================= */}
+        {activeTab === "attendance_records" && (
+          <div className="space-y-6">
+            <div className="rounded-3xl border border-[#eee6f0] bg-white p-6 shadow-xs md:p-8">
+              <div className="flex flex-wrap items-center justify-between gap-4 border-b border-[#f3ebf6] pb-4">
+                <div>
+                  <h2 className="text-xl font-bold text-[#1b3a6b]">
+                    Attendance Records History ({sessionLogs.length})
+                  </h2>
+                  <p className="mt-0.5 text-xs text-[#81758e]">
+                    Review recorded classroom and practical attendance batches.
+                  </p>
+                </div>
+              </div>
+
+              {sessionLogs.length === 0 ? (
+                <div className="py-12 text-center text-xs text-[#8d8197]">
+                  No attendance records saved yet. Mark attendance under the <strong>Home</strong> tab.
+                </div>
+              ) : (
+                <div className="mt-4 overflow-x-auto">
+                  <table className="w-full text-left text-xs">
+                    <thead>
+                      <tr className="border-b border-[#f0e8f4] text-[11px] font-bold uppercase tracking-[0.1em] text-[#8d8197]">
+                        <th className="py-3 pl-2 pr-4">Date</th>
+                        <th className="py-3 px-4">Batch</th>
+                        <th className="py-3 px-4">Present / Absent</th>
+                        <th className="py-3 px-4">Absentees</th>
+                        <th className="py-3 px-4">Description / Notes</th>
+                        <th className="py-3 pr-2 pl-4 text-right">Action</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-[#f7f2f9]">
+                      {sessionLogs.map(log => (
+                        <tr key={log.id} className="transition hover:bg-[#fbf9fd]">
+                          <td className="py-3.5 pl-2 pr-4 font-semibold text-[#5b3b92]">
+                            {log.date}
+                          </td>
+                          <td className="py-3.5 px-4">
+                            <span className="rounded-lg bg-[#f0eaf7] px-2.5 py-1 text-xs font-semibold text-[#5b3b92]">
+                              {log.department} - Sec {log.section}
+                            </span>
+                          </td>
+                          <td className="py-3.5 px-4">
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs font-bold text-[#1b7e47]">
+                                ✓ {log.presentCount}
+                              </span>
+                              <span className="text-xs font-bold text-[#d93838]">
+                                ✗ {log.absentCount}
+                              </span>
+                              <span className="text-[11px] text-[#8d8197]">
+                                ({log.totalStudents} total)
+                              </span>
+                            </div>
+                          </td>
+                          <td className="py-3.5 px-4">
+                            {log.absentStudentIds.length === 0 ? (
+                              <span className="text-[11px] text-[#1b7e47]">All Present</span>
+                            ) : (
+                              <div className="flex flex-wrap gap-1">
+                                {log.absentStudentIds.map(id => (
+                                  <span
+                                    key={id}
+                                    className="rounded bg-[#fee2e2] px-1.5 py-0.5 font-mono text-[10px] font-bold text-[#dc2626]"
+                                  >
+                                    {id}
+                                  </span>
+                                ))}
+                              </div>
+                            )}
+                          </td>
+                          <td className="py-3.5 px-4 text-[#71647f]">
+                            {log.description}
+                          </td>
+                          <td className="py-3.5 pr-2 pl-4 text-right">
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteAttendance(log.id)}
+                              className="rounded-lg p-1.5 text-[#b83232] transition hover:bg-[#fcedec]"
+                              title="Delete record"
+                            >
+                              <Trash2 size={15} />
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* ========================================================= */}
+        {/* TAB 3: MARKS PORTAL (Enter Marks - Screenshot 1)          */}
+        {/* ========================================================= */}
+        {activeTab === "marks_portal" && (
+          <div className="space-y-6">
+            {/* Header: Title & Date Badge */}
+            <div className="flex flex-wrap items-center justify-between gap-4">
+              <div className="flex items-center gap-2.5">
+                <span className="text-xl">✏️</span>
+                <h1 className="text-2xl font-bold tracking-tight text-[#1b3a6b]">
+                  Enter Marks
+                </h1>
+              </div>
+
+              {/* Date Badge */}
+              <div className="relative flex items-center gap-2 rounded-xl border border-[#d2def0] bg-[#edf4fc] px-4 py-2 text-xs font-bold text-[#1b55a8] shadow-2xs">
+                <CalendarDays size={16} className="text-[#1b55a8]" />
+                <span>{formatDateDisplay(examDate)}</span>
+                <input
+                  type="date"
+                  value={examDate}
+                  onChange={e => setExamDate(e.target.value)}
+                  className="absolute inset-0 cursor-pointer opacity-0"
+                  title="Click to select date"
+                />
+              </div>
+            </div>
+
+            {/* Filter Card: DEPARTMENT, SECTION, DESCRIPTION */}
+            <div className="rounded-2xl border border-[#eedfce] bg-white p-6 shadow-2xs">
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                <div>
+                  <label className="block text-[11px] font-bold uppercase tracking-[0.14em] text-[#6b7280]">
+                    DEPARTMENT
+                  </label>
+                  <select
+                    value={marksDept}
+                    onChange={e => setMarksDept(e.target.value)}
+                    className="mt-2 w-full rounded-xl border border-[#d1d5db] bg-white px-3.5 py-2.5 text-sm font-semibold text-[#1f2937] focus:border-[#1b55a8] focus:outline-none"
+                  >
+                    {departments.map(d => (
+                      <option key={d} value={d}>{d}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-bold uppercase tracking-[0.14em] text-[#6b7280]">
+                    SECTION
+                  </label>
+                  <select
+                    value={marksSection}
+                    onChange={e => setMarksSection(e.target.value)}
+                    className="mt-2 w-full rounded-xl border border-[#d1d5db] bg-white px-3.5 py-2.5 text-sm font-semibold text-[#1f2937] focus:border-[#1b55a8] focus:outline-none"
+                  >
+                    {availableSections.map(sec => (
+                      <option key={sec.id} value={sec.name}>{sec.name}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="sm:col-span-2">
+                  <label className="block text-[11px] font-bold uppercase tracking-[0.14em] text-[#6b7280]">
+                    DESCRIPTION (EXAM / TEST NAME)
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={examDescription}
+                    onChange={e => setExamDescription(e.target.value)}
+                    placeholder="e.g. Lab Test 1, Unit Exam..."
+                    className="mt-2 w-full rounded-xl border border-[#d1d5db] bg-white px-4 py-2.5 text-sm text-[#1f2937] placeholder:text-[#9ca3af] focus:border-[#1b55a8] focus:outline-none"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Students Marks Table Card */}
+            <div className="rounded-2xl border border-[#eedfce] bg-white p-1 shadow-xs">
+              <form onSubmit={handleSaveMarks}>
+                {marksStudents.length === 0 ? (
+                  <div className="p-12 text-center text-xs text-[#6b7280]">
+                    No students enrolled for {marksDept} — Section {marksSection}.
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left text-sm">
+                      <thead>
+                        <tr className="bg-[#0c2444] text-[11px] font-bold uppercase tracking-[0.12em] text-white">
+                          <th className="w-16 py-3.5 pl-6 pr-4">#</th>
+                          <th className="py-3.5 px-6">STUDENT ID</th>
+                          <th className="py-3.5 px-6">NAME</th>
+                          <th className="w-48 py-3.5 px-6 text-center">MARK</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-[#f1f3f6]">
+                        {marksStudents.map((student, index) => {
+                          const currentVal = marksInputMap[student.studentId] ?? 0;
+                          return (
+                            <tr
+                              key={student.id}
+                              className={`transition ${
+                                index === 2 ? "bg-[#fff9e6]" : "hover:bg-[#fbfcfe]"
+                              }`}
+                            >
+                              <td className="py-4 pl-6 pr-4 text-xs font-semibold text-[#4b5563]">
+                                {index + 1}
+                              </td>
+                              <td className="py-4 px-6 font-mono font-medium text-[#1e293b]">
+                                {student.studentId}
+                              </td>
+                              <td className="py-4 px-6 font-medium text-[#1e293b]">
+                                {student.name}
+                              </td>
+                              <td className="py-4 px-6 text-center">
+                                <input
+                                  type="number"
+                                  min={0}
+                                  max={maxMarks}
+                                  value={currentVal}
+                                  onChange={e => handleMarkChange(student.studentId, e.target.value)}
+                                  className="w-24 rounded-lg border border-[#cbd5e1] bg-white px-3 py-1.5 text-center text-sm font-semibold text-[#1e293b] focus:border-[#1b55a8] focus:outline-none"
+                                />
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+
+                {/* Bottom Actions Bar */}
+                <div className="flex flex-wrap items-center justify-between gap-4 border-t border-[#f0f2f5] p-5">
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={quickFillSample}
+                      className="rounded-xl border border-[#d1d5db] bg-[#f9fafb] px-3.5 py-2 text-xs font-semibold text-[#4b5563] hover:bg-[#f3f4f6]"
+                    >
+                      Fill Sample Scores
+                    </button>
+                    <button
+                      type="button"
+                      onClick={quickResetMarks}
+                      className="rounded-xl border border-[#d1d5db] bg-[#f9fafb] px-3.5 py-2 text-xs font-semibold text-[#4b5563] hover:bg-[#f3f4f6]"
+                    >
+                      Reset All to 0
+                    </button>
+                  </div>
+
+                  <button
+                    type="submit"
+                    className="rounded-2xl bg-[#0f4c81] px-8 py-3.5 text-sm font-bold text-white shadow-md transition hover:bg-[#0b3860]"
+                  >
+                    Save Marks Record
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* ========================================================= */}
+        {/* TAB 4: MARK RECORD (Search & Report - Screenshot 2)       */}
+        {/* ========================================================= */}
+        {activeTab === "mark_record" && (
+          <div className="space-y-6">
+            {/* Header: Title */}
+            <div className="flex items-center gap-2.5">
+              <span className="text-xl">📊</span>
+              <h1 className="text-2xl font-bold tracking-tight text-[#1b3a6b]">
+                Mark Record
+              </h1>
+            </div>
+
+            {/* Filter Card: DEPARTMENT, SECTION, DATE, FETCH BUTTON */}
+            <div className="rounded-2xl border border-[#eedfce] bg-white p-6 shadow-2xs">
+              <form onSubmit={handleFetchRecords} className="flex flex-wrap items-end gap-4">
+                <div>
+                  <label className="block text-[11px] font-bold uppercase tracking-[0.14em] text-[#6b7280]">
+                    DEPARTMENT
+                  </label>
+                  <select
+                    value={fetchDept}
+                    onChange={e => setFetchDept(e.target.value)}
+                    className="mt-2 w-36 rounded-xl border border-[#d1d5db] bg-white px-3.5 py-2 text-sm font-semibold text-[#1f2937] focus:border-[#1b55a8] focus:outline-none"
+                  >
+                    {departments.map(d => (
+                      <option key={d} value={d}>{d}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-bold uppercase tracking-[0.14em] text-[#6b7280]">
+                    SECTION
+                  </label>
+                  <select
+                    value={fetchSection}
+                    onChange={e => setFetchSection(e.target.value)}
+                    className="mt-2 w-28 rounded-xl border border-[#d1d5db] bg-white px-3.5 py-2 text-sm font-semibold text-[#1f2937] focus:border-[#1b55a8] focus:outline-none"
+                  >
+                    {availableSections.map(sec => (
+                      <option key={sec.id} value={sec.name}>{sec.name}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-bold uppercase tracking-[0.14em] text-[#6b7280]">
+                    DATE
+                  </label>
+                  <input
+                    type="date"
+                    value={fetchDate}
+                    onChange={e => setFetchDate(e.target.value)}
+                    className="mt-2 w-44 rounded-xl border border-[#d1d5db] bg-white px-3.5 py-2 text-sm font-semibold text-[#1f2937] focus:border-[#1b55a8] focus:outline-none"
+                  />
+                </div>
+
+                <button
+                  type="submit"
+                  className="inline-flex items-center gap-2 rounded-xl bg-[#1b55a8] px-6 py-2.5 text-xs font-bold uppercase tracking-[0.08em] text-white shadow-sm transition hover:bg-[#15468d]"
+                >
+                  <Search size={14} />
+                  Fetch
+                </button>
+              </form>
+            </div>
+
+            {/* Fetched Records Output */}
+            {hasFetched && (
+              <div className="space-y-6">
+                {fetchedRecords.length === 0 ? (
+                  <div className="rounded-3xl border border-dashed border-[#d8c89b] bg-white p-12 text-center">
+                    <p className="text-sm font-semibold text-[#4a3e5c]">
+                      No mark records found for {fetchDept} Section {fetchSection} on {formatDateDisplay(fetchDate)}.
+                    </p>
+                    <p className="mt-1 text-xs text-[#8d8197]">
+                      Enter marks under the <strong>Marks Portal</strong> tab to record assessment results.
+                    </p>
+                  </div>
+                ) : (
+                  fetchedRecords.map(record => {
+                    const totalStudents = record.entries.length;
+                    const totalScore = record.entries.reduce((acc, curr) => acc + curr.mark, 0);
+                    const avgScore = totalStudents > 0 ? (totalScore / totalStudents).toFixed(1) : "0";
+                    const highestScore = Math.max(...record.entries.map(e => e.mark), 0);
+                    const topScorer = record.entries.find(e => e.mark === highestScore)?.studentName || "—";
+                    const passCount = record.entries.filter(e => (e.mark / record.maxMarks) >= 0.4).length;
+                    const passRate = totalStudents > 0 ? Math.round((passCount / totalStudents) * 100) : 0;
+
+                    return (
+                      <div
+                        key={record.id}
+                        className="rounded-3xl border border-[#eedfce] bg-white p-6 shadow-xs space-y-6"
+                      >
+                        {/* Record Header & Analytics */}
+                        <div className="flex flex-wrap items-center justify-between gap-4 border-b border-[#f3ebf6] pb-4">
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <span className="rounded-lg bg-[#e9f0fc] px-2.5 py-1 text-xs font-bold text-[#1b55a8]">
+                                {record.department} - Sec {record.section}
+                              </span>
+                              <span className="text-xs text-[#6b7280]">
+                                Recorded on {formatDateDisplay(record.date)} at {record.recordedAt}
+                              </span>
+                            </div>
+                            <h2 className="mt-1.5 text-lg font-bold text-[#1b3a6b]">
+                              {record.examDescription}
+                            </h2>
+                          </div>
+
+                          <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteExamRecord(record.id)}
+                              className="rounded-xl border border-[#fee2e2] bg-[#fef2f2] p-2 text-[#dc2626] hover:bg-[#fecaca]"
+                              title="Delete Record"
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Analytics Summary Cards */}
+                        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                          <div className="rounded-2xl border border-[#e5e7eb] bg-[#fafbfd] p-4">
+                            <p className="text-[11px] font-bold uppercase tracking-[0.1em] text-[#6b7280]">
+                              Total Assessed
+                            </p>
+                            <p className="mt-1 text-2xl font-bold text-[#1b3a6b]">
+                              {totalStudents} <span className="text-xs text-[#9ca3af]">Students</span>
+                            </p>
+                          </div>
+
+                          <div className="rounded-2xl border border-[#e5e7eb] bg-[#fafbfd] p-4">
+                            <p className="text-[11px] font-bold uppercase tracking-[0.1em] text-[#6b7280]">
+                              Class Average
+                            </p>
+                            <p className="mt-1 text-2xl font-bold text-[#5b3b92]">
+                              {avgScore} <span className="text-xs text-[#9ca3af]">/ {record.maxMarks}</span>
+                            </p>
+                          </div>
+
+                          <div className="rounded-2xl border border-[#e5e7eb] bg-[#fafbfd] p-4">
+                            <p className="text-[11px] font-bold uppercase tracking-[0.1em] text-[#6b7280]">
+                              Top Mark
+                            </p>
+                            <p className="mt-1 text-2xl font-bold text-[#1b7e47]">
+                              {highestScore} <span className="text-xs text-[#9ca3af]">({topScorer})</span>
+                            </p>
+                          </div>
+
+                          <div className="rounded-2xl border border-[#e5e7eb] bg-[#fafbfd] p-4">
+                            <p className="text-[11px] font-bold uppercase tracking-[0.1em] text-[#6b7280]">
+                              Pass Rate
+                            </p>
+                            <p className="mt-1 text-2xl font-bold text-[#ef8656]">
+                              {passRate}% <span className="text-xs text-[#9ca3af]">({passCount}/{totalStudents})</span>
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* Student Breakdown Table */}
+                        <div className="overflow-x-auto rounded-2xl border border-[#e5e7eb]">
+                          <table className="w-full text-left text-xs">
+                            <thead>
+                              <tr className="bg-[#0c2444] text-[11px] font-bold uppercase tracking-[0.12em] text-white">
+                                <th className="py-3 pl-4 pr-3">#</th>
+                                <th className="py-3 px-4">Student ID</th>
+                                <th className="py-3 px-4">Student Name</th>
+                                <th className="py-3 px-4">Score</th>
+                                <th className="py-3 px-4">Percentage</th>
+                                <th className="py-3 px-4">Grade</th>
+                                <th className="py-3 pr-4 pl-3 text-right">Status</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-[#f1f3f6]">
+                              {record.entries.map((entry, idx) => {
+                                const pct = Math.round((entry.mark / record.maxMarks) * 100);
+                                const isPassed = pct >= 40;
+                                const grade = pct >= 90 ? "A+" : pct >= 80 ? "A" : pct >= 70 ? "B" : pct >= 60 ? "C" : pct >= 40 ? "D" : "F";
+                                return (
+                                  <tr key={entry.studentId} className="hover:bg-[#fbfcfe]">
+                                    <td className="py-3 pl-4 pr-3 font-medium text-[#6b7280]">
+                                      {idx + 1}
+                                    </td>
+                                    <td className="py-3 px-4 font-mono font-semibold text-[#1e293b]">
+                                      {entry.studentId}
+                                    </td>
+                                    <td className="py-3 px-4 font-medium text-[#1e293b]">
+                                      {entry.studentName}
+                                    </td>
+                                    <td className="py-3 px-4 font-bold text-[#1b3a6b]">
+                                      {entry.mark} / {record.maxMarks}
+                                    </td>
+                                    <td className="py-3 px-4 font-semibold text-[#5b3b92]">
+                                      {pct}%
+                                    </td>
+                                    <td className="py-3 px-4">
+                                      <span className={`rounded-md px-2 py-0.5 font-bold ${
+                                        grade === "A+" || grade === "A"
+                                          ? "bg-[#e8f6ed] text-[#1c7e47]"
+                                          : grade === "B" || grade === "C"
+                                          ? "bg-[#edf4fc] text-[#1b55a8]"
+                                          : "bg-[#fdf2e9] text-[#c25b28]"
+                                      }`}>
+                                        {grade}
+                                      </span>
+                                    </td>
+                                    <td className="py-3 pr-4 pl-3 text-right">
+                                      <span className={`rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider ${
+                                        isPassed
+                                          ? "bg-[#e8f6ed] text-[#1c7e47]"
+                                          : "bg-[#fef2f2] text-[#dc2626]"
+                                      }`}>
+                                        {isPassed ? "Pass" : "Fail"}
+                                      </span>
+                                    </td>
+                                  </tr>
+                                );
+                              })}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            )}
+          </div>
+        )}
+      </main>
+    </div>
+  );
+}
+
 function Dashboard({ user, onLogout }: { user: User; onLogout: () => void }) {
   const [active, setActive] = useState("Overview"); const isAdmin = user.role === "admin";
   const metrics = user.role === "admin" ? [["48", "Active students", Users], ["94%", "Attendance average", ClipboardCheck], ["12", "Batches running", BookOpen], ["6", "New requests", MessageCircle]] : user.role === "student" ? [["92%", "Attendance", ClipboardCheck], ["86%", "Average score", BarChart3], ["04", "Upcoming classes", CalendarDays], ["07", "Open projects", NotebookPen]] : [["92%", "Child attendance", ClipboardCheck], ["86%", "Current average", BarChart3], ["03", "Projects this term", NotebookPen], ["04", "Updates this week", MessageCircle]];
@@ -1916,7 +3133,7 @@ export default function Home() {
   const [activePortal, setActivePortal] = useState(false);
 
   const isPortalUrl = typeof window !== "undefined" && window.location.pathname.startsWith("/portal");
-  const secureUser = auth.user && ["admin", "student", "parent"].includes(auth.user.role)
+  const secureUser = auth.user && ["admin", "student", "parent", "teacher"].includes(auth.user.role)
     ? { role: auth.user.role as Role, name: auth.user.name ?? auth.user.email ?? "Portal user", email: auth.user.email ?? "" }
     : null;
   const currentUser = secureUser || user;
@@ -1933,6 +3150,7 @@ export default function Home() {
   if (currentUser && (activePortal || isPortalUrl)) {
     if (currentUser.role === "student") return <StudentWorkspace user={currentUser} onLogout={logout} />;
     if (currentUser.role === "parent") return <ParentWorkspace user={currentUser} onLogout={logout} />;
+    if (currentUser.role === "teacher") return <TeacherWorkspace user={currentUser} onLogout={logout} />;
     if (currentUser.role === "admin") return <AdminWorkspace user={currentUser} onLogout={logout} />;
   }
 
