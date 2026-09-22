@@ -3,7 +3,7 @@ import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { adminProcedure, protectedProcedure, publicProcedure, router } from "./_core/trpc";
 import { TRPCError } from "@trpc/server";
-import { createSubject, deleteSubject, getDb, listFeaturedSubjects, listScheduleSessions, listStudentAttendance, listSubjects, updateSubject, upsertScheduleSession, upsertStudentAttendance, listColleges, listGovernmentExams, listMarkStatements, listStudentProjects, setUserRoleByEmail, upsertCollege, upsertGovernmentExam, upsertMarkStatement, upsertStudentProject, upsertUser } from "./db";
+import { createSubject, deleteSubject, getDb, listFeaturedSubjects, listScheduleSessions, listStudentAttendance, listSubjects, updateSubject, upsertScheduleSession, upsertStudentAttendance, listColleges, listGovernmentExams, listMarkStatements, listStudentProjects, setUserRoleByEmail, upsertCollege, upsertGovernmentExam, upsertMarkStatement, upsertStudentProject, upsertUser, createQuestionPaper, deleteQuestionPaper, listQuestionPapers, createUnitQuestion, deleteUnitQuestion, listUnitQuestions } from "./db";
 import { subjects } from "../drizzle/schema";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
@@ -164,6 +164,17 @@ export const appRouter = router({
     college: adminProcedure.input(z.object({ tier: z.string().min(1), name: z.string().min(1), category: z.string().min(1), cutoff: z.string().min(1) })).mutation(({ input }) => upsertCollege(input)),
     exam: adminProcedure.input(z.object({ groupName: z.string().min(1), name: z.string().min(1), qualification: z.string().min(1), maxMarks: z.string().min(1), benchmark: z.string().min(1) })).mutation(({ input }) => upsertGovernmentExam(input)),
     setUserRole: adminProcedure.input(z.object({ email: z.string().email(), role: z.enum(["user", "admin", "student", "parent", "teacher"]), linkedStudentEmail: z.string().email().optional() })).mutation(({ input }) => setUserRoleByEmail(input.email, input.role, input.linkedStudentEmail)),
+    createQuestionPaper: adminProcedure.input(z.object({ title: z.string().min(1), subject: z.string().min(1), link: z.string().min(1), targetClass: z.string().min(1) })).mutation(({ input }) => createQuestionPaper(input)),
+    deleteQuestionPaper: adminProcedure.input(z.object({ id: z.number().int().positive() })).mutation(({ input }) => deleteQuestionPaper(input.id)),
+    listQuestionPapers: adminProcedure.query(() => listQuestionPapers()),
+    createUnitQuestion: adminProcedure.input(z.object({ title: z.string().min(1), subject: z.string().min(1), link: z.string().min(1), targetClass: z.string().min(1) })).mutation(({ input }) => createUnitQuestion(input)),
+    deleteUnitQuestion: adminProcedure.input(z.object({ id: z.number().int().positive() })).mutation(({ input }) => deleteUnitQuestion(input.id)),
+    listUnitQuestions: adminProcedure.query(() => listUnitQuestions()),
+  }),
+
+  materials: router({
+    questionPapers: protectedProcedure.input(z.object({ targetClass: z.string().optional() })).query(({ input }) => listQuestionPapers(input.targetClass)),
+    unitQuestions: protectedProcedure.input(z.object({ targetClass: z.string().optional() })).query(({ input }) => listUnitQuestions(input.targetClass)),
   }),
 
   guidance: router({

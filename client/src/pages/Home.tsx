@@ -262,7 +262,105 @@ function MarkStatements({ parent = false, studentEmail }: { parent?: boolean; st
   return <div><div className="mb-5 flex flex-col justify-between gap-4 rounded-3xl border border-[#eee6f0] bg-white p-5 md:flex-row md:items-end"><div><button onClick={() => setView("cards")} className="text-xs font-semibold text-[#6d4b9f]">← Back to assessment cards</button><p className="mt-4 text-xs font-bold uppercase tracking-[0.18em] text-[#ef8656]">{view === "weekly" ? "Weekly test marks" : "Monthly test marks"}</p><h2 className="mt-2 text-2xl font-semibold">{view === "weekly" ? `Week-wise results · ${monthNames[month]} ${year}` : `Month-wise results · ${year}`}</h2></div><div className="flex flex-wrap gap-2"><select value={month} onChange={e => setMonth(Number(e.target.value))} className="rounded-xl border border-[#e6deeb] bg-[#faf7fc] px-3 py-2 text-xs font-semibold text-[#5d506c] outline-none"><option value={-1}>All months</option>{monthNames.map((name, i) => <option value={i} key={name}>{name}</option>)}</select><select value={year} onChange={e => setYear(Number(e.target.value))} className="rounded-xl border border-[#e6deeb] bg-[#faf7fc] px-3 py-2 text-xs font-semibold text-[#5d506c] outline-none">{[now.getFullYear() - 1, now.getFullYear(), now.getFullYear() + 1].map(y => <option value={y} key={y}>{y}</option>)}</select></div></div>{view === "weekly" ? <div className="space-y-3">{weeklyMarks.map(row => <div className="flex items-center justify-between rounded-2xl border border-[#eee6f0] bg-white p-4" key={row[0]}><div><p className="text-sm font-semibold">{row[0]} · {row[1]}</p><p className="mt-1 text-xs text-[#8d8197]">{parent ? "Shared with linked parent account" : "Teacher feedback available"}</p></div><div className="text-right"><p className="text-lg font-semibold text-[#5b3b92]">{row[2]}</p><p className="text-xs font-semibold text-[#ef8656]">{row[3]}</p></div></div>)}</div> : <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{monthlyMarks.map(row => <div className={`rounded-2xl border p-4 ${row[0] === monthNames[month] ? "border-[#b99cda] bg-[#f3ecf9]" : "border-[#eee6f0] bg-white"}`} key={row[0]}><p className="text-sm font-semibold">{row[0]} {year}</p><p className="mt-4 text-2xl font-semibold text-[#5b3b92]">{row[1]}</p><p className="mt-1 text-xs text-[#8d8197]">{row[1] === "Upcoming" ? "Not published yet" : "Monthly test average"}</p></div>)}</div>}<p className="mt-5 text-xs text-[#8d8197]">The month defaults to the current month and the year defaults to the current year automatically.</p></div>;
 }
 
-const studentNav = ["Overview", "Attendance", "Mark statement", "Schedule", "Timetable", "Important Question papers", "Important questions (Unit wise)", "Projects"];
+function MaterialsView({ type, targetClass }: { type: "paper" | "unit"; targetClass: string }) {
+  const dbPapersQuery = trpc.materials.questionPapers.useQuery({});
+  const dbUnitsQuery = trpc.materials.unitQuestions.useQuery({});
+
+  const isPaper = type === "paper";
+  const dbData = isPaper ? dbPapersQuery.data : dbUnitsQuery.data;
+  const isLoading = isPaper ? dbPapersQuery.isLoading : dbUnitsQuery.isLoading;
+
+  if (isLoading) return <LoadingState label={`Loading ${isPaper ? "question papers" : "unit questions"}…`} />;
+
+  if (dbData && dbData.length > 0) {
+    const list = dbData.filter(item => item.targetClass === targetClass || item.targetClass === "All classes" || !item.targetClass);
+    if (!list.length) return <EmptyState title="No materials for your class" message={`No ${isPaper ? "question papers" : "unit questions"} have been sent to ${targetClass} yet.`} />;
+
+    const grouped = list.reduce((acc, item) => {
+      if (!acc[item.subject]) acc[item.subject] = [];
+      acc[item.subject].push(item);
+      return acc;
+    }, {} as Record<string, typeof list>);
+
+    return (
+      <div className="grid gap-4 md:grid-cols-2">
+        {Object.entries(grouped).map(([subject, items]) => (
+          <div className="rounded-3xl border border-[#eee6f0] bg-white p-6" key={subject}>
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#ef8656]">{subject}</p>
+                <h2 className="mt-2 text-xl font-semibold">{isPaper ? "Question papers" : "Unit questions"}</h2>
+              </div>
+              <BookOpen className="text-[#8060ac]" size={20} />
+            </div>
+            <div className="mt-5 space-y-3">
+              {items.map((item, i) => (
+                <a
+                  href={item.link || "#"}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="flex items-center gap-3 rounded-2xl bg-[#faf7fc] p-4 transition hover:bg-[#f3ecf9]"
+                  key={item.id}
+                >
+                  <span className="text-xs font-bold text-[#ef8656]">0{i + 1}</span>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-semibold leading-5 text-[#5d506c] hover:text-[#6d4b9f]">{item.title}</p>
+                    <span className="text-[10px] font-bold text-[#3c8e83] bg-[#e9f5ed] px-2 py-0.5 rounded-full inline-block mt-1">Target: {item.targetClass}</span>
+                  </div>
+                  <ArrowUpRight size={14} className="ml-auto text-[#aaa0b1]" />
+                </a>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  // Fallback to localStorage siteData
+  const data = readSiteData();
+  const list = isPaper ? data.questionPapers : data.unitQuestions;
+  if (!list || !list.length) return <EmptyState title="No materials available" message={`There are no ${isPaper ? "question papers" : "unit questions"} available yet.`} />;
+
+  const grouped = list.reduce((acc, item) => {
+    if (!acc[item.subject]) acc[item.subject] = [];
+    acc[item.subject].push(item);
+    return acc;
+  }, {} as Record<string, typeof list>);
+
+  return (
+    <div className="grid gap-4 md:grid-cols-2">
+      {Object.entries(grouped).map(([subject, items]) => (
+        <div className="rounded-3xl border border-[#eee6f0] bg-white p-6" key={subject}>
+          <div className="flex items-start justify-between">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#ef8656]">{subject}</p>
+              <h2 className="mt-2 text-xl font-semibold">{isPaper ? "Question papers" : "Unit questions"}</h2>
+            </div>
+            <BookOpen className="text-[#8060ac]" size={20} />
+          </div>
+          <div className="mt-5 space-y-3">
+            {items.map((item, i) => (
+              <a
+                href={item.link || "#"}
+                target="_blank"
+                rel="noreferrer"
+                className="flex items-center gap-3 rounded-2xl bg-[#faf7fc] p-4 transition hover:bg-[#f3ecf9]"
+                key={item.id}
+              >
+                <span className="text-xs font-bold text-[#ef8656]">0{i + 1}</span>
+                <span className="text-sm font-semibold leading-5 text-[#5d506c] hover:text-[#6d4b9f]">{item.title}</span>
+                <ArrowUpRight size={14} className="ml-auto text-[#aaa0b1]" />
+              </a>
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+const studentNav = ["Overview", "Attendance", "Mark statement", "Schedule", "Timetable", "Question paper", "Unit question", "Projects"];
 
 function StudentWorkspace({ user, onLogout }: { user: User; onLogout: () => void }) {
   const [active, setActive] = useState("Overview");
@@ -278,7 +376,7 @@ function StudentWorkspace({ user, onLogout }: { user: User; onLogout: () => void
   const attendance = ["Present", "Present", "Late", "Present", "Absent", "Present", "Present", "Present", "Present", "Present", "Present", "Present", "Present", "Absent"];
   const sessions: Record<number, string> = { 3: "Mathematics · Algebra practice", 7: "Physics · Motion and forces", 12: "Mathematics · Weekly problem set", 18: "English · Essay planning", 24: "Physics · Revision workshop" };
   const tests = { "Weekly test": [["Mathematics", "18 / 20", "90%"], ["Physics", "16 / 20", "80%"], ["English", "17 / 20", "85%"]], "Monthly test": [["Mathematics", "86 / 100", "86%"], ["Physics", "82 / 100", "82%"], ["English", "88 / 100", "88%"]] };
-  const pageIntro: Record<string, string> = { Overview: "Your learning space for the week ahead.", Attendance: "A daily view of your attendance and learning rhythm.", "Mark statement": "Open a test card to review subject-wise performance.", Schedule: "Choose a date to see the exercise planned for that session.", Timetable: "Your current weekly class timetable.", "Important Question papers": "Download and review past question papers.", "Important questions (Unit wise)": "Teacher-curated questions to strengthen your revision.", Projects: "Projects assigned by your teachers, with due dates and progress." };
+  const pageIntro: Record<string, string> = { Overview: "Your learning space for the week ahead.", Attendance: "A daily view of your attendance and learning rhythm.", "Mark statement": "Open a test card to review subject-wise performance.", Schedule: "Choose a date to see the exercise planned for that session.", Timetable: "Your current weekly class timetable.", "Question paper": "Download and review question papers sent by Admin to your class.", "Important Question papers": "Download and review question papers sent by Admin.", "Unit question": "Teacher-curated unit questions sent by Admin to your class.", "Important questions (Unit wise)": "Teacher-curated questions to strengthen your revision.", Projects: "Projects assigned by your teachers, with due dates and progress." };
   const renderPage = () => {
     if (active === "Attendance") {
       if (attendanceQuery.isLoading) return <LoadingState label="Loading daily attendance…" />;
@@ -294,18 +392,11 @@ function StudentWorkspace({ user, onLogout }: { user: User; onLogout: () => void
       return <div className="grid gap-5 lg:grid-cols-[1.15fr_.85fr]"><div className="rounded-3xl border border-[#eee6f0] bg-white p-6"><div className="flex items-center justify-between"><div><p className="text-xs font-bold uppercase tracking-[0.18em] text-[#ef8656]">Live session scheduling</p><h2 className="mt-2 text-2xl font-semibold">September 2026</h2></div><CalendarDays className="text-[#6d4b9f]" /></div><div className="mt-7 grid grid-cols-7 gap-2 text-center"><div className="col-span-7 grid grid-cols-7 text-[10px] font-bold uppercase tracking-[0.12em] text-[#aaa0b1]">{["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((day, index) => <span key={`${day}-${index}`}>{day}</span>)}</div>{Array.from({ length: 30 }, (_, i) => <button key={i} onClick={() => setSelectedDate(i + 1)} className={`grid h-11 place-items-center rounded-xl text-sm transition ${selectedDate === i + 1 ? "bg-[#5b3b92] font-semibold text-white" : scheduleByDate[i + 1] ? "bg-[#f3ecf9] font-semibold text-[#6d4b9f]" : "text-[#81758e] hover:bg-[#faf7fc]"}`}>{i + 1}</button>)}</div><p className="mt-5 text-xs text-[#8d8197]">Purple dates have an exercise scheduled by Admin.</p></div><div className="rounded-3xl bg-[#f4e9dd] p-6"><p className="text-xs font-bold uppercase tracking-[0.18em] text-[#c36b42]">Selected date</p><h2 className="mt-3 text-3xl font-semibold">September {selectedDate}</h2><div className="mt-8 rounded-2xl bg-white/70 p-4">{selectedSession ? <><p className="text-xs font-semibold uppercase tracking-[0.14em] text-[#a7633e]">Scheduled exercise</p><p className="mt-3 text-lg font-semibold text-[#4a3041]">{selectedSession.subject}</p><p className="mt-2 text-sm leading-6 text-[#887477]">{selectedSession.exercise}</p><p className="mt-3 text-xs font-semibold text-[#a7633e]">{selectedSession.sessionTime || "Time to be confirmed"}</p></> : <><p className="text-xs font-semibold uppercase tracking-[0.14em] text-[#a7633e]">No session for this date</p><p className="mt-3 text-sm leading-6 text-[#887477]">Select a purple date or ask Admin to schedule an exercise.</p></>}</div></div></div>;
     }
     if (active === "Timetable") return <div className="rounded-3xl border border-[#eee6f0] bg-white p-6"><div className="flex items-center justify-between"><div><p className="text-xs font-bold uppercase tracking-[0.18em] text-[#ef8656]">Weekly schedule</p><h2 className="mt-2 text-2xl font-semibold">Your timetable</h2></div><Pill>Updated by admin</Pill></div><div className="mt-7 overflow-x-auto"><table className="w-full min-w-[650px] text-left"><thead className="border-b border-[#eee6f0] text-[10px] uppercase tracking-[0.15em] text-[#a196aa]"><tr><th className="pb-3">Day</th><th className="pb-3">Time</th><th className="pb-3">Subject</th><th className="pb-3">Teacher</th><th className="pb-3">Room</th></tr></thead><tbody>{[["Monday", "4:30 PM", "Mathematics", "Aarav Menon", "Room 2"], ["Tuesday", "5:00 PM", "Physics", "Nisha Kapoor", "Room 1"], ["Wednesday", "4:30 PM", "Mathematics", "Aarav Menon", "Room 2"], ["Friday", "4:30 PM", "Chemistry", "Nisha Kapoor", "Lab 1"], ["Saturday", "10:00 AM", "English & Writing", "Kabir Shah", "Studio"]].map(row => <tr key={row[0]} className="border-b border-[#f1ebf2] last:border-0"><td className="py-4 text-sm font-semibold">{row[0]}</td><td className="py-4 text-sm text-[#6d4b9f]">{row[1]}</td><td className="py-4 text-sm">{row[2]}</td><td className="py-4 text-xs text-[#887c91]">{row[3]}</td><td className="py-4 text-xs text-[#887c91]">{row[4]}</td></tr>)}</tbody></table></div></div>;
-    if (active === "Important Question papers" || active === "Important questions (Unit wise)") {
-      const data = readSiteData();
-      const list = active === "Important Question papers" ? data.questionPapers : data.unitQuestions;
-      if (!list || !list.length) return <EmptyState title="No materials available" message={`There are no ${active.toLowerCase()} available yet.`} />;
-      
-      const grouped = list.reduce((acc, item) => {
-        if (!acc[item.subject]) acc[item.subject] = [];
-        acc[item.subject].push(item);
-        return acc;
-      }, {} as Record<string, typeof list>);
-
-      return <div className="grid gap-4 md:grid-cols-2">{Object.entries(grouped).map(([subject, items]) => <div className="rounded-3xl border border-[#eee6f0] bg-white p-6" key={subject}><div className="flex items-start justify-between"><div><p className="text-xs font-bold uppercase tracking-[0.18em] text-[#ef8656]">{subject}</p><h2 className="mt-2 text-xl font-semibold">{active === "Important Question papers" ? "Question papers" : "Unit questions"}</h2></div><BookOpen className="text-[#8060ac]" size={20} /></div><div className="mt-5 space-y-3">{items.map((item, i) => <a href={item.link || "#"} target="_blank" rel="noreferrer" className="flex items-center gap-3 rounded-2xl bg-[#faf7fc] p-4 transition hover:bg-[#f3ecf9]" key={item.id}><span className="text-xs font-bold text-[#ef8656]">0{i + 1}</span><span className="text-sm font-semibold leading-5 text-[#5d506c] hover:text-[#6d4b9f]">{item.title}</span><ArrowUpRight size={14} className="ml-auto text-[#aaa0b1]" /></a>)}</div></div>)}</div>;
+    if (active === "Question paper" || active === "Important Question papers") {
+      return <MaterialsView type="paper" targetClass="Grade 10" />;
+    }
+    if (active === "Unit question" || active === "Important questions (Unit wise)") {
+      return <MaterialsView type="unit" targetClass="Grade 10" />;
     }
     if (active === "Projects") {
       if (projectsQuery.isLoading) return <LoadingState label="Loading assigned projects…" />;
@@ -319,7 +410,7 @@ function StudentWorkspace({ user, onLogout }: { user: User; onLogout: () => void
   return <div className="min-h-screen bg-[#f6f2f8] text-[#2a203e]"><aside className="fixed inset-y-0 left-0 hidden w-64 border-r border-[#ebe3ef] bg-[#fffdfb] p-6 md:block"><Logo /><div className="mt-12"><p className="mb-3 text-[10px] font-bold uppercase tracking-[0.2em] text-[#a296ac]">Student workspace</p>{studentNav.map((item, i) => <button key={item} onClick={() => { setActive(item); setSelectedTest(null); }} className={`mb-1 flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-sm ${active === item ? "bg-[#f0e9f7] font-semibold text-[#5b3b92]" : "text-[#81758e] hover:bg-[#faf7fc]"}`}><span className="text-xs">{i === 0 ? <LayoutDashboard size={16} /> : i === 1 ? <ClipboardCheck size={16} /> : i === 2 ? <BarChart3 size={16} /> : i === 3 ? <CalendarDays size={16} /> : i === 4 ? <BookOpen size={16} /> : i === 5 ? <FileText size={16} /> : i === 6 ? <MessageCircle size={16} /> : <NotebookPen size={16} />}</span>{item}</button>)}</div>{showHelp && <div className="absolute bottom-6 left-6 right-6"><div className="relative rounded-2xl bg-[#f7f1fb] p-4"><button onClick={() => setShowHelp(false)} className="absolute right-3 top-3 text-[#aaa0b1] hover:text-[#5b3b92]"><X size={14} /></button><p className="text-xs font-semibold">Need help?</p><p className="mt-1 text-[11px] leading-4 text-[#8d8197] pr-2">Talk to the centre team about your learning plan.</p></div></div>}</aside><main className="md:ml-64"><header className="flex items-center justify-between border-b border-[#ebe3ef] bg-[#fffdfb]/80 px-5 py-5 backdrop-blur md:px-10"><div><p className="text-xs text-[#978ca1]">Student portal</p><h1 className="mt-1 text-2xl font-semibold tracking-[-0.04em]">Good morning, {user.name.split(" ")[0]}.</h1></div><div className="flex items-center gap-3"><div className="hidden text-right sm:block"><p className="text-xs font-semibold">{user.name}</p><p className="text-[11px] text-[#94889e]">Grade 10 · Foundation batch</p></div><button onClick={onLogout} className="rounded-full border border-[#e4dce9] bg-white p-2.5 text-[#796c88] hover:text-[#5b3b92]" title="Log out"><LogOut size={16} /></button></div></header><div className="p-5 md:p-10"><div className="mb-8 flex items-center justify-between"><div><Pill>{active}</Pill><p className="mt-3 max-w-lg text-sm leading-6 text-[#81758e]">{pageIntro[active]}</p></div><div className="hidden rounded-2xl bg-[#f4e9dd] p-4 text-[#a7633e] md:block"><ShieldCheck size={20} /><p className="mt-2 text-[11px] font-semibold">Private student view</p></div></div>{renderPage()}</div></main></div>;
 }
 
-const parentNav = ["Overview", "Attendance", "Mark statements", "Projects", "Orientation programs", "Colleges", "Government exams"];
+const parentNav = ["Overview", "Attendance", "Mark statements", "Question paper", "Unit question", "Projects", "Orientation programs", "Colleges", "Government exams"];
 
 function ParentWorkspace({ user, onLogout }: { user: User; onLogout: () => void }) {
   const [active, setActive] = useState("Overview");
@@ -330,7 +421,7 @@ function ParentWorkspace({ user, onLogout }: { user: User; onLogout: () => void 
   const projectsQuery = trpc.student.projects.useQuery({ studentEmail: "student@portal.com" });
   const collegesQuery = trpc.guidance.colleges.useQuery();
   const examsQuery = trpc.guidance.exams.useQuery();
-  const intro: Record<string, string> = { Overview: "A calm view of Ananya’s learning journey.", Attendance: "Review your child’s day-by-day attendance record.", "Mark statements": "See the same weekly and monthly test results shared with your child.", Projects: "Track projects assigned by the Admin and their progress.", "Orientation programs": "Centre meetings and orientation sessions scheduled for your family.", Colleges: "Explore technology and non-technology colleges by tier.", "Government exams": "Compare Central and Tamil Nadu government examination pathways." };
+  const intro: Record<string, string> = { Overview: "A calm view of Ananya’s learning journey.", Attendance: "Review your child’s day-by-day attendance record.", "Mark statements": "See the same weekly and monthly test results shared with your child.", "Question paper": "Review question papers sent by Admin to your child's class.", "Unit question": "Review unit-wise questions sent by Admin to your child's class.", Projects: "Track projects assigned by the Admin and their progress.", "Orientation programs": "Centre meetings and orientation sessions scheduled for your family.", Colleges: "Explore technology and non-technology colleges by tier.", "Government exams": "Compare Central and Tamil Nadu government examination pathways." };
   const render = () => {
     if (active === "Attendance") {
       if (attendanceQuery.isLoading) return <LoadingState label="Loading child attendance…" />;
@@ -339,6 +430,12 @@ function ParentWorkspace({ user, onLogout }: { user: User; onLogout: () => void 
       return <div className="grid gap-5 lg:grid-cols-[1.1fr_.9fr]"><div className="rounded-3xl border border-[#eee6f0] bg-white p-6"><div className="flex items-center justify-between"><div><p className="text-xs font-bold uppercase tracking-[0.18em] text-[#ef8656]">Child attendance</p><h2 className="mt-2 text-2xl font-semibold">{child} · Admin-updated</h2></div><span className="rounded-full bg-[#e9f5ed] px-3 py-1 text-xs font-semibold text-[#44835b]">{percentage}% present</span></div><div className="mt-7 space-y-3">{liveAttendance.slice().sort((a, b) => b.attendanceDate.localeCompare(a.attendanceDate)).map(record => <div className="flex items-center justify-between rounded-2xl bg-[#faf7fc] p-4" key={record.id}><span className="text-sm font-semibold">{record.attendanceDate}</span><span className={`rounded-full px-3 py-1 text-xs font-semibold ${record.status === "present" ? "bg-[#e9f5ed] text-[#44835b]" : record.status === "late" ? "bg-[#fff0e7] text-[#c36b42]" : "bg-[#fbe8eb] text-[#c25b68]"}`}>{record.status}</span></div>)}</div></div><div className="rounded-3xl bg-[#5b3b92] p-6 text-white"><ClipboardCheck className="text-[#f6ae8a]" size={20} /><h2 className="mt-8 text-2xl font-semibold">Live family<br /><em className="font-serif font-normal">visibility.</em></h2><p className="mt-4 text-sm leading-6 text-white/65">Attendance changes saved by Admin are reflected here for the linked parent.</p></div></div>;
     }
     if (active === "Mark statements") return <MarkStatements parent studentEmail="student@portal.com" />;
+    if (active === "Question paper" || active === "Important Question papers") {
+      return <MaterialsView type="paper" targetClass="Grade 10" />;
+    }
+    if (active === "Unit question" || active === "Important questions (Unit wise)") {
+      return <MaterialsView type="unit" targetClass="Grade 10" />;
+    }
     if (active === "Projects") {
       if (projectsQuery.isLoading) return <LoadingState label="Loading assigned projects…" />;
       const projects = projectsQuery.data ?? [];
@@ -362,7 +459,7 @@ function ParentWorkspace({ user, onLogout }: { user: User; onLogout: () => void 
     }
     return <><div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">{[["92%", "Child attendance", ClipboardCheck], ["86%", "Current average", BarChart3], ["03", "Projects this term", NotebookPen], ["02", "Upcoming meetings", CalendarDays]].map(([value, label, Icon]) => <button onClick={() => setActive(label === "Child attendance" ? "Attendance" : label === "Current average" ? "Mark statements" : label === "Projects this term" ? "Projects" : "Orientation programs")} key={label as string} className="rounded-3xl border border-[#eee6f0] bg-white p-5 text-left shadow-sm transition hover:-translate-y-1"><div className="flex items-start justify-between"><p className="text-3xl font-semibold text-[#5b3b92]">{value as string}</p><span className="rounded-xl bg-[#f4edf9] p-2 text-[#8060ac]"><Icon size={17} /></span></div><p className="mt-6 text-xs text-[#877b91]">{label as string}</p></button>)}</div><div className="mt-8 grid gap-5 lg:grid-cols-[1.3fr_.7fr]"><div className="rounded-3xl border border-[#eee6f0] bg-white p-6"><div className="flex items-center justify-between"><h2 className="font-semibold">Family learning snapshot</h2><button onClick={() => setActive("Mark statements")} className="text-xs font-semibold text-[#6d4b9f]">View marks <ChevronRight className="inline" size={14} /></button></div><div className="mt-6 space-y-4">{[["Ananya’s attendance", "41 of 45 classes attended", "92%"], ["Latest result", "Monthly test · 86% average", "On track"], ["Next meeting", "Parent orientation · 10 October", "Scheduled"]].map(row => <div className="flex items-center justify-between rounded-2xl bg-[#faf7fc] p-4" key={row[0]}><div className="flex items-center gap-3"><span className="grid h-9 w-9 place-items-center rounded-xl bg-[#e9ddf4] text-[#6e4b9e]"><Check size={16} /></span><div><p className="text-sm font-semibold">{row[0]}</p><p className="mt-1 text-xs text-[#8d8197]">{row[1]}</p></div></div><span className="text-[11px] font-semibold text-[#ef8656]">{row[2]}</span></div>)}</div></div><div className="rounded-3xl bg-[#5b3b92] p-6 text-white"><Sparkles className="text-[#f8b08b]" size={20} /><h2 className="mt-8 text-2xl font-semibold">Support the next<br /><em className="font-serif font-normal">good question.</em></h2><p className="mt-4 text-sm leading-6 text-white/65">Use the guidance library to explore pathways together.</p><button onClick={() => setActive("Colleges")} className="mt-8 rounded-full bg-white px-4 py-2.5 text-xs font-semibold text-[#5b3b92]">Explore colleges <ArrowRight className="ml-1 inline" size={13} /></button></div></div></>;
   };
-  return <div className="min-h-screen bg-[#f6f2f8] text-[#2a203e]"><aside className="fixed inset-y-0 left-0 hidden w-64 border-r border-[#ebe3ef] bg-[#fffdfb] p-6 md:block"><Logo /><div className="mt-12"><p className="mb-3 text-[10px] font-bold uppercase tracking-[0.2em] text-[#a296ac]">Parent workspace</p>{parentNav.map((item, i) => <button key={item} onClick={() => setActive(item)} className={`mb-1 flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-sm ${active === item ? "bg-[#f0e9f7] font-semibold text-[#5b3b92]" : "text-[#81758e] hover:bg-[#faf7fc]"}`}><span className="text-xs">{i === 0 ? <LayoutDashboard size={16} /> : i === 1 ? <ClipboardCheck size={16} /> : i === 2 ? <BarChart3 size={16} /> : i === 3 ? <NotebookPen size={16} /> : i === 4 ? <CalendarDays size={16} /> : i === 5 ? <GraduationCap size={16} /> : <ShieldCheck size={16} />}</span>{item}</button>)}</div>{showLinked && <div className="absolute bottom-6 left-6 right-6"><div className="relative rounded-2xl bg-[#f7f1fb] p-4"><button onClick={() => setShowLinked(false)} className="absolute right-3 top-3 text-[#aaa0b1] hover:text-[#5b3b92]"><X size={14} /></button><p className="text-xs font-semibold">Linked student</p><p className="mt-1 text-[11px] leading-4 text-[#8d8197]">{child} · Grade 10</p></div></div>}</aside><main className="md:ml-64"><header className="flex items-center justify-between border-b border-[#ebe3ef] bg-[#fffdfb]/80 px-5 py-5 backdrop-blur md:px-10"><div><p className="text-xs text-[#978ca1]">Parent portal</p><h1 className="mt-1 text-2xl font-semibold tracking-[-0.04em]">Good morning, {user.name.split(" ")[0]}.</h1></div><div className="flex items-center gap-3"><div className="hidden text-right sm:block"><p className="text-xs font-semibold">{user.name}</p><p className="text-[11px] text-[#94889e]">Parent of {child}</p></div><button onClick={onLogout} className="rounded-full border border-[#e4dce9] bg-white p-2.5 text-[#796c88] hover:text-[#5b3b92]" title="Log out"><LogOut size={16} /></button></div></header><div className="p-5 md:p-10"><div className="mb-8 flex items-center justify-between"><div><Pill>{active}</Pill><p className="mt-3 max-w-lg text-sm leading-6 text-[#81758e]">{intro[active]}</p></div><div className="hidden rounded-2xl bg-[#f4e9dd] p-4 text-[#a7633e] md:block"><ShieldCheck size={20} /><p className="mt-2 text-[11px] font-semibold">Private family view</p></div></div>{render()}</div></main></div>;
+  return <div className="min-h-screen bg-[#f6f2f8] text-[#2a203e]"><aside className="fixed inset-y-0 left-0 hidden w-64 border-r border-[#ebe3ef] bg-[#fffdfb] p-6 md:block"><Logo /><div className="mt-12"><p className="mb-3 text-[10px] font-bold uppercase tracking-[0.2em] text-[#a296ac]">Parent workspace</p>{parentNav.map((item, i) => <button key={item} onClick={() => setActive(item)} className={`mb-1 flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-sm ${active === item ? "bg-[#f0e9f7] font-semibold text-[#5b3b92]" : "text-[#81758e] hover:bg-[#faf7fc]"}`}><span className="text-xs">{i === 0 ? <LayoutDashboard size={16} /> : i === 1 ? <ClipboardCheck size={16} /> : i === 2 ? <BarChart3 size={16} /> : i === 3 ? <FileText size={16} /> : i === 4 ? <BookOpen size={16} /> : i === 5 ? <NotebookPen size={16} /> : i === 6 ? <CalendarDays size={16} /> : i === 7 ? <GraduationCap size={16} /> : <ShieldCheck size={16} />}</span>{item}</button>)}</div>{showLinked && <div className="absolute bottom-6 left-6 right-6"><div className="relative rounded-2xl bg-[#f7f1fb] p-4"><button onClick={() => setShowLinked(false)} className="absolute right-3 top-3 text-[#aaa0b1] hover:text-[#5b3b92]"><X size={14} /></button><p className="text-xs font-semibold">Linked student</p><p className="mt-1 text-[11px] leading-4 text-[#8d8197]">{child} · Grade 10</p></div></div>}</aside><main className="md:ml-64"><header className="flex items-center justify-between border-b border-[#ebe3ef] bg-[#fffdfb]/80 px-5 py-5 backdrop-blur md:px-10"><div><p className="text-xs text-[#978ca1]">Parent portal</p><h1 className="mt-1 text-2xl font-semibold tracking-[-0.04em]">Good morning, {user.name.split(" ")[0]}.</h1></div><div className="flex items-center gap-3"><div className="hidden text-right sm:block"><p className="text-xs font-semibold">{user.name}</p><p className="text-[11px] text-[#94889e]">Parent of {child}</p></div><button onClick={onLogout} className="rounded-full border border-[#e4dce9] bg-white p-2.5 text-[#796c88] hover:text-[#5b3b92]" title="Log out"><LogOut size={16} /></button></div></header><div className="p-5 md:p-10"><div className="mb-8 flex items-center justify-between"><div><Pill>{active}</Pill><p className="mt-3 max-w-lg text-sm leading-6 text-[#81758e]">{intro[active]}</p></div><div className="hidden rounded-2xl bg-[#f4e9dd] p-4 text-[#a7633e] md:block"><ShieldCheck size={20} /><p className="mt-2 text-[11px] font-semibold">Private family view</p></div></div>{render()}</div></main></div>;
 }
 
 function AdminContentManager() {

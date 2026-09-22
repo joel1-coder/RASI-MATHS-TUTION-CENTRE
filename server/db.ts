@@ -1,7 +1,7 @@
 import { and, asc, desc, eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
-import { colleges, governmentExams, InsertCollege, InsertGovernmentExam, InsertMarkStatement, InsertStudentAttendance, InsertStudentProject, InsertUser, InsertScheduleSession, markStatements, scheduleSessions, studentAttendance, studentProjects, subjects, InsertSubject, users } from "../drizzle/schema";
+import { colleges, governmentExams, InsertCollege, InsertGovernmentExam, InsertMarkStatement, InsertStudentAttendance, InsertStudentProject, InsertUser, InsertScheduleSession, markStatements, scheduleSessions, studentAttendance, studentProjects, subjects, InsertSubject, users, questionPapers, unitQuestions, InsertQuestionPaper, InsertUnitQuestion } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -218,4 +218,48 @@ export async function upsertGovernmentExam(record: InsertGovernmentExam) {
   }
   const result = await db.insert(governmentExams).values(record).returning({ id: governmentExams.id });
   return { ...record, id: result[0].id };
+}
+
+export async function listQuestionPapers(targetClass?: string) {
+  const db = await getDb();
+  if (!db) return [];
+  if (targetClass) {
+    return db.select().from(questionPapers).where(eq(questionPapers.targetClass, targetClass)).orderBy(desc(questionPapers.createdAt));
+  }
+  return db.select().from(questionPapers).orderBy(desc(questionPapers.createdAt));
+}
+
+export async function createQuestionPaper(paper: InsertQuestionPaper) {
+  const db = await getDb();
+  if (!db) throw new Error("Database is not available");
+  const result = await db.insert(questionPapers).values(paper).returning({ id: questionPapers.id });
+  return result[0].id;
+}
+
+export async function deleteQuestionPaper(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database is not available");
+  await db.delete(questionPapers).where(eq(questionPapers.id, id));
+}
+
+export async function listUnitQuestions(targetClass?: string) {
+  const db = await getDb();
+  if (!db) return [];
+  if (targetClass) {
+    return db.select().from(unitQuestions).where(eq(unitQuestions.targetClass, targetClass)).orderBy(desc(unitQuestions.createdAt));
+  }
+  return db.select().from(unitQuestions).orderBy(desc(unitQuestions.createdAt));
+}
+
+export async function createUnitQuestion(question: InsertUnitQuestion) {
+  const db = await getDb();
+  if (!db) throw new Error("Database is not available");
+  const result = await db.insert(unitQuestions).values(question).returning({ id: unitQuestions.id });
+  return result[0].id;
+}
+
+export async function deleteUnitQuestion(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database is not available");
+  await db.delete(unitQuestions).where(eq(unitQuestions.id, id));
 }

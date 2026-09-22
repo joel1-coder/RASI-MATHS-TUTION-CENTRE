@@ -109,6 +109,26 @@ export const governmentExams = pgTable("government_exams", {
   updatedAt: timestamp("updatedAt").defaultNow().notNull(),
 });
 
+export const questionPapers = pgTable("question_papers", {
+  id: serial("id").primaryKey(),
+  title: varchar("title", { length: 200 }).notNull(),
+  subject: varchar("subject", { length: 120 }).notNull(),
+  link: text("link").notNull().default(""),
+  targetClass: varchar("targetClass", { length: 120 }).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().notNull(),
+});
+
+export const unitQuestions = pgTable("unit_questions", {
+  id: serial("id").primaryKey(),
+  title: varchar("title", { length: 200 }).notNull(),
+  subject: varchar("subject", { length: 120 }).notNull(),
+  link: text("link").notNull().default(""),
+  targetClass: varchar("targetClass", { length: 120 }).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().notNull(),
+});
+
 export type MarkStatement = typeof markStatements.$inferSelect;
 export type InsertMarkStatement = typeof markStatements.$inferInsert;
 export type StudentProject = typeof studentProjects.$inferSelect;
@@ -117,3 +137,7 @@ export type College = typeof colleges.$inferSelect;
 export type InsertCollege = typeof colleges.$inferInsert;
 export type GovernmentExam = typeof governmentExams.$inferSelect;
 export type InsertGovernmentExam = typeof governmentExams.$inferInsert;
+export type QuestionPaper = typeof questionPapers.$inferSelect;
+export type InsertQuestionPaper = typeof questionPapers.$inferInsert;
+export type UnitQuestion = typeof unitQuestions.$inferSelect;
+export type InsertUnitQuestion = typeof unitQuestions.$inferInsert;
