@@ -1,3 +1,4 @@
+export type CollegeItem = { id: string; name: string; location: string; description: string; link: string; category: "technical" | "non-technical" };
 export type Subject = { id: string; subject: string; batch: string; schedule: string; seats: string };
 export type Teacher = { id: string; name: string; subject: string; bio: string; image: string };
 export type GalleryItem = { id: string; image: string; alt: string; layout: "wide" | "tall" | "standard" };
@@ -16,9 +17,113 @@ export type SiteData = {
   contact: ContactDetails;
   questionPapers: StudyMaterial[];
   unitQuestions: StudyMaterial[];
+  technicalColleges: CollegeItem[];
+  nonTechnicalColleges: CollegeItem[];
 };
 
 const imageBase = "https://images.unsplash.com";
+
+export const defaultTechnicalColleges: CollegeItem[] = [
+  {
+    id: "tech-1",
+    name: "Kalasalingam Academy of Research & Education",
+    location: "Krishnankoil, Tamil Nadu",
+    description: "Deemed university offering engineering, research and interdisciplinary programs.",
+    link: "https://kalasalingam.ac.in",
+    category: "technical",
+  },
+  {
+    id: "tech-2",
+    name: "Thiagarajar College of Engineering",
+    location: "Madurai, Tamil Nadu",
+    description: "Autonomous engineering institute offering B.E./B.Tech across core and emerging branches.",
+    link: "https://tce.edu",
+    category: "technical",
+  },
+  {
+    id: "tech-3",
+    name: "PSNA College of Engineering & Technology",
+    location: "Dindigul, Tamil Nadu",
+    description: "NAAC-accredited engineering college with strong placement support.",
+    link: "https://psnaacet.edu.in",
+    category: "technical",
+  },
+  {
+    id: "tech-4",
+    name: "Anna University, Regional Campus",
+    location: "Madurai, Tamil Nadu",
+    description: "Government engineering campus offering UG/PG programs affiliated to Anna University.",
+    link: "https://autm.ac.in",
+    category: "technical",
+  },
+  {
+    id: "tech-5",
+    name: "Mepco Schlenk Engineering College",
+    location: "Sivakasi, Tamil Nadu",
+    description: "Autonomous engineering college recognized for academic excellence and technical research.",
+    link: "https://mepcoeng.ac.in",
+    category: "technical",
+  },
+  {
+    id: "tech-6",
+    name: "Velammal College of Engineering & Technology",
+    location: "Madurai, Tamil Nadu",
+    description: "Top-ranked institution providing quality engineering education and skill development.",
+    link: "https://vcet.ac.in",
+    category: "technical",
+  },
+];
+
+export const defaultNonTechnicalColleges: CollegeItem[] = [
+  {
+    id: "nontech-1",
+    name: "Fatima College",
+    location: "Madurai, Tamil Nadu",
+    description: "Autonomous women's college with strong programs in commerce and sciences.",
+    link: "https://fatimacollegemdu.org",
+    category: "non-technical",
+  },
+  {
+    id: "nontech-2",
+    name: "Lady Doak College",
+    location: "Madurai, Tamil Nadu",
+    description: "Autonomous women's college offering arts, science and management programs.",
+    link: "https://ladydoakcollege.edu.in",
+    category: "non-technical",
+  },
+  {
+    id: "nontech-3",
+    name: "Sourashtra College",
+    location: "Madurai, Tamil Nadu",
+    description: "Grant-in-aid arts and science college affiliated to Madurai Kamaraj University.",
+    link: "http://sourashtracollege.in",
+    category: "non-technical",
+  },
+  {
+    id: "nontech-4",
+    name: "American College",
+    location: "Madurai, Tamil Nadu",
+    description: "Autonomous arts and science college affiliated to Madurai Kamaraj University.",
+    link: "https://americancollege.edu.in",
+    category: "non-technical",
+  },
+  {
+    id: "nontech-5",
+    name: "Madurai Kamaraj University",
+    location: "Madurai, Tamil Nadu",
+    description: "State public university offering comprehensive undergraduate, postgraduate, and research programs.",
+    link: "https://mkuniversity.ac.in",
+    category: "non-technical",
+  },
+  {
+    id: "nontech-6",
+    name: "The Standard Fireworks Rajaratnam College for Women",
+    location: "Sivakasi, Tamil Nadu",
+    description: "Premier autonomous institution empowering women through arts, science, and computer applications.",
+    link: "https://sfrcollege.edu.in",
+    category: "non-technical",
+  },
+];
 
 export const defaultSiteData: SiteData = {
   subjects: [
@@ -66,6 +171,8 @@ export const defaultSiteData: SiteData = {
   unitQuestions: [
     { id: "uq-1", title: "Algebra and equations", subject: "Mathematics", link: "", type: "unit" },
   ],
+  technicalColleges: defaultTechnicalColleges,
+  nonTechnicalColleges: defaultNonTechnicalColleges,
 };
 
 const STORAGE_KEY = "study-room-site-data-v2";
@@ -88,6 +195,8 @@ export function readSiteData(): SiteData {
       contact: parsed.contact || defaultSiteData.contact,
       questionPapers: Array.isArray(parsed.questionPapers) ? parsed.questionPapers : defaultSiteData.questionPapers,
       unitQuestions: Array.isArray(parsed.unitQuestions) ? parsed.unitQuestions : defaultSiteData.unitQuestions,
+      technicalColleges: Array.isArray(parsed.technicalColleges) ? parsed.technicalColleges : defaultTechnicalColleges,
+      nonTechnicalColleges: Array.isArray(parsed.nonTechnicalColleges) ? parsed.nonTechnicalColleges : defaultNonTechnicalColleges,
     };
   } catch {
     return defaultSiteData;

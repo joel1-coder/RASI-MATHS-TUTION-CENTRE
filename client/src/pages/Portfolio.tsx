@@ -106,6 +106,7 @@ export default function Portfolio({ onLogin, user, onGoToPortal, onLogout }: Por
             <a href="#subjects" onClick={closeMenu}>Subjects</a>
             <a href="#results" onClick={closeMenu}>Results</a>
             <a href="#teachers" onClick={closeMenu}>Teachers</a>
+            <a href="#colleges-tech" onClick={closeMenu}>Colleges</a>
             <a href="#contact" onClick={closeMenu}>Contact</a>
             {user ? (
               <div className="flex items-center gap-2">
@@ -245,6 +246,66 @@ export default function Portfolio({ onLogin, user, onGoToPortal, onLogout }: Por
             />
             <div className="gallery-grid">
               {siteData.gallery.map((item, index) => <div className={`gallery-item ${item.layout === "wide" ? "gallery-wide" : ""} ${item.layout === "tall" ? "gallery-tall" : ""}`} key={`${item.image}-${index}`}><img src={item.image} alt={item.alt} loading="eager" /></div>)}
+            </div>
+          </div>
+        </section>
+
+        <section className="colleges-section" id="colleges-tech">
+          <div className="page-width">
+            <div className="section-heading">
+              <p className="eyebrow eyebrow-orange">Where our students go</p>
+              <h2>List of Colleges (Technical)</h2>
+              <p className="section-description">
+                A sample list of engineering and technical institutions our senior students have gone on to. Hover to pause.
+              </p>
+            </div>
+          </div>
+          <div className="college-marquee" aria-label="Technical Colleges marquee">
+            <div className="college-track">
+              {[...siteData.technicalColleges, ...siteData.technicalColleges].map((college, index) => (
+                <article className="college-card" key={`${college.id}-${index}`}>
+                  <div>
+                    <span className="college-badge">{college.location}</span>
+                    <h3 className="college-title">{college.name}</h3>
+                    <p className="college-desc">{college.description}</p>
+                  </div>
+                  {college.link && (
+                    <a className="college-link" href={college.link} target="_blank" rel="noopener noreferrer">
+                      Visit website
+                    </a>
+                  )}
+                </article>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        <section className="colleges-section" id="colleges-nontech">
+          <div className="page-width">
+            <div className="section-heading">
+              <p className="eyebrow eyebrow-orange">Where our students go</p>
+              <h2>List of Colleges (Non-Technical)</h2>
+              <p className="section-description">
+                Arts, science and commerce institutions our students have been admitted to.
+              </p>
+            </div>
+          </div>
+          <div className="college-marquee" aria-label="Non-Technical Colleges marquee">
+            <div className="college-track">
+              {[...siteData.nonTechnicalColleges, ...siteData.nonTechnicalColleges].map((college, index) => (
+                <article className="college-card" key={`${college.id}-${index}`}>
+                  <div>
+                    <span className="college-badge">{college.location}</span>
+                    <h3 className="college-title">{college.name}</h3>
+                    <p className="college-desc">{college.description}</p>
+                  </div>
+                  {college.link && (
+                    <a className="college-link" href={college.link} target="_blank" rel="noopener noreferrer">
+                      Visit website
+                    </a>
+                  )}
+                </article>
+              ))}
             </div>
           </div>
         </section>
