@@ -311,12 +311,12 @@ export default function Portfolio({ onLogin, user, onGoToPortal, onLogout }: Por
         </section>
 
         <section className="testimonial-section">
-          <div className="page-width testimonial-inner">
+          <div className="page-width testimonial-inner mx-auto mb-10">
             <p className="eyebrow">05 / A parent's note</p>
-            <div className="testimonial-marquee" aria-label="Parent testimonials">
-              <div className="testimonial-track">
-                {[...siteData.testimonials, ...siteData.testimonials].map((note, index) => <article className="marquee-note" key={`${note.id}-${index}`}><blockquote>"{note.quote}"</blockquote><p className="attribution">— {note.attribution}</p></article>)}
-              </div>
+          </div>
+          <div className="testimonial-marquee" aria-label="Parent testimonials">
+            <div className="testimonial-track">
+              {[...siteData.testimonials, ...siteData.testimonials].map((note, index) => <article className="marquee-note" key={`${note.id}-${index}`}><blockquote>"{note.quote}"</blockquote><p className="attribution">— {note.attribution}</p></article>)}
             </div>
           </div>
         </section>
