@@ -130,7 +130,7 @@ export function CloudinaryUploader({
   };
 
   return (
-    <div className="w-full rounded-2xl border border-[#e2d8e8] bg-[#fffdfa] p-4 shadow-sm">
+    <div className="w-full rounded-2xl border border-[#e2d8e8] bg-[#fffdfa] p-4 shadow-sm overflow-hidden">
       <div className="flex items-center justify-between mb-3">
         <label className="text-xs font-bold uppercase tracking-[0.14em] text-[#6d4b9f] flex items-center gap-2">
           <Upload size={15} /> {label}
