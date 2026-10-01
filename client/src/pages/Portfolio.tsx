@@ -106,6 +106,7 @@ export default function Portfolio({ onLogin, user, onGoToPortal, onLogout }: Por
             <a href="#subjects" onClick={closeMenu}>Subjects</a>
             <a href="#results" onClick={closeMenu}>Results</a>
             <a href="#teachers" onClick={closeMenu}>Teachers</a>
+            <a href="#gov-exams" onClick={closeMenu}>Gov Exams</a>
             <a href="#colleges-tech" onClick={closeMenu}>Colleges</a>
             <a href="#contact" onClick={closeMenu}>Contact</a>
             {user ? (
@@ -250,6 +251,55 @@ export default function Portfolio({ onLogin, user, onGoToPortal, onLogout }: Por
           </div>
         </section>
 
+        {/* Government Exams Section */}
+        <section className="content-section gov-exams-section" id="gov-exams">
+          <div className="page-width">
+            <div className="section-heading">
+              <p className="eyebrow eyebrow-orange">Career & Aspirations</p>
+              <h2>Government Exams Calendar</h2>
+              <p className="section-description">
+                Tamil Nadu & Central Government competitive exams schedule from January to December. Plan your preparation early.
+              </p>
+            </div>
+
+            <div className="gov-exams-grid">
+              {Array.from({ length: 12 }, (_, i) => i + 1).map((mIndex) => {
+                const monthName = new Date(2026, mIndex - 1, 1).toLocaleString("default", { month: "long" });
+                const examsInMonth = (siteData.govExams || []).filter(
+                  (e) => e.monthIndex === mIndex || e.month?.toLowerCase() === monthName.toLowerCase()
+                );
+                if (!examsInMonth.length) return null;
+                return (
+                  <div className="gov-month-card" key={mIndex}>
+                    <div className="gov-month-header">
+                      <span className="gov-month-badge">{monthName}</span>
+                      <span className="gov-month-count">{examsInMonth.length} exam{examsInMonth.length > 1 ? "s" : ""}</span>
+                    </div>
+                    <div className="gov-exam-list">
+                      {examsInMonth.map((exam) => (
+                        <div className="gov-exam-item" key={exam.id}>
+                          <div className="gov-exam-tag-row">
+                            <span className={`gov-tag ${exam.group === "Tamil Nadu Government" ? "tag-tn" : "tag-central"}`}>
+                              {exam.group === "Tamil Nadu Government" ? "TN Govt" : "Central"}
+                            </span>
+                            {exam.link && (
+                              <a href={exam.link} target="_blank" rel="noopener noreferrer" className="gov-link">
+                                Portal <ArrowUpRight size={11} />
+                              </a>
+                            )}
+                          </div>
+                          <h4 className="gov-exam-name">{exam.name}</h4>
+                          <p className="gov-exam-desc">{exam.description}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </section>
+
         <section className="colleges-section" id="colleges-tech">
           <div className="page-width">
             <div className="section-heading">
@@ -277,6 +327,11 @@ export default function Portfolio({ onLogin, user, onGoToPortal, onLogout }: Por
                 </article>
               ))}
             </div>
+          </div>
+          <div className="more-details-wrap">
+            <a href="/colleges" className="more-details-btn">
+              For more details <ArrowUpRight size={16} />
+            </a>
           </div>
         </section>
 
@@ -307,6 +362,11 @@ export default function Portfolio({ onLogin, user, onGoToPortal, onLogout }: Por
                 </article>
               ))}
             </div>
+          </div>
+          <div className="more-details-wrap">
+            <a href="/colleges" className="more-details-btn">
+              For more details <ArrowUpRight size={16} />
+            </a>
           </div>
         </section>
 

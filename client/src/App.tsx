@@ -3,6 +3,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { Route, Switch } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
+import CollegesPage from "./pages/CollegesPage";
 import SiteAdmin from "./pages/SiteAdmin";
 import Home from "./pages/Home";
 import NotFound from "./pages/NotFound";
@@ -12,6 +13,7 @@ function Router() {
     <Switch>
       <Route path="/" component={Home} />
       <Route path="/portal" component={Home} />
+      <Route path="/colleges" component={CollegesPage} />
       <Route path="/admin" component={SiteAdmin} />
       <Route path="/site-admin" component={SiteAdmin} />
       <Route path="/404" component={NotFound} />

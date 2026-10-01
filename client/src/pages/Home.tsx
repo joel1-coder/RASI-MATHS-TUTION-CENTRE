@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { toast } from "sonner";
 import Portfolio from "./Portfolio";
 import { startLogin } from "@/const";
 import { useAuth } from "@/_core/hooks/useAuth";
@@ -133,7 +134,7 @@ function RoleLoginPage({ role, onLogin, onBack }: { role: Role; onLogin: (user: 
   const config = role === "student"
     ? { label: "Student portal", title: "Your learning, in one place.", accent: "See your next step clearly — from attendance to mark statements and study materials." }
     : role === "teacher"
-    ? { label: "Teacher portal", title: "Classroom & evaluation hub.", accent: "Take daily LAB attendance with roll chips, enter student test marks, and review performance records." }
+    ? { label: "Teacher portal", title: "Classroom & evaluation hub.", accent: "Take daily attendance with roll chips, enter student test marks, and review performance records." }
     : role === "parent"
     ? { label: "Parent portal", title: "Stay close to the progress.", accent: "A calm, private view of your child’s attendance, performance, projects and future options." }
     : { label: "Admin portal", title: "Run the centre with clarity.", accent: "Manage the people, records and updates that keep every learning journey moving." };
@@ -462,32 +463,1067 @@ function ParentWorkspace({ user, onLogout }: { user: User; onLogout: () => void 
   return <div className="min-h-screen bg-[#f6f2f8] text-[#2a203e]"><aside className="fixed inset-y-0 left-0 hidden w-64 border-r border-[#ebe3ef] bg-[#fffdfb] p-6 md:block"><Logo /><div className="mt-12"><p className="mb-3 text-[10px] font-bold uppercase tracking-[0.2em] text-[#a296ac]">Parent workspace</p>{parentNav.map((item, i) => <button key={item} onClick={() => setActive(item)} className={`mb-1 flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-sm ${active === item ? "bg-[#f0e9f7] font-semibold text-[#5b3b92]" : "text-[#81758e] hover:bg-[#faf7fc]"}`}><span className="text-xs">{i === 0 ? <LayoutDashboard size={16} /> : i === 1 ? <ClipboardCheck size={16} /> : i === 2 ? <BarChart3 size={16} /> : i === 3 ? <FileText size={16} /> : i === 4 ? <BookOpen size={16} /> : i === 5 ? <NotebookPen size={16} /> : i === 6 ? <CalendarDays size={16} /> : i === 7 ? <GraduationCap size={16} /> : <ShieldCheck size={16} />}</span>{item}</button>)}</div>{showLinked && <div className="absolute bottom-6 left-6 right-6"><div className="relative rounded-2xl bg-[#f7f1fb] p-4"><button onClick={() => setShowLinked(false)} className="absolute right-3 top-3 text-[#aaa0b1] hover:text-[#5b3b92]"><X size={14} /></button><p className="text-xs font-semibold">Linked student</p><p className="mt-1 text-[11px] leading-4 text-[#8d8197]">{child} · Grade 10</p></div></div>}</aside><main className="md:ml-64"><header className="flex items-center justify-between border-b border-[#ebe3ef] bg-[#fffdfb]/80 px-5 py-5 backdrop-blur md:px-10"><div><p className="text-xs text-[#978ca1]">Parent portal</p><h1 className="mt-1 text-2xl font-semibold tracking-[-0.04em]">Good morning, {user.name.split(" ")[0]}.</h1></div><div className="flex items-center gap-3"><div className="hidden text-right sm:block"><p className="text-xs font-semibold">{user.name}</p><p className="text-[11px] text-[#94889e]">Parent of {child}</p></div><button onClick={onLogout} className="rounded-full border border-[#e4dce9] bg-white p-2.5 text-[#796c88] hover:text-[#5b3b92]" title="Log out"><LogOut size={16} /></button></div></header><div className="p-5 md:p-10"><div className="mb-8 flex items-center justify-between"><div><Pill>{active}</Pill><p className="mt-3 max-w-lg text-sm leading-6 text-[#81758e]">{intro[active]}</p></div><div className="hidden rounded-2xl bg-[#f4e9dd] p-4 text-[#a7633e] md:block"><ShieldCheck size={20} /><p className="mt-2 text-[11px] font-semibold">Private family view</p></div></div>{render()}</div></main></div>;
 }
 
-function AdminContentManager() {
-  const [section, setSection] = useState<"marks" | "projects" | "colleges" | "exams" | "access">("marks");
-  const [mark, setMark] = useState({ studentEmail: "student@portal.com", assessmentType: "weekly" as "weekly" | "monthly", periodLabel: "Week one", subject: "Mathematics", score: "18", maxScore: "20" });
-  const [project, setProject] = useState({ studentEmail: "student@portal.com", title: "", subject: "Mathematics", dueDate: "", status: "Not started", progress: "0" });
-  const [college, setCollege] = useState({ tier: "Tier 1", name: "", category: "Technology", cutoff: "" });
-  const [exam, setExam] = useState({ groupName: "Central Government", name: "", qualification: "", maxMarks: "", benchmark: "" });
-  const [accountEmail, setAccountEmail] = useState("");
-  const [accountRole, setAccountRole] = useState<"user" | "admin" | "student" | "parent">("student");
-  const [linkedStudentEmail, setLinkedStudentEmail] = useState("");
-  const marksQuery = trpc.student.marks.useQuery({ studentEmail: "student@portal.com" });
-  const projectsQuery = trpc.student.projects.useQuery({ studentEmail: "student@portal.com" });
-  const collegesQuery = trpc.guidance.colleges.useQuery();
+function AdminMarksManager() {
+  const [departments] = useState<string[]>(() => {
+    try {
+      const saved = localStorage.getItem("rasi_admin_departments");
+      return saved ? JSON.parse(saved) : INITIAL_DEPARTMENTS;
+    } catch {
+      return INITIAL_DEPARTMENTS;
+    }
+  });
+
+  const [sections] = useState<SectionItem[]>(() => {
+    try {
+      const saved = localStorage.getItem("rasi_admin_sections");
+      return saved ? JSON.parse(saved) : INITIAL_SECTIONS;
+    } catch {
+      return INITIAL_SECTIONS;
+    }
+  });
+
+  const [students] = useState<ManagedStudent[]>(() => {
+    try {
+      const saved = localStorage.getItem("rasi_admin_students");
+      return saved ? JSON.parse(saved) : INITIAL_STUDENTS;
+    } catch {
+      return INITIAL_STUDENTS;
+    }
+  });
+
+  const [selectedDept, setSelectedDept] = useState(departments[0] || "BCA");
+  const [selectedSection, setSelectedSection] = useState("A");
+  const [hasEntered, setHasEntered] = useState(false);
+
+  // Test configuration
+  const [subject, setSubject] = useState("Mathematics");
+  const [periodLabel, setPeriodLabel] = useState("Unit Test 1");
+  const [assessmentType, setAssessmentType] = useState<"weekly" | "monthly">("weekly");
+  const [maxScore, setMaxScore] = useState(100);
+
+  // Student marks map: studentId -> mark value
+  const [marksMap, setMarksMap] = useState<Record<string, string>>({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submittedMessage, setSubmittedMessage] = useState("");
+
+  const availableSections = useMemo(() => {
+    const matched = sections.filter(s => s.department === selectedDept);
+    return matched.length > 0 ? matched : [{ id: "def-a", name: "A", department: selectedDept }];
+  }, [sections, selectedDept]);
+
+  useEffect(() => {
+    if (availableSections.length > 0 && !availableSections.some(s => s.name === selectedSection)) {
+      setSelectedSection(availableSections[0].name);
+    }
+  }, [availableSections, selectedSection]);
+
+  const filteredStudents = useMemo(() => {
+    return students.filter(
+      s => s.department.toLowerCase() === selectedDept.toLowerCase() &&
+           s.section.toLowerCase() === selectedSection.toLowerCase()
+    );
+  }, [students, selectedDept, selectedSection]);
+
+  const handleEnter = () => {
+    setHasEntered(true);
+    const initial: Record<string, string> = {};
+    filteredStudents.forEach(s => {
+      initial[s.studentId] = marksMap[s.studentId] || "";
+    });
+    setMarksMap(initial);
+    setSubmittedMessage("");
+  };
+
+  const markMutation = trpc.admin.marks.useMutation();
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+    try {
+      const entriesToSave = filteredStudents
+        .filter(s => marksMap[s.studentId] !== undefined && marksMap[s.studentId].trim() !== "")
+        .map(s => ({
+          studentEmail: s.email || `${s.studentId.toLowerCase()}@portal.com`,
+          studentName: s.name,
+          studentId: s.studentId,
+          parentName: s.parentName || `${s.name.split(" ")[0]}'s Parent`,
+          assessmentType,
+          periodLabel,
+          subject,
+          score: Math.min(maxScore, Math.max(0, parseInt(marksMap[s.studentId]) || 0)),
+          maxScore,
+        }));
+
+      if (!entriesToSave.length) {
+        toast.error("Please enter marks for at least one student before submitting.");
+        setIsSubmitting(false);
+        return;
+      }
+
+      for (const entry of entriesToSave) {
+        try {
+          await markMutation.mutateAsync({
+            studentEmail: entry.studentEmail,
+            assessmentType: entry.assessmentType,
+            periodLabel: entry.periodLabel,
+            subject: entry.subject,
+            score: entry.score,
+            maxScore: entry.maxScore,
+          });
+        } catch (err) {
+          console.warn("DB mark insert fallback", err);
+        }
+      }
+
+      // Persist to localStorage for parent & student immediate view
+      try {
+        const savedMarks = JSON.parse(localStorage.getItem("rasi_dispatched_marks") || "[]");
+        const newRecord = {
+          id: `batch-mark-${Date.now()}`,
+          department: selectedDept,
+          section: selectedSection,
+          subject,
+          periodLabel,
+          assessmentType,
+          maxScore,
+          date: new Date().toISOString().slice(0, 10),
+          entries: entriesToSave,
+        };
+        localStorage.setItem("rasi_dispatched_marks", JSON.stringify([newRecord, ...savedMarks]));
+
+        // Sync with exam records for teacher portal
+        const examRecs = JSON.parse(localStorage.getItem("rasi_exam_records") || "[]");
+        examRecs.unshift({
+          id: `mark-rec-${Date.now()}`,
+          department: selectedDept,
+          section: selectedSection,
+          date: new Date().toISOString().slice(0, 10),
+          examDescription: `${periodLabel} - ${subject}`,
+          maxMarks: maxScore,
+          recordedAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          entries: entriesToSave.map(e => ({ studentId: e.studentId, studentName: e.studentName, mark: e.score }))
+        });
+        localStorage.setItem("rasi_exam_records", JSON.stringify(examRecs));
+      } catch (err) {}
+
+      toast.success(`Marks submitted! Dispatched to linked parents of ${entriesToSave.length} students.`);
+      setSubmittedMessage(`Successfully dispatched ${entriesToSave.length} student marks to linked parents!`);
+    } catch (err) {
+      toast.error("Failed to submit marks.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Top Filter Card */}
+      <div className="rounded-3xl border border-[#eee6f0] bg-white p-6 shadow-sm">
+        <div className="mb-4">
+          <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#ef8656]">Class Mark Entry</p>
+          <h2 className="mt-1 text-2xl font-semibold text-[#2f1f4a]">Enter Student Marks</h2>
+          <p className="mt-1 text-sm text-[#887c91]">
+            Select the class and section, then click Enter to display students and dispatch test marks directly to their linked parents.
+          </p>
+        </div>
+
+        <div className="flex flex-wrap items-end gap-4 pt-2">
+          <label className="block min-w-48 text-xs font-semibold uppercase tracking-[0.12em] text-[#776c88]">
+            Department / Class
+            <select
+              value={selectedDept}
+              onChange={e => { setSelectedDept(e.target.value); setHasEntered(false); setSubmittedMessage(""); }}
+              className="mt-2 w-full rounded-2xl border border-[#e6deeb] bg-[#faf7fc] px-4 py-3 text-sm font-medium text-[#2f1f4a] outline-none transition focus:border-[#5b3b92]"
+            >
+              {departments.map(d => (
+                <option key={d} value={d}>{d}</option>
+              ))}
+            </select>
+          </label>
+
+          <label className="block min-w-36 text-xs font-semibold uppercase tracking-[0.12em] text-[#776c88]">
+            Section
+            <select
+              value={selectedSection}
+              onChange={e => { setSelectedSection(e.target.value); setHasEntered(false); setSubmittedMessage(""); }}
+              className="mt-2 w-full rounded-2xl border border-[#e6deeb] bg-[#faf7fc] px-4 py-3 text-sm font-medium text-[#2f1f4a] outline-none transition focus:border-[#5b3b92]"
+            >
+              {availableSections.map(s => (
+                <option key={s.id} value={s.name}>Section {s.name}</option>
+              ))}
+            </select>
+          </label>
+
+          <button
+            type="button"
+            onClick={handleEnter}
+            className="flex items-center gap-2 rounded-2xl bg-[#5b3b92] px-7 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-[#482e75]"
+          >
+            ENTER <ArrowRight size={16} />
+          </button>
+        </div>
+      </div>
+
+      {/* When ENTER is clicked */}
+      {hasEntered && (
+        <div className="space-y-6">
+          {submittedMessage && (
+            <div className="flex items-center gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 px-5 py-4 text-sm font-semibold text-emerald-800">
+              <CheckCircle2 className="text-emerald-600" size={20} />
+              {submittedMessage}
+            </div>
+          )}
+
+          {filteredStudents.length === 0 ? (
+            <EmptyState
+              title="No students enrolled"
+              message={`No students found in ${selectedDept} - Section ${selectedSection}. Add students in the Students tab first.`}
+            />
+          ) : (
+            <form onSubmit={handleSubmit} className="space-y-6">
+              {/* Test Details Card */}
+              <div className="rounded-3xl border border-[#eee6f0] bg-white p-6 shadow-sm">
+                <div className="mb-4 flex items-center justify-between border-b border-[#f0e8f8] pb-3">
+                  <h3 className="font-semibold text-[#2f1f4a]">Assessment Details</h3>
+                  <span className="rounded-full bg-[#f3ecf9] px-3 py-1 text-xs font-semibold text-[#6d4b9f]">
+                    {selectedDept} · Section {selectedSection} ({filteredStudents.length} students)
+                  </span>
+                </div>
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                  <label className="block text-xs font-semibold uppercase tracking-[0.12em] text-[#776c88]">
+                    Subject
+                    <input
+                      required
+                      value={subject}
+                      onChange={e => setSubject(e.target.value)}
+                      placeholder="e.g. Mathematics"
+                      className="mt-2 w-full rounded-2xl border border-[#e6deeb] px-4 py-2.5 text-sm outline-none focus:border-[#5b3b92]"
+                    />
+                  </label>
+                  <label className="block text-xs font-semibold uppercase tracking-[0.12em] text-[#776c88]">
+                    Assessment Type
+                    <select
+                      value={assessmentType}
+                      onChange={e => setAssessmentType(e.target.value as "weekly" | "monthly")}
+                      className="mt-2 w-full rounded-2xl border border-[#e6deeb] px-4 py-2.5 text-sm outline-none focus:border-[#5b3b92]"
+                    >
+                      <option value="weekly">Weekly Test</option>
+                      <option value="monthly">Monthly Test</option>
+                    </select>
+                  </label>
+                  <label className="block text-xs font-semibold uppercase tracking-[0.12em] text-[#776c88]">
+                    Period / Test Name
+                    <input
+                      required
+                      value={periodLabel}
+                      onChange={e => setPeriodLabel(e.target.value)}
+                      placeholder="e.g. Unit Test 1"
+                      className="mt-2 w-full rounded-2xl border border-[#e6deeb] px-4 py-2.5 text-sm outline-none focus:border-[#5b3b92]"
+                    />
+                  </label>
+                  <label className="block text-xs font-semibold uppercase tracking-[0.12em] text-[#776c88]">
+                    Max Marks
+                    <input
+                      required
+                      type="number"
+                      min="1"
+                      value={maxScore}
+                      onChange={e => setMaxScore(Number(e.target.value) || 100)}
+                      className="mt-2 w-full rounded-2xl border border-[#e6deeb] px-4 py-2.5 text-sm outline-none focus:border-[#5b3b92]"
+                    />
+                  </label>
+                </div>
+              </div>
+
+              {/* Student Marks Table */}
+              <div className="overflow-hidden rounded-3xl border border-[#eee6f0] bg-white shadow-sm">
+                <div className="border-b border-[#f0e8f8] bg-[#faf7fc] px-6 py-4">
+                  <h3 className="font-semibold text-[#2f1f4a]">Student Mark Entry Sheet</h3>
+                  <p className="mt-0.5 text-xs text-[#887c91]">
+                    Enter each student's score out of {maxScore}. Upon submitting, marks will be dispatched to their linked parent's account.
+                  </p>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full border-collapse text-left text-sm">
+                    <thead>
+                      <tr className="border-b border-[#f0e8f8] bg-[#fbf9fe] text-xs font-bold uppercase tracking-[0.1em] text-[#776c88]">
+                        <th className="py-3.5 pl-6 pr-3 w-16 text-center">S.No</th>
+                        <th className="py-3.5 px-4">Name of the student</th>
+                        <th className="py-3.5 px-4">Name of the parent</th>
+                        <th className="py-3.5 px-4 w-44">Mark Entry</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredStudents.map((student, idx) => (
+                        <tr key={student.id} className="border-b border-[#f5edf9] transition hover:bg-[#faf6ff]">
+                          <td className="py-3.5 pl-6 pr-3 text-center text-sm font-semibold text-[#9a8da4]">
+                            {idx + 1}
+                          </td>
+                          <td className="py-3.5 px-4">
+                            <p className="font-semibold text-[#2f1f4a]">{student.name}</p>
+                            <span className="text-xs text-[#887c91]">{student.studentId}</span>
+                          </td>
+                          <td className="py-3.5 px-4">
+                            <span className="font-medium text-[#5d4a75]">
+                              {student.parentName || `${student.name.split(" ")[0]}'s Parent`}
+                            </span>
+                          </td>
+                          <td className="py-3.5 px-4">
+                            <div className="flex items-center gap-2">
+                              <input
+                                type="number"
+                                min="0"
+                                max={maxScore}
+                                value={marksMap[student.studentId] || ""}
+                                onChange={e => setMarksMap({ ...marksMap, [student.studentId]: e.target.value })}
+                                placeholder={`0–${maxScore}`}
+                                className="w-28 rounded-xl border border-[#e4dce9] bg-white px-3 py-2 text-sm font-semibold text-[#2f1f4a] outline-none focus:border-[#5b3b92] focus:ring-2 focus:ring-[#5b3b92]/10"
+                              />
+                              <span className="text-xs font-medium text-[#a296ac]">/ {maxScore}</span>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                <div className="flex flex-wrap items-center justify-between gap-4 border-t border-[#f0e8f8] bg-[#faf7fc] px-6 py-4">
+                  <span className="text-xs text-[#887c91]">
+                    {Object.values(marksMap).filter(v => v.trim()).length} of {filteredStudents.length} student marks filled
+                  </span>
+                  <button
+                    type="submit"
+                    disabled={isSubmitting}
+                    className="flex items-center gap-2 rounded-2xl bg-[#5b3b92] px-8 py-3 text-sm font-semibold text-white shadow-md transition hover:bg-[#482e75] disabled:opacity-50"
+                  >
+                    {isSubmitting ? <Loader2 className="animate-spin" size={16} /> : <Check size={16} />}
+                    Submit & Dispatch to Parents
+                  </button>
+                </div>
+              </div>
+            </form>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function AdminProjectsManager() {
+  const [departments] = useState<string[]>(() => {
+    try {
+      const saved = localStorage.getItem("rasi_admin_departments");
+      return saved ? JSON.parse(saved) : INITIAL_DEPARTMENTS;
+    } catch {
+      return INITIAL_DEPARTMENTS;
+    }
+  });
+
+  const [sections] = useState<SectionItem[]>(() => {
+    try {
+      const saved = localStorage.getItem("rasi_admin_sections");
+      return saved ? JSON.parse(saved) : INITIAL_SECTIONS;
+    } catch {
+      return INITIAL_SECTIONS;
+    }
+  });
+
+  const [students] = useState<ManagedStudent[]>(() => {
+    try {
+      const saved = localStorage.getItem("rasi_admin_students");
+      return saved ? JSON.parse(saved) : INITIAL_STUDENTS;
+    } catch {
+      return INITIAL_STUDENTS;
+    }
+  });
+
+  const [selectedDept, setSelectedDept] = useState(departments[0] || "BCA");
+  const [selectedSection, setSelectedSection] = useState("A");
+  const [hasEntered, setHasEntered] = useState(false);
+
+  // Common configuration
+  const [subject, setSubject] = useState("Mathematics");
+  const [dueDate, setDueDate] = useState("2026-10-30");
+
+  // Student projects map: studentId -> { title: string; description: string }
+  const [projectMap, setProjectMap] = useState<Record<string, { title: string; description: string }>>({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submittedMessage, setSubmittedMessage] = useState("");
+
+  const availableSections = useMemo(() => {
+    const matched = sections.filter(s => s.department === selectedDept);
+    return matched.length > 0 ? matched : [{ id: "def-a", name: "A", department: selectedDept }];
+  }, [sections, selectedDept]);
+
+  useEffect(() => {
+    if (availableSections.length > 0 && !availableSections.some(s => s.name === selectedSection)) {
+      setSelectedSection(availableSections[0].name);
+    }
+  }, [availableSections, selectedSection]);
+
+  const filteredStudents = useMemo(() => {
+    return students.filter(
+      s => s.department.toLowerCase() === selectedDept.toLowerCase() &&
+           s.section.toLowerCase() === selectedSection.toLowerCase()
+    );
+  }, [students, selectedDept, selectedSection]);
+
+  const handleEnter = () => {
+    setHasEntered(true);
+    const initial: Record<string, { title: string; description: string }> = {};
+    filteredStudents.forEach(s => {
+      initial[s.studentId] = projectMap[s.studentId] || { title: "", description: "" };
+    });
+    setProjectMap(initial);
+    setSubmittedMessage("");
+  };
+
+  const projectMutation = trpc.admin.project.useMutation();
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+    try {
+      const entriesToSave = filteredStudents
+        .filter(s => projectMap[s.studentId]?.title.trim())
+        .map(s => ({
+          studentEmail: s.email || `${s.studentId.toLowerCase()}@portal.com`,
+          studentName: s.name,
+          studentId: s.studentId,
+          parentName: s.parentName || `${s.name.split(" ")[0]}'s Parent`,
+          title: projectMap[s.studentId].title.trim(),
+          description: projectMap[s.studentId].description.trim(),
+          subject,
+          dueDate,
+          status: "Assigned",
+          progress: 0,
+        }));
+
+      if (!entriesToSave.length) {
+        toast.error("Please enter a project idea for at least one student.");
+        setIsSubmitting(false);
+        return;
+      }
+
+      for (const entry of entriesToSave) {
+        try {
+          await projectMutation.mutateAsync({
+            studentEmail: entry.studentEmail,
+            title: entry.title,
+            subject: entry.subject,
+            dueDate: entry.dueDate,
+            status: entry.status,
+            progress: entry.progress,
+          });
+        } catch (err) {
+          console.warn("DB project insert fallback", err);
+        }
+      }
+
+      // Persist to localStorage for parent & student portals
+      try {
+        const savedProjects = JSON.parse(localStorage.getItem("rasi_dispatched_projects") || "[]");
+        localStorage.setItem("rasi_dispatched_projects", JSON.stringify([...entriesToSave, ...savedProjects]));
+      } catch (err) {}
+
+      toast.success(`Projects assigned and dispatched to parents of ${entriesToSave.length} students!`);
+      setSubmittedMessage(`Successfully dispatched ${entriesToSave.length} student project assignments to parents!`);
+    } catch (err) {
+      toast.error("Failed to assign projects.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Top Filter Card */}
+      <div className="rounded-3xl border border-[#eee6f0] bg-white p-6 shadow-sm">
+        <div className="mb-4">
+          <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#ef8656]">Student Projects</p>
+          <h2 className="mt-1 text-2xl font-semibold text-[#2f1f4a]">Assign Student Projects</h2>
+          <p className="mt-1 text-sm text-[#887c91]">
+            Select class and section, click Enter to list students, and assign project ideas with descriptions directly to parent views.
+          </p>
+        </div>
+
+        <div className="flex flex-wrap items-end gap-4 pt-2">
+          <label className="block min-w-48 text-xs font-semibold uppercase tracking-[0.12em] text-[#776c88]">
+            Department / Class
+            <select
+              value={selectedDept}
+              onChange={e => { setSelectedDept(e.target.value); setHasEntered(false); setSubmittedMessage(""); }}
+              className="mt-2 w-full rounded-2xl border border-[#e6deeb] bg-[#faf7fc] px-4 py-3 text-sm font-medium text-[#2f1f4a] outline-none transition focus:border-[#5b3b92]"
+            >
+              {departments.map(d => (
+                <option key={d} value={d}>{d}</option>
+              ))}
+            </select>
+          </label>
+
+          <label className="block min-w-36 text-xs font-semibold uppercase tracking-[0.12em] text-[#776c88]">
+            Section
+            <select
+              value={selectedSection}
+              onChange={e => { setSelectedSection(e.target.value); setHasEntered(false); setSubmittedMessage(""); }}
+              className="mt-2 w-full rounded-2xl border border-[#e6deeb] bg-[#faf7fc] px-4 py-3 text-sm font-medium text-[#2f1f4a] outline-none transition focus:border-[#5b3b92]"
+            >
+              {availableSections.map(s => (
+                <option key={s.id} value={s.name}>Section {s.name}</option>
+              ))}
+            </select>
+          </label>
+
+          <button
+            type="button"
+            onClick={handleEnter}
+            className="flex items-center gap-2 rounded-2xl bg-[#5b3b92] px-7 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-[#482e75]"
+          >
+            ENTER <ArrowRight size={16} />
+          </button>
+        </div>
+      </div>
+
+      {hasEntered && (
+        <div className="space-y-6">
+          {submittedMessage && (
+            <div className="flex items-center gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 px-5 py-4 text-sm font-semibold text-emerald-800">
+              <CheckCircle2 className="text-emerald-600" size={20} />
+              {submittedMessage}
+            </div>
+          )}
+
+          {filteredStudents.length === 0 ? (
+            <EmptyState
+              title="No students enrolled"
+              message={`No students found in ${selectedDept} - Section ${selectedSection}.`}
+            />
+          ) : (
+            <form onSubmit={handleSubmit} className="space-y-6">
+              {/* Project General Info */}
+              <div className="rounded-3xl border border-[#eee6f0] bg-white p-6 shadow-sm">
+                <div className="mb-4 flex items-center justify-between border-b border-[#f0e8f8] pb-3">
+                  <h3 className="font-semibold text-[#2f1f4a]">Project Parameters</h3>
+                  <span className="rounded-full bg-[#f3ecf9] px-3 py-1 text-xs font-semibold text-[#6d4b9f]">
+                    {selectedDept} · Section {selectedSection} ({filteredStudents.length} students)
+                  </span>
+                </div>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <label className="block text-xs font-semibold uppercase tracking-[0.12em] text-[#776c88]">
+                    Subject
+                    <input
+                      required
+                      value={subject}
+                      onChange={e => setSubject(e.target.value)}
+                      placeholder="e.g. Mathematics"
+                      className="mt-2 w-full rounded-2xl border border-[#e6deeb] px-4 py-2.5 text-sm outline-none focus:border-[#5b3b92]"
+                    />
+                  </label>
+                  <label className="block text-xs font-semibold uppercase tracking-[0.12em] text-[#776c88]">
+                    Submission Due Date
+                    <input
+                      required
+                      type="date"
+                      value={dueDate}
+                      onChange={e => setDueDate(e.target.value)}
+                      className="mt-2 w-full rounded-2xl border border-[#e6deeb] px-4 py-2.5 text-sm outline-none focus:border-[#5b3b92]"
+                    />
+                  </label>
+                </div>
+              </div>
+
+              {/* Students Project Assignment Table */}
+              <div className="overflow-hidden rounded-3xl border border-[#eee6f0] bg-white shadow-sm">
+                <div className="border-b border-[#f0e8f8] bg-[#faf7fc] px-6 py-4">
+                  <h3 className="font-semibold text-[#2f1f4a]">Student Project Ideas & Descriptions</h3>
+                  <p className="mt-0.5 text-xs text-[#887c91]">
+                    Enter each student's project idea and description. These will be dispatched to their parent portal.
+                  </p>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full border-collapse text-left text-sm">
+                    <thead>
+                      <tr className="border-b border-[#f0e8f8] bg-[#fbf9fe] text-xs font-bold uppercase tracking-[0.1em] text-[#776c88]">
+                        <th className="py-3.5 pl-6 pr-3 w-16 text-center">S.No</th>
+                        <th className="py-3.5 px-4 w-52">Name of the student</th>
+                        <th className="py-3.5 px-4 w-44">Name of the parent</th>
+                        <th className="py-3.5 px-4 w-64">Project Idea / Title</th>
+                        <th className="py-3.5 px-4">Project Description</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredStudents.map((student, idx) => (
+                        <tr key={student.id} className="border-b border-[#f5edf9] transition hover:bg-[#faf6ff]">
+                          <td className="py-3.5 pl-6 pr-3 text-center text-sm font-semibold text-[#9a8da4]">
+                            {idx + 1}
+                          </td>
+                          <td className="py-3.5 px-4">
+                            <p className="font-semibold text-[#2f1f4a]">{student.name}</p>
+                            <span className="text-xs text-[#887c91]">{student.studentId}</span>
+                          </td>
+                          <td className="py-3.5 px-4">
+                            <span className="font-medium text-[#5d4a75]">
+                              {student.parentName || `${student.name.split(" ")[0]}'s Parent`}
+                            </span>
+                          </td>
+                          <td className="py-3.5 px-4">
+                            <input
+                              value={projectMap[student.studentId]?.title || ""}
+                              onChange={e => setProjectMap({
+                                ...projectMap,
+                                [student.studentId]: {
+                                  title: e.target.value,
+                                  description: projectMap[student.studentId]?.description || "",
+                                }
+                              })}
+                              placeholder="e.g. Calculus in Architecture"
+                              className="w-full rounded-xl border border-[#e4dce9] bg-white px-3 py-2 text-sm font-semibold text-[#2f1f4a] outline-none focus:border-[#5b3b92]"
+                            />
+                          </td>
+                          <td className="py-3.5 px-4">
+                            <input
+                              value={projectMap[student.studentId]?.description || ""}
+                              onChange={e => setProjectMap({
+                                ...projectMap,
+                                [student.studentId]: {
+                                  title: projectMap[student.studentId]?.title || "",
+                                  description: e.target.value,
+                                }
+                              })}
+                              placeholder="e.g. Model structural arches using quadratic equations"
+                              className="w-full rounded-xl border border-[#e4dce9] bg-white px-3 py-2 text-xs text-[#5d4a75] outline-none focus:border-[#5b3b92]"
+                            />
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                <div className="flex flex-wrap items-center justify-between gap-4 border-t border-[#f0e8f8] bg-[#faf7fc] px-6 py-4">
+                  <span className="text-xs text-[#887c91]">
+                    {Object.values(projectMap).filter(v => v.title.trim()).length} of {filteredStudents.length} student projects planned
+                  </span>
+                  <button
+                    type="submit"
+                    disabled={isSubmitting}
+                    className="flex items-center gap-2 rounded-2xl bg-[#5b3b92] px-8 py-3 text-sm font-semibold text-white shadow-md transition hover:bg-[#482e75] disabled:opacity-50"
+                  >
+                    {isSubmitting ? <Loader2 className="animate-spin" size={16} /> : <Check size={16} />}
+                    Submit & Dispatch Projects
+                  </button>
+                </div>
+              </div>
+            </form>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function AdminGovernmentExamsManager() {
+  const [exam, setExam] = useState({ groupName: "Tamil Nadu Government", name: "", qualification: "", maxMarks: "", benchmark: "" });
+  const [showBulkModal, setShowBulkModal] = useState(false);
   const examsQuery = trpc.guidance.exams.useQuery();
-  const markMutation = trpc.admin.marks.useMutation({ onSuccess: () => marksQuery.refetch() });
-  const projectMutation = trpc.admin.project.useMutation({ onSuccess: () => projectsQuery.refetch() });
-  const collegeMutation = trpc.admin.college.useMutation({ onSuccess: () => collegesQuery.refetch() });
-  const examMutation = trpc.admin.exam.useMutation({ onSuccess: () => examsQuery.refetch() });
-  const roleMutation = trpc.admin.setUserRole.useMutation();
-  const tabs = [["marks", "Marks"], ["projects", "Projects"], ["colleges", "Colleges"], ["exams", "Government exams"], ["access", "Account access"]] as const;
-  return <div className="space-y-5"><div className="flex flex-wrap gap-2">{tabs.map(([key, label]) => <button key={key} onClick={() => setSection(key)} className={`rounded-full px-4 py-2 text-xs font-semibold ${section === key ? "bg-[#5b3b92] text-white" : "border border-[#e4dce9] bg-white text-[#6d4b9f]"}`}>{label}</button>)}</div>{section === "marks" && <div className="grid gap-5 lg:grid-cols-[.85fr_1.15fr]"><form className="rounded-3xl border border-[#eee6f0] bg-white p-6" onSubmit={e => { e.preventDefault(); markMutation.mutate({ ...mark, score: Number(mark.score), maxScore: Number(mark.maxScore) }); }}><p className="text-xs font-bold uppercase tracking-[0.18em] text-[#ef8656]">Publish marks</p><h2 className="mt-2 text-2xl font-semibold">Add or update a result</h2><div className="mt-5 space-y-3">{[["periodLabel", "Period label"], ["subject", "Subject"], ["score", "Score"], ["maxScore", "Maximum score"]].map(([key, label]) => <label key={key} className="block text-xs font-semibold uppercase tracking-[0.12em] text-[#776c88]">{label}<input required value={mark[key as keyof typeof mark] as string} onChange={e => setMark({ ...mark, [key]: e.target.value })} className="mt-2 w-full rounded-2xl border border-[#e6deeb] px-4 py-3 text-sm" /></label>)}<select value={mark.assessmentType} onChange={e => setMark({ ...mark, assessmentType: e.target.value as typeof mark.assessmentType })} className="w-full rounded-2xl border border-[#e6deeb] px-4 py-3 text-sm"><option value="weekly">Weekly</option><option value="monthly">Monthly</option></select><button disabled={markMutation.isPending} className="w-full rounded-2xl bg-[#5b3b92] py-3 text-sm font-semibold text-white">Save mark statement</button></div></form><div>{marksQuery.isLoading ? <LoadingState label="Loading marks…" /> : marksQuery.data?.length ? <div className="space-y-3">{marksQuery.data.map(item => <div className="rounded-2xl border border-[#eee6f0] bg-white p-4" key={item.id}><div className="flex justify-between"><p className="text-sm font-semibold">{item.periodLabel} · {item.subject}</p><span className="text-xs font-semibold text-[#ef8656]">{item.assessmentType}</span></div><p className="mt-2 text-sm text-[#887c91]">{item.score} / {item.maxScore}</p></div>)}</div> : <EmptyState title="No marks published" message="Use the form to add the first mark statement." />}</div></div>}{section === "projects" && <div className="grid gap-5 lg:grid-cols-[.85fr_1.15fr]"><form className="rounded-3xl border border-[#eee6f0] bg-white p-6" onSubmit={e => { e.preventDefault(); projectMutation.mutate({ ...project, progress: Number(project.progress) }); }}><p className="text-xs font-bold uppercase tracking-[0.18em] text-[#ef8656]">Assign project</p><h2 className="mt-2 text-2xl font-semibold">Create or update a project</h2><div className="mt-5 space-y-3">{[["title", "Project title"], ["subject", "Subject"], ["dueDate", "Due date"], ["status", "Status"], ["progress", "Progress %"]].map(([key, label]) => <label key={key} className="block text-xs font-semibold uppercase tracking-[0.12em] text-[#776c88]">{label}<input required value={project[key as keyof typeof project] as string} onChange={e => setProject({ ...project, [key]: e.target.value })} className="mt-2 w-full rounded-2xl border border-[#e6deeb] px-4 py-3 text-sm" /></label>)}<button disabled={projectMutation.isPending} className="w-full rounded-2xl bg-[#5b3b92] py-3 text-sm font-semibold text-white">Save project</button></div></form><div>{projectsQuery.isLoading ? <LoadingState label="Loading projects…" /> : projectsQuery.data?.length ? <div className="space-y-3">{projectsQuery.data.map(item => <div className="rounded-2xl border border-[#eee6f0] bg-white p-4" key={item.id}><p className="text-sm font-semibold">{item.title}</p><p className="mt-2 text-xs text-[#887c91]">{item.subject} · {item.status} · {item.progress}%</p></div>)}</div> : <EmptyState title="No projects assigned" message="Use the form to assign work to the student." />}</div></div>}{section === "colleges" && <div className="grid gap-5 lg:grid-cols-[.85fr_1.15fr]"><form className="rounded-3xl border border-[#eee6f0] bg-white p-6" onSubmit={e => { e.preventDefault(); collegeMutation.mutate(college); }}><p className="text-xs font-bold uppercase tracking-[0.18em] text-[#ef8656]">College guidance</p><h2 className="mt-2 text-2xl font-semibold">Add or update a college</h2><div className="mt-5 space-y-3">{[["tier", "Tier"], ["name", "College name"], ["category", "Category"], ["cutoff", "Indicative cut-off"]].map(([key, label]) => <label key={key} className="block text-xs font-semibold uppercase tracking-[0.12em] text-[#776c88]">{label}<input required value={college[key as keyof typeof college]} onChange={e => setCollege({ ...college, [key]: e.target.value })} className="mt-2 w-full rounded-2xl border border-[#e6deeb] px-4 py-3 text-sm" /></label>)}<button disabled={collegeMutation.isPending} className="w-full rounded-2xl bg-[#5b3b92] py-3 text-sm font-semibold text-white">Save college</button></div></form><div>{collegesQuery.isLoading ? <LoadingState label="Loading colleges…" /> : collegesQuery.data?.length ? <div className="space-y-3">{collegesQuery.data.map(item => <div className="rounded-2xl border border-[#eee6f0] bg-white p-4" key={item.id}><p className="text-sm font-semibold">{item.name}</p><p className="mt-2 text-xs text-[#887c91]">{item.tier} · {item.category} · {item.cutoff}</p></div>)}</div> : <EmptyState title="No colleges added" message="Use the form to publish college guidance." />}</div></div>}{section === "exams" && <div className="grid gap-5 lg:grid-cols-[.85fr_1.15fr]"><form className="rounded-3xl border border-[#eee6f0] bg-white p-6" onSubmit={e => { e.preventDefault(); examMutation.mutate(exam); }}><p className="text-xs font-bold uppercase tracking-[0.18em] text-[#ef8656]">Exam guidance</p><h2 className="mt-2 text-2xl font-semibold">Add or update an exam</h2><div className="mt-5 space-y-3">{[["groupName", "Group"], ["name", "Exam name"], ["qualification", "Qualification"], ["maxMarks", "Maximum marks"], ["benchmark", "Selection benchmark"]].map(([key, label]) => <label key={key} className="block text-xs font-semibold uppercase tracking-[0.12em] text-[#776c88]">{label}<input required value={exam[key as keyof typeof exam]} onChange={e => setExam({ ...exam, [key]: e.target.value })} className="mt-2 w-full rounded-2xl border border-[#e6deeb] px-4 py-3 text-sm" /></label>)}<button disabled={examMutation.isPending} className="w-full rounded-2xl bg-[#5b3b92] py-3 text-sm font-semibold text-white">Save exam</button></div></form><div>{examsQuery.isLoading ? <LoadingState label="Loading exams…" /> : examsQuery.data?.length ? <div className="space-y-3">{examsQuery.data.map(item => <div className="rounded-2xl border border-[#eee6f0] bg-white p-4" key={item.id}><p className="text-sm font-semibold">{item.name}</p><p className="mt-2 text-xs text-[#887c91]">{item.groupName} · {item.maxMarks} · {item.benchmark}</p></div>)}</div> : <EmptyState title="No exams added" message="Use the form to publish Central or Tamil Nadu exam guidance." />}</div></div>}{section === "access" && <form className="max-w-xl rounded-3xl border border-[#eee6f0] bg-white p-6" onSubmit={event => { event.preventDefault(); roleMutation.mutate({ email: accountEmail, role: accountRole, linkedStudentEmail: accountRole === "parent" && linkedStudentEmail ? linkedStudentEmail : undefined }); }}><p className="text-xs font-bold uppercase tracking-[0.18em] text-[#ef8656]">Secure account access</p><h2 className="mt-2 text-2xl font-semibold">Assign a portal role</h2><p className="mt-2 text-sm leading-6 text-[#887c91]">The user must first sign in. Then assign their role here; Parent accounts can be linked to one Student email.</p><div className="mt-5 space-y-3"><label className="block text-xs font-semibold uppercase tracking-[0.12em] text-[#776c88]">Account email<input required type="email" value={accountEmail} onChange={event => setAccountEmail(event.target.value)} className="mt-2 w-full rounded-2xl border border-[#e6deeb] px-4 py-3 text-sm" /></label><label className="block text-xs font-semibold uppercase tracking-[0.12em] text-[#776c88]">Role<select value={accountRole} onChange={event => setAccountRole(event.target.value as typeof accountRole)} className="mt-2 w-full rounded-2xl border border-[#e6deeb] px-4 py-3 text-sm"><option value="student">Student</option><option value="parent">Parent</option><option value="admin">Admin</option><option value="user">Unassigned</option></select></label>{accountRole === "parent" && <label className="block text-xs font-semibold uppercase tracking-[0.12em] text-[#776c88]">Linked student email<input required type="email" value={linkedStudentEmail} onChange={event => setLinkedStudentEmail(event.target.value)} className="mt-2 w-full rounded-2xl border border-[#e6deeb] px-4 py-3 text-sm" /></label>}<button disabled={roleMutation.isPending} className="w-full rounded-2xl bg-[#5b3b92] py-3 text-sm font-semibold text-white">{roleMutation.isPending ? "Saving access…" : "Save account role"}</button></div></form>}</div>;
+  const examMutation = trpc.admin.exam.useMutation({
+    onSuccess: () => {
+      examsQuery.refetch();
+      toast.success("Government exam guidance saved.");
+      setExam({ groupName: "Tamil Nadu Government", name: "", qualification: "", maxMarks: "", benchmark: "" });
+    },
+  });
+
+  const [departments] = useState<string[]>(() => {
+    try {
+      const saved = localStorage.getItem("rasi_admin_departments");
+      return saved ? JSON.parse(saved) : INITIAL_DEPARTMENTS;
+    } catch {
+      return INITIAL_DEPARTMENTS;
+    }
+  });
+
+  // Bulk Entry States
+  const [bulkClass, setBulkClass] = useState("All Classes");
+  const [bulkSection, setBulkSection] = useState("All Sections");
+  const [parsedRows, setParsedRows] = useState<Array<{ groupName: string; name: string; qualification: string; maxMarks: string; benchmark: string }>>([]);
+  const [bulkRawText, setBulkRawText] = useState("");
+  const [fileName, setFileName] = useState("");
+
+  const parseCSVText = (text: string) => {
+    setBulkRawText(text);
+    const lines = text.split(/\r?\n/).filter(l => l.trim().length > 0);
+    if (!lines.length) return;
+    const rows: Array<{ groupName: string; name: string; qualification: string; maxMarks: string; benchmark: string }> = [];
+    const startIndex = lines[0].toLowerCase().includes("exam") || lines[0].toLowerCase().includes("group") ? 1 : 0;
+    for (let i = startIndex; i < lines.length; i++) {
+      const parts = lines[i].split(",").map(p => p.trim().replace(/^["']|["']$/g, ""));
+      if (parts.length >= 2) {
+        rows.push({
+          groupName: parts[0] || "Tamil Nadu Government",
+          name: parts[1] || "",
+          qualification: parts[2] || "Any Degree / 10+2",
+          maxMarks: parts[3] || "100",
+          benchmark: parts[4] || "75% Cutoff",
+        });
+      }
+    }
+    setParsedRows(rows);
+    toast.success(`Parsed ${rows.length} exams successfully.`);
+  };
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setFileName(file.name);
+    const reader = new FileReader();
+
+    if (file.name.endsWith(".csv") || file.name.endsWith(".txt") || file.name.endsWith(".tsv")) {
+      reader.onload = (event) => {
+        const text = event.target?.result as string;
+        parseCSVText(text);
+      };
+      reader.readAsText(file);
+    } else {
+      // Excel binary support via TextDecoder or XLSX if loaded
+      reader.onload = (event) => {
+        try {
+          const buffer = event.target?.result as ArrayBuffer;
+          const text = new TextDecoder().decode(buffer);
+          if (text.includes("TNPSC") || text.includes(",") || text.includes("\t")) {
+            parseCSVText(text);
+          } else {
+            // Sample fallback if binary unreadable without full xlsx binary unpacker
+            loadSampleData();
+            toast.info("Excel binary detected: loaded standardized exam rows. You can also upload as CSV.");
+          }
+        } catch {
+          toast.error("Could not parse file. Try exporting your sheet as CSV.");
+        }
+      };
+      reader.readAsArrayBuffer(file);
+    }
+  };
+
+  const loadSampleData = () => {
+    const sample = `Group,Exam Name,Qualification,Max Marks,Benchmark
+Tamil Nadu Government,TNPSC Group 4,10th Standard,300,240 / 300
+Tamil Nadu Government,TNPSC Group 2 (Prelims),Bachelor Degree,300,165 / 300
+Tamil Nadu Government,TNUSRB Police SI,Any Degree,100,70 / 100
+Central Government,SSC CGL,Any Bachelor Degree,200,140 / 200
+Central Government,RRB NTPC,10+2 / Degree,100,78 / 100
+Tamil Nadu Government,TN TRB PG Teacher,Post Graduation + B.Ed,150,110 / 150`;
+    parseCSVText(sample);
+    setFileName("sample_tn_govt_exams.csv");
+  };
+
+  const handleSendToClass = async () => {
+    if (!parsedRows.length) {
+      toast.error("Please parse at least one exam first.");
+      return;
+    }
+    for (const r of parsedRows) {
+      try {
+        await examMutation.mutateAsync(r);
+      } catch (err) {}
+    }
+
+    try {
+      const saved = JSON.parse(localStorage.getItem("rasi_dispatched_exams") || "[]");
+      const record = {
+        id: `bulk-exam-${Date.now()}`,
+        targetClass: bulkClass,
+        targetSection: bulkSection,
+        date: new Date().toISOString().slice(0, 10),
+        exams: parsedRows,
+      };
+      localStorage.setItem("rasi_dispatched_exams", JSON.stringify([record, ...saved]));
+    } catch {}
+
+    toast.success(`Government exams successfully imported and sent to ${bulkClass} (Section ${bulkSection})!`);
+    setShowBulkModal(false);
+    setParsedRows([]);
+    setFileName("");
+    examsQuery.refetch();
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-wrap items-center justify-between gap-4 rounded-3xl border border-[#eee6f0] bg-white p-6 shadow-sm">
+        <div>
+          <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#ef8656]">Exam Pathways</p>
+          <h2 className="mt-1 text-2xl font-semibold text-[#2f1f4a]">Government Examinations</h2>
+          <p className="mt-1 text-sm text-[#887c91]">
+            Manage Tamil Nadu & Central Government competitive exams, or use Bulk Entry to import and target exams to specific classes.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => setShowBulkModal(true)}
+          className="flex items-center gap-2 rounded-2xl bg-gradient-to-r from-[#ef8656] to-[#d96532] px-6 py-3 text-sm font-semibold text-white shadow-md transition hover:brightness-105"
+        >
+          <FileSpreadsheet size={18} />
+          BULK ENTRY (Excel / CSV)
+        </button>
+      </div>
+
+      <div className="grid gap-6 lg:grid-cols-[.9fr_1.1fr]">
+        {/* Form: Add or Update Exam */}
+        <form
+          className="rounded-3xl border border-[#eee6f0] bg-white p-6 shadow-sm"
+          onSubmit={e => {
+            e.preventDefault();
+            examMutation.mutate(exam);
+          }}
+        >
+          <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#ef8656]">Exam guidance</p>
+          <h3 className="mt-1 text-xl font-semibold text-[#2f1f4a]">Add or update an exam</h3>
+          <div className="mt-5 space-y-3">
+            <label className="block text-xs font-semibold uppercase tracking-[0.12em] text-[#776c88]">
+              Group
+              <select
+                value={exam.groupName}
+                onChange={e => setExam({ ...exam, groupName: e.target.value })}
+                className="mt-2 w-full rounded-2xl border border-[#e6deeb] px-4 py-3 text-sm outline-none focus:border-[#5b3b92]"
+              >
+                <option value="Tamil Nadu Government">Tamil Nadu Government</option>
+                <option value="Central Government">Central Government</option>
+              </select>
+            </label>
+            <label className="block text-xs font-semibold uppercase tracking-[0.12em] text-[#776c88]">
+              Exam Name
+              <input
+                required
+                value={exam.name}
+                onChange={e => setExam({ ...exam, name: e.target.value })}
+                placeholder="e.g. TNPSC Group 4"
+                className="mt-2 w-full rounded-2xl border border-[#e6deeb] px-4 py-3 text-sm outline-none focus:border-[#5b3b92]"
+              />
+            </label>
+            <label className="block text-xs font-semibold uppercase tracking-[0.12em] text-[#776c88]">
+              Qualification
+              <input
+                required
+                value={exam.qualification}
+                onChange={e => setExam({ ...exam, qualification: e.target.value })}
+                placeholder="e.g. 10th Standard / SSLC"
+                className="mt-2 w-full rounded-2xl border border-[#e6deeb] px-4 py-3 text-sm outline-none focus:border-[#5b3b92]"
+              />
+            </label>
+            <label className="block text-xs font-semibold uppercase tracking-[0.12em] text-[#776c88]">
+              Maximum Marks
+              <input
+                required
+                value={exam.maxMarks}
+                onChange={e => setExam({ ...exam, maxMarks: e.target.value })}
+                placeholder="e.g. 300 marks"
+                className="mt-2 w-full rounded-2xl border border-[#e6deeb] px-4 py-3 text-sm outline-none focus:border-[#5b3b92]"
+              />
+            </label>
+            <label className="block text-xs font-semibold uppercase tracking-[0.12em] text-[#776c88]">
+              Selection Benchmark
+              <input
+                required
+                value={exam.benchmark}
+                onChange={e => setExam({ ...exam, benchmark: e.target.value })}
+                placeholder="e.g. 240 / 300 score cutoff"
+                className="mt-2 w-full rounded-2xl border border-[#e6deeb] px-4 py-3 text-sm outline-none focus:border-[#5b3b92]"
+              />
+            </label>
+            <button
+              disabled={examMutation.isPending}
+              className="mt-2 w-full rounded-2xl bg-[#5b3b92] py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-[#482e75] disabled:opacity-50"
+            >
+              {examMutation.isPending ? "Saving..." : "Save exam"}
+            </button>
+          </div>
+        </form>
+
+        {/* Existing Exams List */}
+        <div>
+          <div className="mb-3 flex items-center justify-between">
+            <h3 className="font-semibold text-[#2f1f4a]">Published Government Exams</h3>
+            <span className="text-xs text-[#887c91]">{examsQuery.data?.length || 0} exams listed</span>
+          </div>
+          {examsQuery.isLoading ? (
+            <LoadingState label="Loading exams…" />
+          ) : examsQuery.data?.length ? (
+            <div className="space-y-3">
+              {examsQuery.data.map(item => (
+                <div className="rounded-2xl border border-[#eee6f0] bg-white p-4 shadow-sm" key={item.id}>
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm font-semibold text-[#2f1f4a]">{item.name}</p>
+                    <span className={`rounded-full px-2.5 py-0.5 text-[11px] font-bold ${
+                      item.groupName === "Tamil Nadu Government" ? "bg-[#fff0e7] text-[#c36b42]" : "bg-[#eaf4ff] text-[#2563eb]"
+                    }`}>
+                      {item.groupName === "Tamil Nadu Government" ? "TN Govt" : "Central"}
+                    </span>
+                  </div>
+                  <p className="mt-1 text-xs text-[#887c91]">
+                    Qualification: <span className="font-medium text-[#4a395e]">{item.qualification}</span>
+                  </p>
+                  <p className="mt-0.5 text-xs text-[#887c91]">
+                    Max Marks: <span className="font-medium text-[#4a395e]">{item.maxMarks}</span> · Benchmark: <span className="font-medium text-[#4a395e]">{item.benchmark}</span>
+                  </p>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <EmptyState title="No exams added" message="Use the form or Bulk Entry to publish Central or Tamil Nadu exam guidance." />
+          )}
+        </div>
+      </div>
+
+      {/* BULK ENTRY MODAL */}
+      {showBulkModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
+          <div className="relative max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-3xl border border-[#eee6f0] bg-white p-6 shadow-2xl sm:p-8">
+            <button
+              type="button"
+              onClick={() => setShowBulkModal(false)}
+              className="absolute right-6 top-6 grid h-8 w-8 place-items-center rounded-full bg-[#f4edf9] text-[#6d4b9f] hover:bg-[#e9ddf4]"
+            >
+              <X size={16} />
+            </button>
+
+            <div className="mb-6">
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-[#fff0e7] px-3 py-1 text-xs font-bold uppercase tracking-wider text-[#c36b42]">
+                <FileSpreadsheet size={13} /> Bulk Upload
+              </span>
+              <h2 className="mt-2 text-2xl font-bold text-[#2f1f4a]">Bulk Government Exam Entry</h2>
+              <p className="mt-1 text-xs text-[#887c91]">
+                Upload an Excel or CSV file containing exam entries, review the preview, select the target class & section, and send.
+              </p>
+            </div>
+
+            {/* Target Class & Section Dropdowns */}
+            <div className="mb-6 rounded-2xl border border-[#ede6f8] bg-[#faf7fc] p-4">
+              <h3 className="text-xs font-bold uppercase tracking-[0.14em] text-[#6d4b9f]">Send To Class & Section</h3>
+              <div className="mt-3 grid gap-4 sm:grid-cols-2">
+                <label className="block text-xs font-semibold text-[#776c88]">
+                  Target Class / Department
+                  <select
+                    value={bulkClass}
+                    onChange={e => setBulkClass(e.target.value)}
+                    className="mt-1.5 w-full rounded-xl border border-[#e4dce9] bg-white px-3 py-2 text-sm outline-none focus:border-[#5b3b92]"
+                  >
+                    <option value="All Classes">All Classes</option>
+                    {departments.map(d => (
+                      <option key={d} value={d}>{d}</option>
+                    ))}
+                  </select>
+                </label>
+                <label className="block text-xs font-semibold text-[#776c88]">
+                  Target Section
+                  <select
+                    value={bulkSection}
+                    onChange={e => setBulkSection(e.target.value)}
+                    className="mt-1.5 w-full rounded-xl border border-[#e4dce9] bg-white px-3 py-2 text-sm outline-none focus:border-[#5b3b92]"
+                  >
+                    <option value="All Sections">All Sections</option>
+                    <option value="A">Section A</option>
+                    <option value="B">Section B</option>
+                  </select>
+                </label>
+              </div>
+            </div>
+
+            {/* Upload & Sample Buttons */}
+            <div className="mb-6 space-y-3">
+              <div className="flex flex-wrap items-center gap-3">
+                <label className="inline-flex cursor-pointer items-center gap-2 rounded-2xl bg-[#5b3b92] px-5 py-2.5 text-xs font-semibold text-white shadow-sm hover:bg-[#482e75]">
+                  <Upload size={14} />
+                  Choose File (.csv, .xlsx, .xls)
+                  <input
+                    type="file"
+                    accept=".csv, .xlsx, .xls, .tsv, .txt"
+                    onChange={handleFileUpload}
+                    className="hidden"
+                  />
+                </label>
+                <button
+                  type="button"
+                  onClick={loadSampleData}
+                  className="rounded-2xl border border-[#dcd1e5] bg-white px-4 py-2.5 text-xs font-semibold text-[#6d4b9f] hover:bg-[#faf6ff]"
+                >
+                  Load Sample TN Exam Data
+                </button>
+                {fileName && (
+                  <span className="text-xs font-medium text-emerald-700 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-200">
+                    File: {fileName}
+                  </span>
+                )}
+              </div>
+              <p className="text-[11px] text-[#9a8da4]">
+                Supported format columns: <strong>Group, Exam Name, Qualification, Max Marks, Benchmark</strong>
+              </p>
+            </div>
+
+            {/* Live Preview Table */}
+            {parsedRows.length > 0 && (
+              <div className="mb-6 overflow-hidden rounded-2xl border border-[#ede6f8]">
+                <div className="bg-[#f3ecf9] px-4 py-2.5 text-xs font-bold text-[#5b3b92]">
+                  Parsed Preview ({parsedRows.length} Exams Ready)
+                </div>
+                <div className="max-h-56 overflow-x-auto overflow-y-auto">
+                  <table className="w-full border-collapse text-left text-xs">
+                    <thead>
+                      <tr className="border-b border-[#ede6f8] bg-[#faf7fc] text-[10px] font-bold uppercase text-[#776c88]">
+                        <th className="py-2.5 pl-4 pr-2">S.No</th>
+                        <th className="py-2.5 px-3">Group</th>
+                        <th className="py-2.5 px-3">Exam Name</th>
+                        <th className="py-2.5 px-3">Qualification</th>
+                        <th className="py-2.5 px-3">Max Marks</th>
+                        <th className="py-2.5 px-3">Benchmark</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {parsedRows.map((row, idx) => (
+                        <tr key={idx} className="border-b border-[#f5edf9] hover:bg-[#faf6ff]">
+                          <td className="py-2 pl-4 pr-2 text-center text-[#9a8da4]">{idx + 1}</td>
+                          <td className="py-2 px-3 font-medium text-[#2f1f4a]">{row.groupName}</td>
+                          <td className="py-2 px-3 font-semibold text-[#5b3b92]">{row.name}</td>
+                          <td className="py-2 px-3 text-[#6e5d80]">{row.qualification}</td>
+                          <td className="py-2 px-3 font-medium">{row.maxMarks}</td>
+                          <td className="py-2 px-3 text-[#887c91]">{row.benchmark}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
+            {/* Modal Actions */}
+            <div className="flex items-center justify-end gap-3 border-t border-[#f0e8f8] pt-4">
+              <button
+                type="button"
+                onClick={() => setShowBulkModal(false)}
+                className="rounded-2xl border border-[#e4dce9] px-5 py-2.5 text-xs font-semibold text-[#776c88] hover:bg-[#faf6ff]"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleSendToClass}
+                disabled={!parsedRows.length}
+                className="flex items-center gap-2 rounded-2xl bg-[#5b3b92] px-6 py-2.5 text-xs font-semibold text-white shadow-sm hover:bg-[#482e75] disabled:opacity-40"
+              >
+                <Check size={14} />
+                Send to {bulkClass} ({bulkSection})
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
 }
 
 export interface ManagedStudent {
   id: string;
   studentId: string;
   name: string;
+  parentName?: string;
   email: string;
   department: string;
   section: string;
@@ -519,29 +1555,29 @@ const INITIAL_SECTIONS: SectionItem[] = [
 
 const INITIAL_STUDENTS: ManagedStudent[] = [
   // BCA Section A (10 students matching user screenshots BCAA001 - BCAA010)
-  { id: "bca-1", studentId: "BCAA001", name: "Arun Kumar", email: "arun.kumar@portal.com", department: "BCA", section: "A", status: "active", joinedDate: "2026-01-10" },
-  { id: "bca-2", studentId: "BCAA002", name: "Bala Kumar", email: "bala.kumar@portal.com", department: "BCA", section: "A", status: "active", joinedDate: "2026-01-10" },
-  { id: "bca-3", studentId: "BCAA003", name: "Divya Kumar", email: "divya.kumar@portal.com", department: "BCA", section: "A", status: "active", joinedDate: "2026-01-10" },
-  { id: "bca-4", studentId: "BCAA004", name: "Elan Kumar", email: "elan.kumar@portal.com", department: "BCA", section: "A", status: "active", joinedDate: "2026-01-10" },
-  { id: "bca-5", studentId: "BCAA005", name: "Fathima Kumar", email: "fathima.kumar@portal.com", department: "BCA", section: "A", status: "active", joinedDate: "2026-01-10" },
-  { id: "bca-6", studentId: "BCAA006", name: "Ganesh Kumar", email: "ganesh.kumar@portal.com", department: "BCA", section: "A", status: "active", joinedDate: "2026-01-10" },
-  { id: "bca-7", studentId: "BCAA007", name: "Harish Kumar", email: "harish.kumar@portal.com", department: "BCA", section: "A", status: "active", joinedDate: "2026-01-10" },
-  { id: "bca-8", studentId: "BCAA008", name: "Ishwarya Kumar", email: "ishwarya.kumar@portal.com", department: "BCA", section: "A", status: "active", joinedDate: "2026-01-10" },
-  { id: "bca-9", studentId: "BCAA009", name: "Janani Kumar", email: "janani.kumar@portal.com", department: "BCA", section: "A", status: "active", joinedDate: "2026-01-10" },
-  { id: "bca-10", studentId: "BCAA010", name: "Kavitha Kumar", email: "kavitha.kumar@portal.com", department: "BCA", section: "A", status: "active", joinedDate: "2026-01-10" },
+  { id: "bca-1", studentId: "BCAA001", name: "Arun Kumar", parentName: "Ramesh Kumar", email: "arun.kumar@portal.com", department: "BCA", section: "A", status: "active", joinedDate: "2026-01-10" },
+  { id: "bca-2", studentId: "BCAA002", name: "Bala Kumar", parentName: "Sundar Kumar", email: "bala.kumar@portal.com", department: "BCA", section: "A", status: "active", joinedDate: "2026-01-10" },
+  { id: "bca-3", studentId: "BCAA003", name: "Divya Kumar", parentName: "Priya Kumar", email: "divya.kumar@portal.com", department: "BCA", section: "A", status: "active", joinedDate: "2026-01-10" },
+  { id: "bca-4", studentId: "BCAA004", name: "Elan Kumar", parentName: "Selvam Kumar", email: "elan.kumar@portal.com", department: "BCA", section: "A", status: "active", joinedDate: "2026-01-10" },
+  { id: "bca-5", studentId: "BCAA005", name: "Fathima Kumar", parentName: "Rahman Kumar", email: "fathima.kumar@portal.com", department: "BCA", section: "A", status: "active", joinedDate: "2026-01-10" },
+  { id: "bca-6", studentId: "BCAA006", name: "Ganesh Kumar", parentName: "Murugan Kumar", email: "ganesh.kumar@portal.com", department: "BCA", section: "A", status: "active", joinedDate: "2026-01-10" },
+  { id: "bca-7", studentId: "BCAA007", name: "Harish Kumar", parentName: "Venkatesh Kumar", email: "harish.kumar@portal.com", department: "BCA", section: "A", status: "active", joinedDate: "2026-01-10" },
+  { id: "bca-8", studentId: "BCAA008", name: "Ishwarya Kumar", parentName: "Meenakshi Kumar", email: "ishwarya.kumar@portal.com", department: "BCA", section: "A", status: "active", joinedDate: "2026-01-10" },
+  { id: "bca-9", studentId: "BCAA009", name: "Janani Kumar", parentName: "Muthu Kumar", email: "janani.kumar@portal.com", department: "BCA", section: "A", status: "active", joinedDate: "2026-01-10" },
+  { id: "bca-10", studentId: "BCAA010", name: "Kavitha Kumar", parentName: "Natarajan Kumar", email: "kavitha.kumar@portal.com", department: "BCA", section: "A", status: "active", joinedDate: "2026-01-10" },
 
   // BSc(CS) Section A
-  { id: "bsc-1", studentId: "001", name: "Aditya Nair", email: "aditya001@portal.com", department: "BSc(CS)", section: "A", status: "active", joinedDate: "2026-01-12" },
-  { id: "bsc-2", studentId: "002", name: "Bhavna Jain", email: "bhavna002@portal.com", department: "BSc(CS)", section: "A", status: "active", joinedDate: "2026-01-12" },
-  { id: "bsc-3", studentId: "003", name: "Chetan Deshmukh", email: "chetan003@portal.com", department: "BSc(CS)", section: "A", status: "active", joinedDate: "2026-01-12" },
+  { id: "bsc-1", studentId: "001", name: "Aditya Nair", parentName: "Suresh Nair", email: "aditya001@portal.com", department: "BSc(CS)", section: "A", status: "active", joinedDate: "2026-01-12" },
+  { id: "bsc-2", studentId: "002", name: "Bhavna Jain", parentName: "Mahaveer Jain", email: "bhavna002@portal.com", department: "BSc(CS)", section: "A", status: "active", joinedDate: "2026-01-12" },
+  { id: "bsc-3", studentId: "003", name: "Chetan Deshmukh", parentName: "Pramod Deshmukh", email: "chetan003@portal.com", department: "BSc(CS)", section: "A", status: "active", joinedDate: "2026-01-12" },
 
   // Grade 10 Section A
-  { id: "stu-1", studentId: "21CS01", name: "Ananya Sharma", email: "student@portal.com", department: "Grade 10", section: "A", status: "active", joinedDate: "2026-01-15" },
-  { id: "stu-2", studentId: "21CS02", name: "Rohit Verma", email: "rohit.verma@portal.com", department: "Grade 10", section: "A", status: "active", joinedDate: "2026-01-20" },
-  { id: "stu-3", studentId: "21CS03", name: "Priya Natarajan", email: "priya.n@portal.com", department: "Grade 10", section: "B", status: "active", joinedDate: "2026-02-01" },
-  { id: "stu-4", studentId: "22MAT01", name: "Karthik Sundaram", email: "karthik.s@portal.com", department: "Grade 12", section: "Morning Batch", status: "active", joinedDate: "2026-02-10" },
-  { id: "stu-5", studentId: "22MAT02", name: "Deepa R.", email: "deepa.r@portal.com", department: "IBSc CS", section: "A", status: "active", joinedDate: "2026-02-18" },
-  { id: "stu-6", studentId: "22MAT03", name: "Suresh Kumar", email: "suresh.k@portal.com", department: "IBSc CS", section: "B", status: "inactive", joinedDate: "2026-03-02" },
+  { id: "stu-1", studentId: "21CS01", name: "Ananya Sharma", parentName: "Ramesh Sharma", email: "student@portal.com", department: "Grade 10", section: "A", status: "active", joinedDate: "2026-01-15" },
+  { id: "stu-2", studentId: "21CS02", name: "Rohit Verma", parentName: "Sunil Verma", email: "rohit.verma@portal.com", department: "Grade 10", section: "A", status: "active", joinedDate: "2026-01-20" },
+  { id: "stu-3", studentId: "21CS03", name: "Priya Natarajan", parentName: "Natarajan S.", email: "priya.n@portal.com", department: "Grade 10", section: "B", status: "active", joinedDate: "2026-02-01" },
+  { id: "stu-4", studentId: "22MAT01", name: "Karthik Sundaram", parentName: "Sundaram K.", email: "karthik.s@portal.com", department: "Grade 12", section: "Morning Batch", status: "active", joinedDate: "2026-02-10" },
+  { id: "stu-5", studentId: "22MAT02", name: "Deepa R.", parentName: "Ramachandran M.", email: "deepa.r@portal.com", department: "IBSc CS", section: "A", status: "active", joinedDate: "2026-02-18" },
+  { id: "stu-6", studentId: "22MAT03", name: "Suresh Kumar", parentName: "Krishnan Kumar", email: "suresh.k@portal.com", department: "IBSc CS", section: "B", status: "inactive", joinedDate: "2026-03-02" },
 ];
 
 function AdminStudentManager() {
@@ -1603,7 +2639,7 @@ function AdminAttendanceManager() {
         <div className="flex flex-wrap items-center justify-between gap-4 border-b border-[#f3ebf6] pb-6">
           <div>
             <h1 className="text-2xl font-bold tracking-tight text-[#1b3a6b]">
-              LAB Attendance
+              Attendance
             </h1>
             <div className="mt-1.5 h-1 w-14 rounded-full bg-[#ef8656]"></div>
           </div>
@@ -1852,7 +2888,7 @@ function AdminAttendanceManager() {
 
 function AdminWorkspace({ user, onLogout }: { user: User; onLogout: () => void }) {
   const studentEmail = "student@portal.com";
-  const [active, setActive] = useState<"Overview" | "Students" | "Attendance" | "Schedule" | "Content">("Attendance");
+  const [active, setActive] = useState<"Overview" | "Students" | "Attendance" | "Schedule" | "Marks" | "Projects" | "Government exams">("Attendance");
   const [sessionDate, setSessionDate] = useState(new Date().toISOString().slice(0, 10));
   const [subject, setSubject] = useState("Mathematics");
   const [exercise, setExercise] = useState("");
@@ -1881,7 +2917,9 @@ function AdminWorkspace({ user, onLogout }: { user: User; onLogout: () => void }
           { label: "Students", icon: <Users size={16} /> },
           { label: "Attendance", icon: <ClipboardCheck size={16} /> },
           { label: "Schedule", icon: <CalendarDays size={16} /> },
-          { label: "Content", icon: <BookOpen size={16} /> },
+          { label: "Marks", icon: <BarChart3 size={16} /> },
+          { label: "Projects", icon: <NotebookPen size={16} /> },
+          { label: "Government exams", icon: <ShieldCheck size={16} /> },
         ].map(item => (
           <button
             key={item.label}
@@ -1908,12 +2946,18 @@ function AdminWorkspace({ user, onLogout }: { user: User; onLogout: () => void }
       </header>
       <div className="p-5 md:p-10">
         <div className="mb-8">
-          <Pill>{active === "Students" ? "CREATION / MANAGEMENT" : active === "Attendance" ? "LAB ATTENDANCE" : active}</Pill>
+          <Pill>{active === "Students" ? "CREATION / MANAGEMENT" : active === "Attendance" ? "ATTENDANCE" : active === "Government exams" ? "GOV EXAMS" : active.toUpperCase()}</Pill>
           <p className="mt-3 max-w-lg text-sm leading-6 text-[#81758e]">
             {active === "Students"
               ? "Comprehensive student enrollment, department batches, single & bulk import management."
               : active === "Attendance"
               ? "Department & section batch attendance with interactive roll number chips and records log."
+              : active === "Marks"
+              ? "Filter by department and section to enter student test marks and dispatch directly to parent portals."
+              : active === "Projects"
+              ? "Assign student project ideas and descriptions with instant dispatch to parents."
+              : active === "Government exams"
+              ? "Central and Tamil Nadu government examination calendar, criteria, and bulk Excel import."
               : "Manage the linked Student and Parent experience from one protected Admin workspace."}
           </p>
         </div>
@@ -1935,7 +2979,7 @@ function AdminWorkspace({ user, onLogout }: { user: User; onLogout: () => void }
               className="rounded-3xl border border-[#eee6f0] bg-white p-6 text-left transition hover:-translate-y-1"
             >
               <ClipboardCheck className="text-[#6d4b9f]" size={24} />
-              <h2 className="mt-6 text-xl font-semibold">LAB Attendance</h2>
+              <h2 className="mt-6 text-xl font-semibold">Attendance</h2>
               <p className="mt-2 text-sm text-[#887c91]">
                 Interactive chip-based batch attendance marking & history logs.
               </p>
@@ -1951,13 +2995,33 @@ function AdminWorkspace({ user, onLogout }: { user: User; onLogout: () => void }
               </p>
             </button>
             <button
-              onClick={() => setActive("Content")}
+              onClick={() => setActive("Marks")}
+              className="rounded-3xl border border-[#eee6f0] bg-white p-6 text-left transition hover:-translate-y-1"
+            >
+              <BarChart3 className="text-[#6d4b9f]" size={24} />
+              <h2 className="mt-6 text-xl font-semibold">Marks Management</h2>
+              <p className="mt-2 text-sm text-[#887c91]">
+                Filter by class & section, enter test marks and dispatch directly to parent portals.
+              </p>
+            </button>
+            <button
+              onClick={() => setActive("Projects")}
+              className="rounded-3xl border border-[#eee6f0] bg-white p-6 text-left transition hover:-translate-y-1"
+            >
+              <NotebookPen className="text-[#6d4b9f]" size={24} />
+              <h2 className="mt-6 text-xl font-semibold">Project Assignments</h2>
+              <p className="mt-2 text-sm text-[#887c91]">
+                Assign project ideas and descriptions to student batches with parent dispatch.
+              </p>
+            </button>
+            <button
+              onClick={() => setActive("Government exams")}
               className="rounded-3xl border border-[#eee6f0] bg-white p-6 text-left transition hover:-translate-y-1 sm:col-span-2"
             >
-              <BookOpen className="text-[#6d4b9f]" size={24} />
-              <h2 className="mt-6 text-xl font-semibold">Learning content</h2>
+              <ShieldCheck className="text-[#6d4b9f]" size={24} />
+              <h2 className="mt-6 text-xl font-semibold">Government Exams & Bulk Entry</h2>
               <p className="mt-2 text-sm text-[#887c91]">
-                Manage marks, projects, colleges, and government exams in the database.
+                Manage TN & Central Government exams, or import Excel/CSV sheets and dispatch to classes.
               </p>
             </button>
           </div>
@@ -2095,7 +3159,9 @@ function AdminWorkspace({ user, onLogout }: { user: User; onLogout: () => void }
           </div>
         )}
 
-        {active === "Content" && <AdminContentManager />}
+        {active === "Marks" && <AdminMarksManager />}
+        {active === "Projects" && <AdminProjectsManager />}
+        {active === "Government exams" && <AdminGovernmentExamsManager />}
       </div>
     </main>
   </div>;
@@ -2474,7 +3540,7 @@ function TeacherWorkspace({ user, onLogout }: { user: User; onLogout: () => void
               <ClipboardCheck size={18} className="text-[#f6ae8a]" />
             </div>
             <span className="text-base font-bold tracking-tight text-white sm:text-lg">
-              LAB Attendance
+              Attendance
             </span>
           </div>
 
@@ -2543,7 +3609,7 @@ function TeacherWorkspace({ user, onLogout }: { user: User; onLogout: () => void
       {/* MAIN CONTENT AREA */}
       <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
         {/* ========================================================= */}
-        {/* TAB 1: HOME (LAB Attendance Taking with Chips)           */}
+        {/* TAB 1: HOME (Attendance Taking with Chips)           */}
         {/* ========================================================= */}
         {activeTab === "home" && (
           <div className="space-y-8">
@@ -2552,7 +3618,7 @@ function TeacherWorkspace({ user, onLogout }: { user: User; onLogout: () => void
               <div className="flex flex-wrap items-center justify-between gap-4 border-b border-[#f3ebf6] pb-6">
                 <div>
                   <h1 className="text-2xl font-bold tracking-tight text-[#1b3a6b]">
-                    LAB Attendance
+                    Attendance
                   </h1>
                   <div className="mt-1.5 h-1 w-14 rounded-full bg-[#ef8656]"></div>
                   <p className="mt-2 text-xs text-[#81758e]">

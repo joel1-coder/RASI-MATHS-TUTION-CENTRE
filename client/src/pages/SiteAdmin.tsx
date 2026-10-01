@@ -17,7 +17,7 @@ const emptyContact: ContactDetails = { address: "", phone: "", email: "", hours:
 const emptyPaper: StudyMaterial = { id: "", title: "", subject: "", link: "", type: "paper" };
 const emptyUnitQuestion: StudyMaterial = { id: "", title: "", subject: "", link: "", type: "unit" };
 
-const tabMeta: Record<Tab, { label: string; icon: typeof BookOpen }> = { subjects: { label: "Subjects & batches", icon: BookOpen }, teachers: { label: "Teachers & staff", icon: Users }, gallery: { label: "Classroom gallery", icon: ImageIcon }, stats: { label: "Hero statistics", icon: BarChart3 }, testimonials: { label: "Parent notes", icon: Quote }, announcements: { label: "Announcements", icon: Megaphone }, contact: { label: "Contact details", icon: Phone }, papers: { label: "Question papers", icon: FileText }, unitQuestions: { label: "Unit questions", icon: FileText } };
+const tabMeta: Record<Tab, { label: string; icon: typeof BookOpen }> = { subjects: { label: "Subjects & batches", icon: BookOpen }, stats: { label: "At a glance stats", icon: BarChart3 }, teachers: { label: "Teachers & staff", icon: Users }, gallery: { label: "Classroom gallery", icon: ImageIcon }, testimonials: { label: "Parent notes", icon: Quote }, announcements: { label: "Announcements", icon: Megaphone }, contact: { label: "Contact details", icon: Phone }, papers: { label: "Question papers", icon: FileText }, unitQuestions: { label: "Unit questions", icon: FileText } };
 
 export default function SiteAdmin() {
   const [data, setData] = useState<SiteData>(() => readSiteData());

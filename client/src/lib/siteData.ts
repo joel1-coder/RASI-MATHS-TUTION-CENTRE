@@ -1,4 +1,4 @@
-export type CollegeItem = { id: string; name: string; location: string; description: string; link: string; category: "technical" | "non-technical" };
+export type CollegeItem = { id: string; name: string; location: string; description: string; link: string; category: "technical" | "non-technical"; tier: "Tier 1" | "Tier 2" | "Tier 3"; cutoff: string };
 export type Subject = { id: string; subject: string; batch: string; schedule: string; seats: string };
 export type Teacher = { id: string; name: string; subject: string; bio: string; image: string };
 export type GalleryItem = { id: string; image: string; alt: string; layout: "wide" | "tall" | "standard" };
@@ -7,6 +7,7 @@ export type Testimonial = { id: string; quote: string; attribution: string };
 export type Announcement = { id: string; title: string; description: string; date: string; target: string };
 export type ContactDetails = { address: string; phone: string; email: string; hours: string };
 export type StudyMaterial = { id: string; title: string; subject: string; link: string; type: "paper" | "unit" };
+export type GovExam = { id: string; name: string; month: string; monthIndex: number; group: "Central Government" | "Tamil Nadu Government"; description: string; link?: string };
 export type SiteData = {
   subjects: Subject[];
   teachers: Teacher[];
@@ -19,6 +20,7 @@ export type SiteData = {
   unitQuestions: StudyMaterial[];
   technicalColleges: CollegeItem[];
   nonTechnicalColleges: CollegeItem[];
+  govExams: GovExam[];
 };
 
 const imageBase = "https://images.unsplash.com";
@@ -31,6 +33,8 @@ export const defaultTechnicalColleges: CollegeItem[] = [
     description: "Deemed university offering engineering, research and interdisciplinary programs.",
     link: "https://kalasalingam.ac.in",
     category: "technical",
+    tier: "Tier 1",
+    cutoff: "190 / 200",
   },
   {
     id: "tech-2",
@@ -39,6 +43,8 @@ export const defaultTechnicalColleges: CollegeItem[] = [
     description: "Autonomous engineering institute offering B.E./B.Tech across core and emerging branches.",
     link: "https://tce.edu",
     category: "technical",
+    tier: "Tier 1",
+    cutoff: "195 / 200",
   },
   {
     id: "tech-3",
@@ -47,6 +53,8 @@ export const defaultTechnicalColleges: CollegeItem[] = [
     description: "NAAC-accredited engineering college with strong placement support.",
     link: "https://psnaacet.edu.in",
     category: "technical",
+    tier: "Tier 2",
+    cutoff: "178 / 200",
   },
   {
     id: "tech-4",
@@ -55,6 +63,8 @@ export const defaultTechnicalColleges: CollegeItem[] = [
     description: "Government engineering campus offering UG/PG programs affiliated to Anna University.",
     link: "https://autm.ac.in",
     category: "technical",
+    tier: "Tier 1",
+    cutoff: "192 / 200",
   },
   {
     id: "tech-5",
@@ -63,6 +73,8 @@ export const defaultTechnicalColleges: CollegeItem[] = [
     description: "Autonomous engineering college recognized for academic excellence and technical research.",
     link: "https://mepcoeng.ac.in",
     category: "technical",
+    tier: "Tier 2",
+    cutoff: "182 / 200",
   },
   {
     id: "tech-6",
@@ -71,6 +83,28 @@ export const defaultTechnicalColleges: CollegeItem[] = [
     description: "Top-ranked institution providing quality engineering education and skill development.",
     link: "https://vcet.ac.in",
     category: "technical",
+    tier: "Tier 2",
+    cutoff: "175 / 200",
+  },
+  {
+    id: "tech-7",
+    name: "Kamaraj College of Engineering & Technology",
+    location: "Virudhunagar, Tamil Nadu",
+    description: "Anna University affiliated college offering engineering programs with good placement records.",
+    link: "https://kamarajengg.edu.in",
+    category: "technical",
+    tier: "Tier 3",
+    cutoff: "160 / 200",
+  },
+  {
+    id: "tech-8",
+    name: "Sri Vidya College of Engineering & Technology",
+    location: "Virudhunagar, Tamil Nadu",
+    description: "Self-financing engineering college with diverse technical programs.",
+    link: "https://www.srividya.ac.in",
+    category: "technical",
+    tier: "Tier 3",
+    cutoff: "150 / 200",
   },
 ];
 
@@ -82,6 +116,8 @@ export const defaultNonTechnicalColleges: CollegeItem[] = [
     description: "Autonomous women's college with strong programs in commerce and sciences.",
     link: "https://fatimacollegemdu.org",
     category: "non-technical",
+    tier: "Tier 1",
+    cutoff: "90%",
   },
   {
     id: "nontech-2",
@@ -90,6 +126,8 @@ export const defaultNonTechnicalColleges: CollegeItem[] = [
     description: "Autonomous women's college offering arts, science and management programs.",
     link: "https://ladydoakcollege.edu.in",
     category: "non-technical",
+    tier: "Tier 1",
+    cutoff: "88%",
   },
   {
     id: "nontech-3",
@@ -98,6 +136,8 @@ export const defaultNonTechnicalColleges: CollegeItem[] = [
     description: "Grant-in-aid arts and science college affiliated to Madurai Kamaraj University.",
     link: "http://sourashtracollege.in",
     category: "non-technical",
+    tier: "Tier 2",
+    cutoff: "75%",
   },
   {
     id: "nontech-4",
@@ -106,6 +146,8 @@ export const defaultNonTechnicalColleges: CollegeItem[] = [
     description: "Autonomous arts and science college affiliated to Madurai Kamaraj University.",
     link: "https://americancollege.edu.in",
     category: "non-technical",
+    tier: "Tier 2",
+    cutoff: "78%",
   },
   {
     id: "nontech-5",
@@ -114,6 +156,8 @@ export const defaultNonTechnicalColleges: CollegeItem[] = [
     description: "State public university offering comprehensive undergraduate, postgraduate, and research programs.",
     link: "https://mkuniversity.ac.in",
     category: "non-technical",
+    tier: "Tier 1",
+    cutoff: "85%",
   },
   {
     id: "nontech-6",
@@ -122,7 +166,56 @@ export const defaultNonTechnicalColleges: CollegeItem[] = [
     description: "Premier autonomous institution empowering women through arts, science, and computer applications.",
     link: "https://sfrcollege.edu.in",
     category: "non-technical",
+    tier: "Tier 2",
+    cutoff: "72%",
   },
+  {
+    id: "nontech-7",
+    name: "Ayya Nadar Janaki Ammal College",
+    location: "Sivakasi, Tamil Nadu",
+    description: "Autonomous arts and science college affiliated to Madurai Kamaraj University.",
+    link: "https://www.anjac.ac.in",
+    category: "non-technical",
+    tier: "Tier 3",
+    cutoff: "60%",
+  },
+  {
+    id: "nontech-8",
+    name: "V.V. Vanniaperumal College for Women",
+    location: "Virudhunagar, Tamil Nadu",
+    description: "Aided women's college with arts and science programs.",
+    link: "https://www.vvvcw.ac.in",
+    category: "non-technical",
+    tier: "Tier 3",
+    cutoff: "55%",
+  },
+];
+
+export const defaultGovExams: GovExam[] = [
+  { id: "ge-jan-1", name: "TNPSC Group 4 (Prelims)", month: "January", monthIndex: 1, group: "Tamil Nadu Government", description: "Combined Civil Services Exam IV for Grade IV & Typist posts.", link: "https://www.tnpsc.gov.in" },
+  { id: "ge-jan-2", name: "SSC CGL (Notification)", month: "January", monthIndex: 1, group: "Central Government", description: "Staff Selection Commission Combined Graduate Level exam notification releases.", link: "https://ssc.nic.in" },
+  { id: "ge-feb-1", name: "TNPSC Group 2 (Prelims)", month: "February", monthIndex: 2, group: "Tamil Nadu Government", description: "Combined Civil Services Exam II for Sub-Inspector of Police / Assistant Section Officer posts.", link: "https://www.tnpsc.gov.in" },
+  { id: "ge-feb-2", name: "RRB NTPC (CBT)", month: "February", monthIndex: 2, group: "Central Government", description: "Railway Recruitment Board Non-Technical Popular Categories exam.", link: "https://www.rrbcdg.gov.in" },
+  { id: "ge-mar-1", name: "TNUSRB Police SI", month: "March", monthIndex: 3, group: "Tamil Nadu Government", description: "Tamil Nadu Uniformed Services Recruitment Board — Sub-Inspector of Police.", link: "https://www.tnusrb.tn.gov.in" },
+  { id: "ge-mar-2", name: "SSC CHSL (Tier I)", month: "March", monthIndex: 3, group: "Central Government", description: "Combined Higher Secondary Level exam for DEO, LDC, Postal Assistant posts.", link: "https://ssc.nic.in" },
+  { id: "ge-apr-1", name: "TNPSC Group 1 (Prelims)", month: "April", monthIndex: 4, group: "Tamil Nadu Government", description: "Combined Civil Services Exam I for Deputy Collector, DSP and other gazetted posts.", link: "https://www.tnpsc.gov.in" },
+  { id: "ge-apr-2", name: "UPSC Civil Services (Prelims)", month: "April", monthIndex: 4, group: "Central Government", description: "IAS/IPS/IFS preliminary examination conducted by Union Public Service Commission.", link: "https://upsc.gov.in" },
+  { id: "ge-may-1", name: "TN TRB PG Teacher", month: "May", monthIndex: 5, group: "Tamil Nadu Government", description: "Teachers Recruitment Board — Post Graduate Teacher exam for govt school recruitment.", link: "https://www.trb.tn.nic.in" },
+  { id: "ge-may-2", name: "SSC GD Constable (PET/PST)", month: "May", monthIndex: 5, group: "Central Government", description: "Physical Endurance & Standards Test for GD Constable recruitment in CAPFs.", link: "https://ssc.nic.in" },
+  { id: "ge-jun-1", name: "TNPSC CCSE IV (Mains)", month: "June", monthIndex: 6, group: "Tamil Nadu Government", description: "TNPSC Combined Civil Services IV Main Examination.", link: "https://www.tnpsc.gov.in" },
+  { id: "ge-jun-2", name: "NDA / NA Exam I", month: "June", monthIndex: 6, group: "Central Government", description: "National Defence Academy & Naval Academy exam for 10+2 candidates (UPSC).", link: "https://upsc.gov.in" },
+  { id: "ge-jul-1", name: "TNPSC Group 2 (Mains)", month: "July", monthIndex: 7, group: "Tamil Nadu Government", description: "Main written examination for TNPSC Group 2 selected candidates.", link: "https://www.tnpsc.gov.in" },
+  { id: "ge-jul-2", name: "SSC MTS (Paper I)", month: "July", monthIndex: 7, group: "Central Government", description: "Multi-Tasking (Non-Technical) Staff exam — Paper I computer-based test.", link: "https://ssc.nic.in" },
+  { id: "ge-aug-1", name: "TNUSRB Constable (Written)", month: "August", monthIndex: 8, group: "Tamil Nadu Government", description: "Uniformed Services Recruitment Board Constable written test.", link: "https://www.tnusrb.tn.gov.in" },
+  { id: "ge-aug-2", name: "IBPS PO (Prelims)", month: "August", monthIndex: 8, group: "Central Government", description: "Institute of Banking Personnel Selection — Probationary Officer Prelims.", link: "https://www.ibps.in" },
+  { id: "ge-sep-1", name: "TN TRB TET (Paper I & II)", month: "September", monthIndex: 9, group: "Tamil Nadu Government", description: "Teacher Eligibility Test for Primary and Upper Primary level teacher recruitment.", link: "https://www.trb.tn.nic.in" },
+  { id: "ge-sep-2", name: "SSC CPO (SI) Paper I", month: "September", monthIndex: 9, group: "Central Government", description: "Sub-Inspector in Delhi Police & CAPFs recruitment Paper I.", link: "https://ssc.nic.in" },
+  { id: "ge-oct-1", name: "TNPSC Group 4 (Mains)", month: "October", monthIndex: 10, group: "Tamil Nadu Government", description: "TNPSC Combined Civil Services IV Mains written exam.", link: "https://www.tnpsc.gov.in" },
+  { id: "ge-oct-2", name: "IBPS Clerk (Prelims)", month: "October", monthIndex: 10, group: "Central Government", description: "Institute of Banking Personnel Selection Clerk Preliminary exam.", link: "https://www.ibps.in" },
+  { id: "ge-nov-1", name: "TNPSC Group 1 (Mains)", month: "November", monthIndex: 11, group: "Tamil Nadu Government", description: "Main written exam for TNPSC Group 1 — covers General Studies & Optional subjects.", link: "https://www.tnpsc.gov.in" },
+  { id: "ge-nov-2", name: "RBI Grade B (Phase II)", month: "November", monthIndex: 11, group: "Central Government", description: "Reserve Bank of India Grade B Officers Phase II exam (Economic Policy, Finance, Management).", link: "https://www.rbi.org.in" },
+  { id: "ge-dec-1", name: "TNPSC CCSE Notification", month: "December", monthIndex: 12, group: "Tamil Nadu Government", description: "Annual combined exam notifications typically released — plan and register early.", link: "https://www.tnpsc.gov.in" },
+  { id: "ge-dec-2", name: "SSC JE (Paper I)", month: "December", monthIndex: 12, group: "Central Government", description: "Junior Engineer exam for Civil, Electrical and Mechanical posts in central departments.", link: "https://ssc.nic.in" },
 ];
 
 export const defaultSiteData: SiteData = {
@@ -173,6 +266,7 @@ export const defaultSiteData: SiteData = {
   ],
   technicalColleges: defaultTechnicalColleges,
   nonTechnicalColleges: defaultNonTechnicalColleges,
+  govExams: defaultGovExams,
 };
 
 const STORAGE_KEY = "study-room-site-data-v2";
@@ -197,6 +291,7 @@ export function readSiteData(): SiteData {
       unitQuestions: Array.isArray(parsed.unitQuestions) ? parsed.unitQuestions : defaultSiteData.unitQuestions,
       technicalColleges: Array.isArray(parsed.technicalColleges) ? parsed.technicalColleges : defaultTechnicalColleges,
       nonTechnicalColleges: Array.isArray(parsed.nonTechnicalColleges) ? parsed.nonTechnicalColleges : defaultNonTechnicalColleges,
+      govExams: Array.isArray(parsed.govExams) ? parsed.govExams : defaultGovExams,
     };
   } catch {
     return defaultSiteData;

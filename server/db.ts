@@ -220,6 +220,39 @@ export async function upsertGovernmentExam(record: InsertGovernmentExam) {
   return { ...record, id: result[0].id };
 }
 
+export async function upsertBulkMarks(records: InsertMarkStatement[]) {
+  const db = await getDb();
+  if (!db) return [];
+  const results = [];
+  for (const record of records) {
+    const res = await upsertMarkStatement(record);
+    if (res) results.push(res);
+  }
+  return results;
+}
+
+export async function upsertBulkProjects(records: InsertStudentProject[]) {
+  const db = await getDb();
+  if (!db) return [];
+  const results = [];
+  for (const record of records) {
+    const res = await upsertStudentProject(record);
+    if (res) results.push(res);
+  }
+  return results;
+}
+
+export async function upsertBulkGovernmentExams(records: InsertGovernmentExam[]) {
+  const db = await getDb();
+  if (!db) return [];
+  const results = [];
+  for (const record of records) {
+    const res = await upsertGovernmentExam(record);
+    if (res) results.push(res);
+  }
+  return results;
+}
+
 export async function listQuestionPapers(targetClass?: string) {
   const db = await getDb();
   if (!db) return [];
