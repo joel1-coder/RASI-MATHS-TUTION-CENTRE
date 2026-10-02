@@ -8,6 +8,7 @@ import { trpc } from "@/lib/trpc";
 import { parseAttendanceCsv, summarizeAttendance } from "@shared/portalData";
 import { COOKIE_NAME } from "@shared/const";
 import { readSiteData, saveSiteData, type StudyMaterial } from "@/lib/siteData";
+import { exportToCsv } from "@/lib/exportCsv";
 
 export type Role = "student" | "parent" | "admin" | "teacher";
 
@@ -519,6 +520,87 @@ function ParentWorkspace({ user, onLogout }: { user: User; onLogout: () => void 
   return <div className="min-h-screen bg-[#f6f2f8] text-[#2a203e]"><aside className="fixed inset-y-0 left-0 hidden w-64 border-r border-[#ebe3ef] bg-[#fffdfb] p-6 md:block"><Logo /><div className="mt-12"><p className="mb-3 text-[10px] font-bold uppercase tracking-[0.2em] text-[#a296ac]">Parent workspace</p>{parentNav.map((item, i) => <button key={item} onClick={() => setActive(item)} className={`mb-1 flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-sm ${active === item ? "bg-[#f0e9f7] font-semibold text-[#5b3b92]" : "text-[#81758e] hover:bg-[#faf7fc]"}`}><span className="text-xs">{i === 0 ? <LayoutDashboard size={16} /> : i === 1 ? <ClipboardCheck size={16} /> : i === 2 ? <BarChart3 size={16} /> : i === 3 ? <FileText size={16} /> : i === 4 ? <BookOpen size={16} /> : i === 5 ? <NotebookPen size={16} /> : i === 6 ? <CalendarDays size={16} /> : i === 7 ? <GraduationCap size={16} /> : <ShieldCheck size={16} />}</span>{item}</button>)}</div>{showLinked && <div className="absolute bottom-6 left-6 right-6"><div className="relative rounded-2xl bg-[#f7f1fb] p-4"><button onClick={() => setShowLinked(false)} className="absolute right-3 top-3 text-[#aaa0b1] hover:text-[#5b3b92]"><X size={14} /></button><p className="text-xs font-semibold">Linked student</p><p className="mt-1 text-[11px] leading-4 text-[#8d8197]">{child} · Grade 10</p></div></div>}</aside><main className="md:ml-64"><header className="flex items-center justify-between border-b border-[#ebe3ef] bg-[#fffdfb]/80 px-5 py-5 backdrop-blur md:px-10"><div><p className="text-xs text-[#978ca1]">Parent portal</p><h1 className="mt-1 text-2xl font-semibold tracking-[-0.04em]">Good morning, {user.name.split(" ")[0]}.</h1></div><div className="flex items-center gap-3"><div className="hidden text-right sm:block"><p className="text-xs font-semibold">{user.name}</p><p className="text-[11px] text-[#94889e]">Parent of {child}</p></div><button onClick={onLogout} className="rounded-full border border-[#e4dce9] bg-white p-2.5 text-[#796c88] hover:text-[#5b3b92]" title="Log out"><LogOut size={16} /></button></div></header><div className="p-5 md:p-10"><div className="mb-8 flex items-center justify-between"><div><Pill>{active}</Pill><p className="mt-3 max-w-lg text-sm leading-6 text-[#81758e]">{intro[active]}</p></div><div className="hidden rounded-2xl bg-[#f4e9dd] p-4 text-[#a7633e] md:block"><ShieldCheck size={20} /><p className="mt-2 text-[11px] font-semibold">Private family view</p></div></div>{render()}</div></main></div>;
 }
 
+export interface ManagedStudent {
+  id: string;
+  studentId: string;
+  name: string;
+  parentName?: string;
+  parentPhone?: string;
+  email: string;
+  department: string;
+  section: string;
+  status: "active" | "inactive";
+  joinedDate: string;
+}
+
+export interface SectionItem {
+  id: string;
+  name: string;
+  department: string;
+}
+
+export const INITIAL_DEPARTMENTS = ["BCA", "BSc(CS)", "BA", "IBSc CS", "Grade 10", "Grade 11", "Grade 12", "BSc Mathematics", "Pure Mathematics"];
+
+export const INITIAL_SECTIONS: SectionItem[] = [
+  { id: "sec-bca-a", name: "A", department: "BCA" },
+  { id: "sec-bca-b", name: "B", department: "BCA" },
+  { id: "sec-bsc-a", name: "A", department: "BSc(CS)" },
+  { id: "sec-bsc-b", name: "B", department: "BSc(CS)" },
+  { id: "sec-ba-a", name: "A", department: "BA" },
+  { id: "sec-1", name: "A", department: "Grade 10" },
+  { id: "sec-2", name: "B", department: "Grade 10" },
+  { id: "sec-3", name: "A", department: "IBSc CS" },
+  { id: "sec-4", name: "B", department: "IBSc CS" },
+  { id: "sec-5", name: "Morning Batch", department: "Grade 12" },
+  { id: "sec-6", name: "Evening Batch", department: "Grade 12" },
+];
+
+export const INITIAL_STUDENTS: ManagedStudent[] = [
+  // BCA Section A (10 students matching user screenshots BCAA001 - BCAA010)
+  { id: "bca-1", studentId: "BCAA001", name: "Arun Kumar", parentName: "Ramesh Kumar", parentPhone: "+91 98401 23451", email: "arun.kumar@portal.com", department: "BCA", section: "A", status: "active", joinedDate: "2026-01-10" },
+  { id: "bca-2", studentId: "BCAA002", name: "Bala Kumar", parentName: "Sundar Kumar", parentPhone: "+91 98401 23452", email: "bala.kumar@portal.com", department: "BCA", section: "A", status: "active", joinedDate: "2026-01-10" },
+  { id: "bca-3", studentId: "BCAA003", name: "Divya Kumar", parentName: "Priya Kumar", parentPhone: "+91 98401 23453", email: "divya.kumar@portal.com", department: "BCA", section: "A", status: "active", joinedDate: "2026-01-10" },
+  { id: "bca-4", studentId: "BCAA004", name: "Elan Kumar", parentName: "Selvam Kumar", parentPhone: "+91 98401 23454", email: "elan.kumar@portal.com", department: "BCA", section: "A", status: "active", joinedDate: "2026-01-10" },
+  { id: "bca-5", studentId: "BCAA005", name: "Fathima Kumar", parentName: "Rahman Kumar", parentPhone: "+91 98401 23455", email: "fathima.kumar@portal.com", department: "BCA", section: "A", status: "active", joinedDate: "2026-01-10" },
+  { id: "bca-6", studentId: "BCAA006", name: "Ganesh Kumar", parentName: "Murugan Kumar", parentPhone: "+91 98401 23456", email: "ganesh.kumar@portal.com", department: "BCA", section: "A", status: "active", joinedDate: "2026-01-10" },
+  { id: "bca-7", studentId: "BCAA007", name: "Harish Kumar", parentName: "Venkatesh Kumar", parentPhone: "+91 98401 23457", email: "harish.kumar@portal.com", department: "BCA", section: "A", status: "active", joinedDate: "2026-01-10" },
+  { id: "bca-8", studentId: "BCAA008", name: "Ishwarya Kumar", parentName: "Meenakshi Kumar", parentPhone: "+91 98401 23458", email: "ishwarya.kumar@portal.com", department: "BCA", section: "A", status: "active", joinedDate: "2026-01-10" },
+  { id: "bca-9", studentId: "BCAA009", name: "Janani Kumar", parentName: "Muthu Kumar", parentPhone: "+91 98401 23459", email: "janani.kumar@portal.com", department: "BCA", section: "A", status: "active", joinedDate: "2026-01-10" },
+  { id: "bca-10", studentId: "BCAA010", name: "Kavitha Kumar", parentName: "Natarajan Kumar", parentPhone: "+91 98401 23460", email: "kavitha.kumar@portal.com", department: "BCA", section: "A", status: "active", joinedDate: "2026-01-10" },
+
+  // BSc(CS) Section A
+  { id: "bsc-1", studentId: "001", name: "Aditya Nair", parentName: "Suresh Nair", parentPhone: "+91 94441 12233", email: "aditya001@portal.com", department: "BSc(CS)", section: "A", status: "active", joinedDate: "2026-01-12" },
+  { id: "bsc-2", studentId: "002", name: "Bhavna Jain", parentName: "Mahaveer Jain", parentPhone: "+91 94441 12234", email: "bhavna002@portal.com", department: "BSc(CS)", section: "A", status: "active", joinedDate: "2026-01-12" },
+  { id: "bsc-3", studentId: "003", name: "Chetan Deshmukh", parentName: "Pramod Deshmukh", parentPhone: "+91 94441 12235", email: "chetan003@portal.com", department: "BSc(CS)", section: "A", status: "active", joinedDate: "2026-01-12" },
+
+  // Grade 10 Section A
+  { id: "stu-1", studentId: "21CS01", name: "Ananya Sharma", parentName: "Ramesh Sharma", parentPhone: "+91 98765 43210", email: "student@portal.com", department: "Grade 10", section: "A", status: "active", joinedDate: "2026-01-15" },
+  { id: "stu-2", studentId: "21CS02", name: "Rohit Verma", parentName: "Sunil Verma", parentPhone: "+91 98765 43211", email: "rohit.verma@portal.com", department: "Grade 10", section: "A", status: "active", joinedDate: "2026-01-20" },
+  { id: "stu-3", studentId: "21CS03", name: "Priya Natarajan", parentName: "Natarajan S.", parentPhone: "+91 98765 43212", email: "priya.n@portal.com", department: "Grade 10", section: "B", status: "active", joinedDate: "2026-02-01" },
+  { id: "stu-4", studentId: "22MAT01", name: "Karthik Sundaram", parentName: "Sundaram K.", parentPhone: "+91 98765 43213", email: "karthik.s@portal.com", department: "Grade 12", section: "Morning Batch", status: "active", joinedDate: "2026-02-10" },
+  { id: "stu-5", studentId: "22MAT02", name: "Deepa R.", parentName: "Ramachandran M.", parentPhone: "+91 98765 43214", email: "deepa.r@portal.com", department: "IBSc CS", section: "A", status: "active", joinedDate: "2026-02-18" },
+  { id: "stu-6", studentId: "22MAT03", name: "Suresh Kumar", parentName: "Krishnan Kumar", parentPhone: "+91 98765 43215", email: "suresh.k@portal.com", department: "IBSc CS", section: "B", status: "inactive", joinedDate: "2026-03-02" },
+];
+
+export const loadStoredStudents = (): ManagedStudent[] => {
+  try {
+    const saved = localStorage.getItem("rasi_admin_students");
+    if (!saved) return INITIAL_STUDENTS;
+    const parsed: ManagedStudent[] = JSON.parse(saved);
+    // Ensure every record has parent info merged if missing
+    return parsed.map(s => {
+      const initial = INITIAL_STUDENTS.find(init => init.studentId.toLowerCase() === s.studentId.toLowerCase());
+      return {
+        ...s,
+        parentName: s.parentName || initial?.parentName || "Parent",
+        parentPhone: s.parentPhone || initial?.parentPhone || "+91 98401 23450",
+      };
+    });
+  } catch {
+    return INITIAL_STUDENTS;
+  }
+};
+
 function AdminMarksManager() {
   const [departments] = useState<string[]>(() => {
     try {
@@ -538,14 +620,7 @@ function AdminMarksManager() {
     }
   });
 
-  const [students] = useState<ManagedStudent[]>(() => {
-    try {
-      const saved = localStorage.getItem("rasi_admin_students");
-      return saved ? JSON.parse(saved) : INITIAL_STUDENTS;
-    } catch {
-      return INITIAL_STUDENTS;
-    }
-  });
+  const [students] = useState<ManagedStudent[]>(loadStoredStudents);
 
   const [selectedDept, setSelectedDept] = useState(departments[0] || "BCA");
   const [selectedSection, setSelectedSection] = useState("A");
@@ -1575,66 +1650,7 @@ Tamil Nadu Government,TN TRB PG Teacher,Post Graduation + B.Ed,150,110 / 150`;
   );
 }
 
-export interface ManagedStudent {
-  id: string;
-  studentId: string;
-  name: string;
-  parentName?: string;
-  email: string;
-  department: string;
-  section: string;
-  status: "active" | "inactive";
-  joinedDate: string;
-}
 
-interface SectionItem {
-  id: string;
-  name: string;
-  department: string;
-}
-
-const INITIAL_DEPARTMENTS = ["BCA", "BSc(CS)", "BA", "IBSc CS", "Grade 10", "Grade 11", "Grade 12", "BSc Mathematics", "Pure Mathematics"];
-
-const INITIAL_SECTIONS: SectionItem[] = [
-  { id: "sec-bca-a", name: "A", department: "BCA" },
-  { id: "sec-bca-b", name: "B", department: "BCA" },
-  { id: "sec-bsc-a", name: "A", department: "BSc(CS)" },
-  { id: "sec-bsc-b", name: "B", department: "BSc(CS)" },
-  { id: "sec-ba-a", name: "A", department: "BA" },
-  { id: "sec-1", name: "A", department: "Grade 10" },
-  { id: "sec-2", name: "B", department: "Grade 10" },
-  { id: "sec-3", name: "A", department: "IBSc CS" },
-  { id: "sec-4", name: "B", department: "IBSc CS" },
-  { id: "sec-5", name: "Morning Batch", department: "Grade 12" },
-  { id: "sec-6", name: "Evening Batch", department: "Grade 12" },
-];
-
-const INITIAL_STUDENTS: ManagedStudent[] = [
-  // BCA Section A (10 students matching user screenshots BCAA001 - BCAA010)
-  { id: "bca-1", studentId: "BCAA001", name: "Arun Kumar", parentName: "Ramesh Kumar", email: "arun.kumar@portal.com", department: "BCA", section: "A", status: "active", joinedDate: "2026-01-10" },
-  { id: "bca-2", studentId: "BCAA002", name: "Bala Kumar", parentName: "Sundar Kumar", email: "bala.kumar@portal.com", department: "BCA", section: "A", status: "active", joinedDate: "2026-01-10" },
-  { id: "bca-3", studentId: "BCAA003", name: "Divya Kumar", parentName: "Priya Kumar", email: "divya.kumar@portal.com", department: "BCA", section: "A", status: "active", joinedDate: "2026-01-10" },
-  { id: "bca-4", studentId: "BCAA004", name: "Elan Kumar", parentName: "Selvam Kumar", email: "elan.kumar@portal.com", department: "BCA", section: "A", status: "active", joinedDate: "2026-01-10" },
-  { id: "bca-5", studentId: "BCAA005", name: "Fathima Kumar", parentName: "Rahman Kumar", email: "fathima.kumar@portal.com", department: "BCA", section: "A", status: "active", joinedDate: "2026-01-10" },
-  { id: "bca-6", studentId: "BCAA006", name: "Ganesh Kumar", parentName: "Murugan Kumar", email: "ganesh.kumar@portal.com", department: "BCA", section: "A", status: "active", joinedDate: "2026-01-10" },
-  { id: "bca-7", studentId: "BCAA007", name: "Harish Kumar", parentName: "Venkatesh Kumar", email: "harish.kumar@portal.com", department: "BCA", section: "A", status: "active", joinedDate: "2026-01-10" },
-  { id: "bca-8", studentId: "BCAA008", name: "Ishwarya Kumar", parentName: "Meenakshi Kumar", email: "ishwarya.kumar@portal.com", department: "BCA", section: "A", status: "active", joinedDate: "2026-01-10" },
-  { id: "bca-9", studentId: "BCAA009", name: "Janani Kumar", parentName: "Muthu Kumar", email: "janani.kumar@portal.com", department: "BCA", section: "A", status: "active", joinedDate: "2026-01-10" },
-  { id: "bca-10", studentId: "BCAA010", name: "Kavitha Kumar", parentName: "Natarajan Kumar", email: "kavitha.kumar@portal.com", department: "BCA", section: "A", status: "active", joinedDate: "2026-01-10" },
-
-  // BSc(CS) Section A
-  { id: "bsc-1", studentId: "001", name: "Aditya Nair", parentName: "Suresh Nair", email: "aditya001@portal.com", department: "BSc(CS)", section: "A", status: "active", joinedDate: "2026-01-12" },
-  { id: "bsc-2", studentId: "002", name: "Bhavna Jain", parentName: "Mahaveer Jain", email: "bhavna002@portal.com", department: "BSc(CS)", section: "A", status: "active", joinedDate: "2026-01-12" },
-  { id: "bsc-3", studentId: "003", name: "Chetan Deshmukh", parentName: "Pramod Deshmukh", email: "chetan003@portal.com", department: "BSc(CS)", section: "A", status: "active", joinedDate: "2026-01-12" },
-
-  // Grade 10 Section A
-  { id: "stu-1", studentId: "21CS01", name: "Ananya Sharma", parentName: "Ramesh Sharma", email: "student@portal.com", department: "Grade 10", section: "A", status: "active", joinedDate: "2026-01-15" },
-  { id: "stu-2", studentId: "21CS02", name: "Rohit Verma", parentName: "Sunil Verma", email: "rohit.verma@portal.com", department: "Grade 10", section: "A", status: "active", joinedDate: "2026-01-20" },
-  { id: "stu-3", studentId: "21CS03", name: "Priya Natarajan", parentName: "Natarajan S.", email: "priya.n@portal.com", department: "Grade 10", section: "B", status: "active", joinedDate: "2026-02-01" },
-  { id: "stu-4", studentId: "22MAT01", name: "Karthik Sundaram", parentName: "Sundaram K.", email: "karthik.s@portal.com", department: "Grade 12", section: "Morning Batch", status: "active", joinedDate: "2026-02-10" },
-  { id: "stu-5", studentId: "22MAT02", name: "Deepa R.", parentName: "Ramachandran M.", email: "deepa.r@portal.com", department: "IBSc CS", section: "A", status: "active", joinedDate: "2026-02-18" },
-  { id: "stu-6", studentId: "22MAT03", name: "Suresh Kumar", parentName: "Krishnan Kumar", email: "suresh.k@portal.com", department: "IBSc CS", section: "B", status: "inactive", joinedDate: "2026-03-02" },
-];
 
 function AdminStudentManager() {
   const [departments, setDepartments] = useState<string[]>(() => {
@@ -1655,14 +1671,7 @@ function AdminStudentManager() {
     }
   });
 
-  const [students, setStudents] = useState<ManagedStudent[]>(() => {
-    try {
-      const saved = localStorage.getItem("rasi_admin_students");
-      return saved ? JSON.parse(saved) : INITIAL_STUDENTS;
-    } catch {
-      return INITIAL_STUDENTS;
-    }
-  });
+  const [students, setStudents] = useState<ManagedStudent[]>(loadStoredStudents);
 
   // Save changes to localStorage
   useEffect(() => {
@@ -1686,6 +1695,8 @@ function AdminStudentManager() {
   const [singleStudent, setSingleStudent] = useState({
     studentId: "",
     name: "",
+    parentName: "",
+    parentPhone: "",
     email: "",
     department: departments[0] || "IBSc CS",
     section: "A",
@@ -1768,6 +1779,8 @@ function AdminStudentManager() {
       id: `stu-${Date.now()}`,
       studentId: singleStudent.studentId.trim(),
       name: singleStudent.name.trim(),
+      parentName: singleStudent.parentName.trim() || undefined,
+      parentPhone: singleStudent.parentPhone.trim() || undefined,
       email: singleStudent.email.trim(),
       department: singleStudent.department || departments[0] || "General",
       section: singleStudent.section.trim() || "A",
@@ -1778,6 +1791,8 @@ function AdminStudentManager() {
     setSingleStudent({
       studentId: "",
       name: "",
+      parentName: "",
+      parentPhone: "",
       email: "",
       department: departments[0] || "IBSc CS",
       section: "A",
@@ -1787,18 +1802,13 @@ function AdminStudentManager() {
 
   // Download Sample Template
   const handleDownloadTemplate = () => {
-    const csvContent = "data:text/csv;charset=utf-8," + encodeURIComponent(
-      "studentId,name,email,section,department\n" +
-      "23CS101,Aarav Patel,aarav.p@portal.com,A,IBSc CS\n" +
-      "23CS102,Meera Krishnan,meera.k@portal.com,A,Grade 10\n" +
-      "23CS103,Vikram Singhania,vikram.s@portal.com,B,Grade 12\n"
-    );
-    const link = document.createElement("a");
-    link.setAttribute("href", csvContent);
-    link.setAttribute("download", "students_import_template.csv");
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    exportToCsv("students_import_template.csv", [
+      "studentId", "name", "parentName", "parentPhone", "email", "section", "department"
+    ], [
+      ["23CS101", "Aarav Patel", "Kishore Patel", "+91 98401 11223", "aarav.p@portal.com", "A", "IBSc CS"],
+      ["23CS102", "Meera Krishnan", "Krishnan S.", "+91 98401 11224", "meera.k@portal.com", "A", "Grade 10"],
+      ["23CS103", "Vikram Singhania", "Rajesh Singhania", "+91 98401 11225", "vikram.s@portal.com", "B", "Grade 12"]
+    ]);
     showToast("Sample template downloaded!");
   };
 
@@ -1830,7 +1840,9 @@ function AdminStudentManager() {
 
     const header = lines[0].toLowerCase().split(",").map(h => h.trim().replace(/^["']|["']$/g, ""));
     const idIdx = header.findIndex(h => h.includes("id") || h.includes("studentid") || h.includes("roll"));
-    const nameIdx = header.findIndex(h => h.includes("name") || h.includes("student"));
+    const nameIdx = header.findIndex(h => (h.includes("name") || h.includes("student")) && !h.includes("parent"));
+    const pNameIdx = header.findIndex(h => h.includes("parent") && (h.includes("name") || !h.includes("phone")));
+    const pPhoneIdx = header.findIndex(h => (h.includes("parent") || h.includes("phone") || h.includes("mobile") || h.includes("contact")) && !h.includes("email"));
     const emailIdx = header.findIndex(h => h.includes("email") || h.includes("mail"));
     const secIdx = header.findIndex(h => h.includes("section") || h.includes("batch") || h.includes("sec"));
     const deptIdx = header.findIndex(h => h.includes("department") || h.includes("dept") || h.includes("class"));
@@ -1844,6 +1856,8 @@ function AdminStudentManager() {
 
       const sid = (idIdx !== -1 ? row[idIdx] : row[0]) || `RM-${Date.now()}-${i}`;
       const sname = (nameIdx !== -1 ? row[nameIdx] : row[1]) || "Imported Student";
+      const sparentName = pNameIdx !== -1 ? row[pNameIdx] : "Parent";
+      const sparentPhone = pPhoneIdx !== -1 ? row[pPhoneIdx] : "+91 98401 23450";
       const semail = (emailIdx !== -1 ? row[emailIdx] : row[2]) || `student_${i}@portal.com`;
       const ssec = bulkSection.trim() || (secIdx !== -1 ? row[secIdx] : row[3]) || "A";
       const sdept = bulkDept.trim() || (deptIdx !== -1 ? row[deptIdx] : row[4]) || departments[0] || "General";
@@ -1853,6 +1867,8 @@ function AdminStudentManager() {
           id: `stu-${Date.now()}-${i}`,
           studentId: sid,
           name: sname,
+          parentName: sparentName,
+          parentPhone: sparentPhone,
           email: semail,
           department: sdept,
           section: ssec,
@@ -2065,7 +2081,7 @@ function AdminStudentManager() {
           <h2 className="text-base font-bold text-[#2a203e]">Add Student (Single)</h2>
         </div>
         <form onSubmit={handleAddSingleStudent} className="mt-4 space-y-4">
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <div>
               <label className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.1em] text-[#81758e]">Student ID</label>
               <input
@@ -2085,6 +2101,26 @@ function AdminStudentManager() {
                 value={singleStudent.name}
                 onChange={e => setSingleStudent({ ...singleStudent, name: e.target.value })}
                 placeholder="Full Name"
+                className="w-full rounded-2xl border border-[#e4dce9] bg-white px-3.5 py-2.5 text-sm focus:border-[#5b3b92] focus:outline-none"
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.1em] text-[#81758e]">Parent Name</label>
+              <input
+                type="text"
+                value={singleStudent.parentName}
+                onChange={e => setSingleStudent({ ...singleStudent, parentName: e.target.value })}
+                placeholder="e.g. Ramesh Kumar"
+                className="w-full rounded-2xl border border-[#e4dce9] bg-white px-3.5 py-2.5 text-sm focus:border-[#5b3b92] focus:outline-none"
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.1em] text-[#81758e]">Parent Phone / WhatsApp</label>
+              <input
+                type="text"
+                value={singleStudent.parentPhone}
+                onChange={e => setSingleStudent({ ...singleStudent, parentPhone: e.target.value })}
+                placeholder="e.g. +91 98401 23456"
                 className="w-full rounded-2xl border border-[#e4dce9] bg-white px-3.5 py-2.5 text-sm focus:border-[#5b3b92] focus:outline-none"
               />
             </div>
@@ -2233,8 +2269,25 @@ function AdminStudentManager() {
             </p>
           </div>
 
-          {/* Search & Filters */}
+          {/* Search & Filters & Export */}
           <div className="flex flex-wrap items-center gap-2.5">
+            <button
+              type="button"
+              onClick={() => {
+                exportToCsv("enrolled_students.csv", [
+                  "Student ID", "Student Name", "Parent Name", "Parent Phone", "Email", "Department", "Section", "Status", "Joined Date"
+                ], filteredStudents.map(s => [
+                  s.studentId, s.name, s.parentName || "", s.parentPhone || "", s.email, s.department, s.section, s.status, s.joinedDate
+                ]));
+                showToast("Exported enrolled students to CSV!");
+              }}
+              className="inline-flex items-center gap-1.5 rounded-xl border border-[#d8cfe0] bg-[#faf7fc] px-3.5 py-1.5 text-xs font-semibold text-[#5b3b92] shadow-2xs hover:bg-[#f2eaf7]"
+              title="Export enrolled students to Excel/CSV"
+            >
+              <FileSpreadsheet size={14} className="text-[#107c41]" />
+              Export CSV
+            </button>
+
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[#a397ad]" size={14} />
               <input
@@ -2285,6 +2338,7 @@ function AdminStudentManager() {
                 <tr className="border-b border-[#f0e8f4] text-[11px] font-bold uppercase tracking-[0.1em] text-[#8d8197]">
                   <th className="py-3 pl-2 pr-4">Student ID</th>
                   <th className="py-3 px-4">Student Info</th>
+                  <th className="py-3 px-4">Parent Info</th>
                   <th className="py-3 px-4">Department</th>
                   <th className="py-3 px-4">Section</th>
                   <th className="py-3 px-4">Status</th>
@@ -2309,6 +2363,12 @@ function AdminStudentManager() {
                           <p className="font-semibold text-[#2a203e]">{student.name}</p>
                           <p className="text-[11px] text-[#8d8197]">{student.email}</p>
                         </div>
+                      </div>
+                    </td>
+                    <td className="py-3.5 px-4">
+                      <div>
+                        <p className="font-semibold text-[#2a203e]">{student.parentName || "—"}</p>
+                        <p className="text-[11px] text-[#8d8197]">{student.parentPhone || "—"}</p>
                       </div>
                     </td>
                     <td className="py-3.5 px-4">
@@ -2404,6 +2464,29 @@ function AdminStudentManager() {
                     required
                     value={editingStudent.name}
                     onChange={e => setEditingStudent({ ...editingStudent, name: e.target.value })}
+                    className="w-full rounded-2xl border border-[#e4dce9] px-3.5 py-2.5 focus:border-[#5b3b92] focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div>
+                  <label className="mb-1 block font-semibold uppercase tracking-[0.08em] text-[#71647f]">Parent Name</label>
+                  <input
+                    type="text"
+                    value={editingStudent.parentName || ""}
+                    onChange={e => setEditingStudent({ ...editingStudent, parentName: e.target.value })}
+                    placeholder="e.g. Ramesh Kumar"
+                    className="w-full rounded-2xl border border-[#e4dce9] px-3.5 py-2.5 focus:border-[#5b3b92] focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="mb-1 block font-semibold uppercase tracking-[0.08em] text-[#71647f]">Parent Phone / WhatsApp</label>
+                  <input
+                    type="text"
+                    value={editingStudent.parentPhone || ""}
+                    onChange={e => setEditingStudent({ ...editingStudent, parentPhone: e.target.value })}
+                    placeholder="e.g. +91 98401 23456"
                     className="w-full rounded-2xl border border-[#e4dce9] px-3.5 py-2.5 focus:border-[#5b3b92] focus:outline-none"
                   />
                 </div>
@@ -4260,14 +4343,7 @@ function TeacherWorkspace({ user, onLogout }: { user: User; onLogout: () => void
     }
   });
 
-  const [students] = useState<ManagedStudent[]>(() => {
-    try {
-      const saved = localStorage.getItem("rasi_admin_students");
-      return saved ? JSON.parse(saved) : INITIAL_STUDENTS;
-    } catch {
-      return INITIAL_STUDENTS;
-    }
-  });
+  const [students] = useState<ManagedStudent[]>(loadStoredStudents);
 
   // Toast notification state
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -4282,6 +4358,18 @@ function TeacherWorkspace({ user, onLogout }: { user: User; onLogout: () => void
   const [selectedSection, setSelectedSection] = useState("A");
   const [attendanceDescription, setAttendanceDescription] = useState("");
   const [attendanceState, setAttendanceState] = useState<Record<string, "present" | "absent">>({});
+  const [isSubmittingAttendance, setIsSubmittingAttendance] = useState(false);
+  const [whatsappModalRecord, setWhatsappModalRecord] = useState<AttendanceSessionRecord | null>(null);
+  const [whatsappFilter, setWhatsappFilter] = useState<"absent" | "all">("absent");
+  const [sentWhatsappIds, setSentWhatsappIds] = useState<Record<string, boolean>>({});
+
+  // --- ATTENDANCE RECORDS STATE (Tab 2: Filter & Roster Edit) ---
+  const [fetchAttDept, setFetchAttDept] = useState("BCA");
+  const [fetchAttSection, setFetchAttSection] = useState("A");
+  const [fetchAttDate, setFetchAttDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [selectedAttRecordId, setSelectedAttRecordId] = useState<string | null>(null);
+  const [editingAttendanceMap, setEditingAttendanceMap] = useState<Record<string, "present" | "absent">>({});
+
   const [sessionLogs, setSessionLogs] = useState<AttendanceSessionRecord[]>(() => {
     try {
       const saved = localStorage.getItem("rasi_attendance_sessions");
@@ -4297,7 +4385,7 @@ function TeacherWorkspace({ user, onLogout }: { user: User; onLogout: () => void
     } catch {}
   }, [sessionLogs]);
 
-  // Available sections for chosen department
+  // Available sections for chosen department in Home tab
   const availableSections = useMemo(() => {
     const matched = sections.filter(s => s.department === selectedDept);
     return matched.length > 0 ? matched : [{ id: "default-a", name: "A", department: selectedDept }];
@@ -4308,6 +4396,18 @@ function TeacherWorkspace({ user, onLogout }: { user: User; onLogout: () => void
       setSelectedSection(availableSections[0].name);
     }
   }, [availableSections, selectedSection]);
+
+  // Available sections for chosen department in Attendance Records tab
+  const availableAttSections = useMemo(() => {
+    const matched = sections.filter(s => s.department === fetchAttDept);
+    return matched.length > 0 ? matched : [{ id: "default-att-sec", name: "A", department: fetchAttDept }];
+  }, [sections, fetchAttDept]);
+
+  useEffect(() => {
+    if (availableAttSections.length > 0 && !availableAttSections.some(s => s.name === fetchAttSection)) {
+      setFetchAttSection(availableAttSections[0].name);
+    }
+  }, [availableAttSections, fetchAttSection]);
 
   const batchStudents = useMemo(() => {
     return students.filter(
@@ -4353,32 +4453,148 @@ function TeacherWorkspace({ user, onLogout }: { user: User; onLogout: () => void
 
   const handleSubmitAttendance = (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSubmittingAttendance) return;
     if (batchStudents.length === 0) {
       showToast("No students found in this department and section.");
       return;
     }
-    const newRecord: AttendanceSessionRecord = {
-      id: `att-sess-${Date.now()}`,
-      date: attendanceDate,
-      department: selectedDept,
-      section: selectedSection,
-      description: attendanceDescription.trim() || "Daily attendance record",
-      totalStudents: batchStudents.length,
-      presentCount,
-      absentCount,
-      absentStudentIds: absentIds,
-      recordedAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-    };
-    setSessionLogs([newRecord, ...sessionLogs]);
-    showToast(`✅ Attendance saved for ${selectedDept} Sec ${selectedSection} (${presentCount} Present, ${absentCount} Absent)`);
-    setAttendanceDescription("");
+    setIsSubmittingAttendance(true);
+    try {
+      const newRecord: AttendanceSessionRecord = {
+        id: `att-sess-${Date.now()}`,
+        date: attendanceDate,
+        department: selectedDept,
+        section: selectedSection,
+        description: attendanceDescription.trim() || "Daily attendance record",
+        totalStudents: batchStudents.length,
+        presentCount,
+        absentCount,
+        absentStudentIds: absentIds,
+        recordedAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      };
+      setSessionLogs([newRecord, ...sessionLogs]);
+      showToast(`✅ Attendance saved for ${selectedDept} Sec ${selectedSection} (${presentCount} Present, ${absentCount} Absent)`);
+      setAttendanceDescription("");
+      // Launch WhatsApp alert checklist modal immediately
+      setWhatsappModalRecord(newRecord);
+      setWhatsappFilter("absent");
+    } finally {
+      setIsSubmittingAttendance(false);
+    }
   };
 
   const handleDeleteAttendance = (id: string) => {
     if (confirm("Delete this attendance log?")) {
       setSessionLogs(sessionLogs.filter(s => s.id !== id));
+      if (selectedAttRecordId === id) setSelectedAttRecordId(null);
       showToast("Attendance record deleted.");
     }
+  };
+
+  const handleSendWhatsappAlert = (student: ManagedStudent, record: AttendanceSessionRecord) => {
+    const rawPhone = student.parentPhone || "";
+    const cleanPhoneDigits = rawPhone.replace(/[^0-9]/g, "");
+    if (!cleanPhoneDigits) {
+      showToast(`⚠️ No phone number registered for ${student.name}'s parent.`);
+      return;
+    }
+    const finalPhone = cleanPhoneDigits.startsWith("91") && cleanPhoneDigits.length === 12
+      ? cleanPhoneDigits
+      : cleanPhoneDigits.length === 10
+      ? `91${cleanPhoneDigits}`
+      : cleanPhoneDigits;
+
+    const isAbsent = record.absentStudentIds.includes(student.studentId);
+    const statusText = isAbsent ? "Absent" : "Present";
+    const msg = `Dear parent, this is to inform you that your ward ${student.name} (${student.studentId}) was marked ${statusText} for ${record.description || "Class Attendance"} on ${record.date}. Please contact RASI Maths Tuition Centre for any queries.`;
+    const waUrl = `https://wa.me/${finalPhone}?text=${encodeURIComponent(msg)}`;
+    window.open(waUrl, "_blank");
+    setSentWhatsappIds(prev => ({ ...prev, [`${record.id}-${student.studentId}`]: true }));
+    showToast(`Opening WhatsApp chat for ${student.name}'s parent...`);
+  };
+
+  // Attendance Records Tab: filtered matches
+  const filteredAttendanceLogs = useMemo(() => {
+    return sessionLogs.filter(
+      r => r.department.toLowerCase() === fetchAttDept.toLowerCase() &&
+           r.section.toLowerCase() === fetchAttSection.toLowerCase() &&
+           (!fetchAttDate || r.date === fetchAttDate)
+    );
+  }, [sessionLogs, fetchAttDept, fetchAttSection, fetchAttDate]);
+
+  const displayAttendanceLogs = filteredAttendanceLogs.length > 0
+    ? filteredAttendanceLogs
+    : sessionLogs.filter(
+        r => r.department.toLowerCase() === fetchAttDept.toLowerCase() &&
+             r.section.toLowerCase() === fetchAttSection.toLowerCase()
+      );
+
+  const activeSelectedAttRecord = useMemo(() => {
+    if (selectedAttRecordId) {
+      return sessionLogs.find(l => l.id === selectedAttRecordId) || displayAttendanceLogs[0] || null;
+    }
+    return displayAttendanceLogs[0] || null;
+  }, [selectedAttRecordId, sessionLogs, displayAttendanceLogs]);
+
+  useEffect(() => {
+    if (!activeSelectedAttRecord) return;
+    const batch = students.filter(
+      s => s.department.toLowerCase() === activeSelectedAttRecord.department.toLowerCase() &&
+           s.section.toLowerCase() === activeSelectedAttRecord.section.toLowerCase()
+    );
+    const map: Record<string, "present" | "absent"> = {};
+    batch.forEach(s => {
+      map[s.studentId] = activeSelectedAttRecord.absentStudentIds.includes(s.studentId) ? "absent" : "present";
+    });
+    setEditingAttendanceMap(map);
+  }, [activeSelectedAttRecord, students]);
+
+  const toggleRosterAttendance = (studentId: string) => {
+    setEditingAttendanceMap(prev => ({
+      ...prev,
+      [studentId]: prev[studentId] === "absent" ? "present" : "absent",
+    }));
+  };
+
+  const markRosterAllPresent = () => {
+    if (!activeSelectedAttRecord) return;
+    const batch = students.filter(
+      s => s.department.toLowerCase() === activeSelectedAttRecord.department.toLowerCase() &&
+           s.section.toLowerCase() === activeSelectedAttRecord.section.toLowerCase()
+    );
+    const map: Record<string, "present" | "absent"> = {};
+    batch.forEach(s => { map[s.studentId] = "present"; });
+    setEditingAttendanceMap(map);
+  };
+
+  const markRosterAllAbsent = () => {
+    if (!activeSelectedAttRecord) return;
+    const batch = students.filter(
+      s => s.department.toLowerCase() === activeSelectedAttRecord.department.toLowerCase() &&
+           s.section.toLowerCase() === activeSelectedAttRecord.section.toLowerCase()
+    );
+    const map: Record<string, "present" | "absent"> = {};
+    batch.forEach(s => { map[s.studentId] = "absent"; });
+    setEditingAttendanceMap(map);
+  };
+
+  const handleSaveAttendanceChanges = () => {
+    if (!activeSelectedAttRecord) return;
+    const batch = students.filter(
+      s => s.department.toLowerCase() === activeSelectedAttRecord.department.toLowerCase() &&
+           s.section.toLowerCase() === activeSelectedAttRecord.section.toLowerCase()
+    );
+    const newAbsentIds = batch.filter(s => editingAttendanceMap[s.studentId] === "absent").map(s => s.studentId);
+    const newPresentCount = batch.length - newAbsentIds.length;
+    const updatedRecord: AttendanceSessionRecord = {
+      ...activeSelectedAttRecord,
+      absentStudentIds: newAbsentIds,
+      absentCount: newAbsentIds.length,
+      presentCount: newPresentCount,
+      totalStudents: batch.length,
+    };
+    setSessionLogs(sessionLogs.map(l => l.id === activeSelectedAttRecord.id ? updatedRecord : l));
+    showToast(`✅ Saved updated attendance for ${updatedRecord.department} Sec ${updatedRecord.section} (${newPresentCount} Present, ${newAbsentIds.length} Absent)!`);
   };
 
   // --- MARKS PORTAL STATE (Enter Marks Tab - Screenshot 1) ---
@@ -4788,9 +5004,11 @@ function TeacherWorkspace({ user, onLogout }: { user: User; onLogout: () => void
                     <div className="pt-4">
                       <button
                         type="submit"
-                        className="rounded-2xl bg-[#0f4c81] px-8 py-3.5 text-sm font-bold tracking-wide text-white shadow-md transition hover:bg-[#0b3860]"
+                        disabled={isSubmittingAttendance}
+                        className="inline-flex items-center gap-2 rounded-2xl bg-[#0f4c81] px-8 py-3.5 text-sm font-bold tracking-wide text-white shadow-md transition hover:bg-[#0b3860] disabled:cursor-not-allowed disabled:opacity-60"
                       >
-                        Submit Attendance
+                        {isSubmittingAttendance ? <Loader2 size={16} className="animate-spin" /> : null}
+                        Submit Attendance & Alert Parents
                       </button>
                     </div>
                   </div>
@@ -4801,25 +5019,337 @@ function TeacherWorkspace({ user, onLogout }: { user: User; onLogout: () => void
         )}
 
         {/* ========================================================= */}
-        {/* TAB 2: ATTENDANCE RECORDS (Full History)                  */}
+        {/* TAB 2: ATTENDANCE RECORDS (Filter Bar & Roster Editor)    */}
         {/* ========================================================= */}
         {activeTab === "attendance_records" && (
           <div className="space-y-6">
+            {/* Header: Title */}
+            <div className="flex items-center gap-2.5">
+              <span className="text-xl">📋</span>
+              <h1 className="text-2xl font-bold tracking-tight text-[#1b3a6b]">
+                Attendance Records
+              </h1>
+            </div>
+
+            {/* Filter Card: DEPARTMENT, SECTION, DATE, FETCH & EXPORT */}
+            <div className="rounded-2xl border border-[#eedfce] bg-white p-6 shadow-2xs">
+              <form onSubmit={e => { e.preventDefault(); showToast(`Filtered attendance for ${fetchAttDept} Sec ${fetchAttSection}`); }} className="flex flex-wrap items-end gap-4">
+                <div>
+                  <label className="block text-[11px] font-bold uppercase tracking-[0.14em] text-[#6b7280]">
+                    DEPARTMENT
+                  </label>
+                  <select
+                    value={fetchAttDept}
+                    onChange={e => setFetchAttDept(e.target.value)}
+                    className="mt-2 w-36 rounded-xl border border-[#d1d5db] bg-white px-3.5 py-2 text-sm font-semibold text-[#1f2937] focus:border-[#1b55a8] focus:outline-none"
+                  >
+                    {departments.map(d => (
+                      <option key={d} value={d}>{d}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-bold uppercase tracking-[0.14em] text-[#6b7280]">
+                    SECTION
+                  </label>
+                  <select
+                    value={fetchAttSection}
+                    onChange={e => setFetchAttSection(e.target.value)}
+                    className="mt-2 w-28 rounded-xl border border-[#d1d5db] bg-white px-3.5 py-2 text-sm font-semibold text-[#1f2937] focus:border-[#1b55a8] focus:outline-none"
+                  >
+                    {availableAttSections.map(sec => (
+                      <option key={sec.id} value={sec.name}>{sec.name}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-bold uppercase tracking-[0.14em] text-[#6b7280]">
+                    DATE
+                  </label>
+                  <input
+                    type="date"
+                    value={fetchAttDate}
+                    onChange={e => setFetchAttDate(e.target.value)}
+                    className="mt-2 w-44 rounded-xl border border-[#d1d5db] bg-white px-3.5 py-2 text-sm font-semibold text-[#1f2937] focus:border-[#1b55a8] focus:outline-none"
+                  />
+                </div>
+
+                <button
+                  type="submit"
+                  className="inline-flex items-center gap-2 rounded-xl bg-[#1b55a8] px-6 py-2.5 text-xs font-bold uppercase tracking-[0.08em] text-white shadow-sm transition hover:bg-[#15468d]"
+                >
+                  <Search size={14} />
+                  Fetch Records
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (displayAttendanceLogs.length === 0) {
+                      showToast("No attendance logs to export.");
+                      return;
+                    }
+                    const rows: string[][] = [];
+                    displayAttendanceLogs.forEach(log => {
+                      const batch = students.filter(
+                        s => s.department.toLowerCase() === log.department.toLowerCase() &&
+                             s.section.toLowerCase() === log.section.toLowerCase()
+                      );
+                      batch.forEach((s, idx) => {
+                        const status = log.absentStudentIds.includes(s.studentId) ? "Absent" : "Present";
+                        rows.push([
+                          String(idx + 1),
+                          s.studentId,
+                          s.name,
+                          s.parentName || "—",
+                          s.parentPhone || "—",
+                          status,
+                          log.department,
+                          log.section,
+                          log.date,
+                          log.description
+                        ]);
+                      });
+                    });
+                    exportToCsv(`attendance_records_${fetchAttDept}_Sec${fetchAttSection}.csv`, [
+                      "S.NO", "STUDENT ID", "STUDENT NAME", "PARENT NAME", "PARENT PHONE", "ATTENDANCE", "DEPARTMENT", "SECTION", "DATE", "DESCRIPTION"
+                    ], rows);
+                    showToast("Exported attendance records to CSV!");
+                  }}
+                  className="inline-flex items-center gap-1.5 rounded-xl border border-[#d8cfe0] bg-white px-4 py-2.5 text-xs font-semibold text-[#5b3b92] shadow-2xs hover:bg-[#f4edf9]"
+                  title="Export all matching records to Excel/CSV"
+                >
+                  <FileSpreadsheet size={14} className="text-[#107c41]" />
+                  Export All CSV
+                </button>
+              </form>
+            </div>
+
+            {/* Session Selector & Active Session Editor */}
+            {activeSelectedAttRecord ? (
+              <div className="rounded-3xl border border-[#eedfce] bg-white p-6 shadow-xs space-y-6">
+                {/* Active Session Header */}
+                <div className="flex flex-wrap items-center justify-between gap-4 border-b border-[#f3ebf6] pb-4">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="rounded-lg bg-[#e9f0fc] px-2.5 py-1 text-xs font-bold text-[#1b55a8]">
+                        {activeSelectedAttRecord.department} - Sec {activeSelectedAttRecord.section}
+                      </span>
+                      <span className="text-xs text-[#6b7280]">
+                        Session Date: {formatDateDisplay(activeSelectedAttRecord.date)} at {activeSelectedAttRecord.recordedAt}
+                      </span>
+                    </div>
+                    <h2 className="mt-1.5 text-lg font-bold text-[#1b3a6b]">
+                      {activeSelectedAttRecord.description || "Classroom Session"}
+                    </h2>
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setWhatsappModalRecord(activeSelectedAttRecord);
+                        setWhatsappFilter("absent");
+                      }}
+                      className="inline-flex items-center gap-1.5 rounded-xl bg-[#25d366] px-3.5 py-2 text-xs font-bold text-white shadow-xs hover:bg-[#1ebd59]"
+                      title="Send WhatsApp Alerts to parents"
+                    >
+                      <MessageCircle size={14} />
+                      WhatsApp Alerts
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const batch = students.filter(
+                          s => s.department.toLowerCase() === activeSelectedAttRecord.department.toLowerCase() &&
+                               s.section.toLowerCase() === activeSelectedAttRecord.section.toLowerCase()
+                        );
+                        exportToCsv(`attendance_${activeSelectedAttRecord.department}_Sec${activeSelectedAttRecord.section}_${activeSelectedAttRecord.date}.csv`, [
+                          "S.NO", "STUDENT ID", "STUDENT NAME", "PARENT NAME", "PARENT PHONE", "ATTENDANCE"
+                        ], batch.map((s, idx) => [
+                          String(idx + 1),
+                          s.studentId,
+                          s.name,
+                          s.parentName || "—",
+                          s.parentPhone || "—",
+                          editingAttendanceMap[s.studentId] === "absent" ? "Absent" : "Present"
+                        ]));
+                        showToast("Exported session attendance to CSV!");
+                      }}
+                      className="inline-flex items-center gap-1.5 rounded-xl border border-[#d8cfe0] bg-white px-3 py-2 text-xs font-semibold text-[#5b3b92] shadow-2xs hover:bg-[#f4edf9]"
+                      title="Export this session's sheet to CSV"
+                    >
+                      <FileSpreadsheet size={13} className="text-[#107c41]" />
+                      Export Session CSV
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteAttendance(activeSelectedAttRecord.id)}
+                      className="rounded-xl border border-[#fee2e2] bg-[#fef2f2] p-2 text-[#dc2626] hover:bg-[#fecaca]"
+                      title="Delete Session"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Live Roster Edit Bar */}
+                <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-[#eee6f0] bg-[#faf7fd] p-4">
+                  {(() => {
+                    const batch = students.filter(
+                      s => s.department.toLowerCase() === activeSelectedAttRecord.department.toLowerCase() &&
+                           s.section.toLowerCase() === activeSelectedAttRecord.section.toLowerCase()
+                    );
+                    const currentPresent = batch.filter(s => (editingAttendanceMap[s.studentId] ?? "present") === "present").length;
+                    const currentAbsent = batch.filter(s => editingAttendanceMap[s.studentId] === "absent").length;
+
+                    return (
+                      <>
+                        <div className="flex flex-wrap items-center gap-4">
+                          <span className="flex items-center gap-1.5 text-xs font-bold text-[#1b7e47]">
+                            <span className="h-2.5 w-2.5 rounded-full bg-[#1b7e47]"></span>
+                            Present: {currentPresent}
+                          </span>
+                          <span className="flex items-center gap-1.5 text-xs font-bold text-[#d93838]">
+                            <span className="h-2.5 w-2.5 rounded-full bg-[#d93838]"></span>
+                            Absent: {currentAbsent}
+                          </span>
+                          <span className="text-xs text-[#8d8197]">
+                            ({batch.length} enrolled in batch)
+                          </span>
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={markRosterAllPresent}
+                            className="rounded-xl border border-[#d1d5db] bg-white px-3 py-1.5 text-xs font-semibold text-[#374151] hover:bg-[#f9fafb]"
+                          >
+                            All Present
+                          </button>
+                          <button
+                            type="button"
+                            onClick={markRosterAllAbsent}
+                            className="rounded-xl border border-[#d1d5db] bg-white px-3 py-1.5 text-xs font-semibold text-[#374151] hover:bg-[#f9fafb]"
+                          >
+                            All Absent
+                          </button>
+                          <button
+                            type="button"
+                            onClick={handleSaveAttendanceChanges}
+                            className="rounded-xl bg-[#0f4c81] px-4 py-1.5 text-xs font-bold text-white shadow-xs hover:bg-[#0b3860]"
+                          >
+                            Save Changes
+                          </button>
+                        </div>
+                      </>
+                    );
+                  })()}
+                </div>
+
+                {/* Interactive Student Roster Table */}
+                <div className="overflow-x-auto rounded-2xl border border-[#e5e7eb]">
+                  <table className="w-full text-left text-xs">
+                    <thead>
+                      <tr className="bg-[#0c2444] text-[11px] font-bold uppercase tracking-[0.12em] text-white">
+                        <th className="py-3 pl-4 pr-3">S.NO</th>
+                        <th className="py-3 px-4">STUDENT ID</th>
+                        <th className="py-3 px-4">NAME OF THE STUDENT</th>
+                        <th className="py-3 px-4">NAME OF THE PARENT</th>
+                        <th className="py-3 px-4">PARENT PHONE</th>
+                        <th className="py-3 pr-4 pl-3 text-right">ATTENDANCE (CLICK TO TOGGLE)</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-[#f1f3f6]">
+                      {(() => {
+                        const batch = students.filter(
+                          s => s.department.toLowerCase() === activeSelectedAttRecord.department.toLowerCase() &&
+                               s.section.toLowerCase() === activeSelectedAttRecord.section.toLowerCase()
+                        );
+                        if (batch.length === 0) {
+                          return (
+                            <tr>
+                              <td colSpan={6} className="py-8 text-center text-xs text-[#8d8197]">
+                                No students found for this department and section.
+                              </td>
+                            </tr>
+                          );
+                        }
+
+                        return batch.map((student, idx) => {
+                          const isAbsent = editingAttendanceMap[student.studentId] === "absent";
+                          return (
+                            <tr key={student.id} className="transition hover:bg-[#fbfcfe]">
+                              <td className="py-3.5 pl-4 pr-3 font-medium text-[#6b7280]">
+                                {idx + 1}
+                              </td>
+                              <td className="py-3.5 px-4 font-mono font-semibold text-[#1e293b]">
+                                {student.studentId}
+                              </td>
+                              <td className="py-3.5 px-4 font-semibold text-[#1e293b]">
+                                {student.name}
+                              </td>
+                              <td className="py-3.5 px-4 font-medium text-[#4b5563]">
+                                {student.parentName || "—"}
+                              </td>
+                              <td className="py-3.5 px-4 font-mono text-[11px] text-[#5b3b92]">
+                                {student.parentPhone || "—"}
+                              </td>
+                              <td className="py-3.5 pr-4 pl-3 text-right">
+                                <button
+                                  type="button"
+                                  onClick={() => toggleRosterAttendance(student.studentId)}
+                                  className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold transition shadow-2xs ${
+                                    isAbsent
+                                      ? "bg-[#fee2e2] text-[#dc2626] hover:bg-[#fecaca] border border-[#fca5a5]"
+                                      : "bg-[#e8f6ed] text-[#1c7e47] hover:bg-[#d1fae5] border border-[#a7f3d0]"
+                                  }`}
+                                  title="Click to toggle Present/Absent"
+                                >
+                                  <span>{isAbsent ? "✗ Absent" : "✓ Present"}</span>
+                                </button>
+                              </td>
+                            </tr>
+                          );
+                        });
+                      })()}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Bottom Action */}
+                <div className="flex justify-end pt-2">
+                  <button
+                    type="button"
+                    onClick={handleSaveAttendanceChanges}
+                    className="rounded-2xl bg-[#0f4c81] px-8 py-3 text-sm font-bold text-white shadow-md hover:bg-[#0b3860]"
+                  >
+                    Save Attendance Changes
+                  </button>
+                </div>
+              </div>
+            ) : null}
+
+            {/* Overall Attendance Sessions Registry Table */}
             <div className="rounded-3xl border border-[#eee6f0] bg-white p-6 shadow-xs md:p-8">
               <div className="flex flex-wrap items-center justify-between gap-4 border-b border-[#f3ebf6] pb-4">
                 <div>
                   <h2 className="text-xl font-bold text-[#1b3a6b]">
-                    Attendance Records History ({sessionLogs.length})
+                    Recorded Sessions Registry ({sessionLogs.length})
                   </h2>
                   <p className="mt-0.5 text-xs text-[#81758e]">
-                    Review recorded classroom and practical attendance batches.
+                    Click any session row to load and modify its student presence roster.
                   </p>
                 </div>
               </div>
 
               {sessionLogs.length === 0 ? (
                 <div className="py-12 text-center text-xs text-[#8d8197]">
-                  No attendance records saved yet. Mark attendance under the <strong>Home</strong> tab.
+                  No attendance records saved yet. Mark attendance under the <strong>Attendance</strong> tab.
                 </div>
               ) : (
                 <div className="mt-4 overflow-x-auto">
@@ -4831,64 +5361,83 @@ function TeacherWorkspace({ user, onLogout }: { user: User; onLogout: () => void
                         <th className="py-3 px-4">Present / Absent</th>
                         <th className="py-3 px-4">Absentees</th>
                         <th className="py-3 px-4">Description / Notes</th>
-                        <th className="py-3 pr-2 pl-4 text-right">Action</th>
+                        <th className="py-3 pr-2 pl-4 text-right">Actions</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-[#f7f2f9]">
-                      {sessionLogs.map(log => (
-                        <tr key={log.id} className="transition hover:bg-[#fbf9fd]">
-                          <td className="py-3.5 pl-2 pr-4 font-semibold text-[#5b3b92]">
-                            {log.date}
-                          </td>
-                          <td className="py-3.5 px-4">
-                            <span className="rounded-lg bg-[#f0eaf7] px-2.5 py-1 text-xs font-semibold text-[#5b3b92]">
-                              {log.department} - Sec {log.section}
-                            </span>
-                          </td>
-                          <td className="py-3.5 px-4">
-                            <div className="flex items-center gap-2">
-                              <span className="text-xs font-bold text-[#1b7e47]">
-                                ✓ {log.presentCount}
+                      {sessionLogs.map(log => {
+                        const isSelected = activeSelectedAttRecord?.id === log.id;
+                        return (
+                          <tr
+                            key={log.id}
+                            className={`cursor-pointer transition ${
+                              isSelected ? "bg-[#f4edf9]/60" : "hover:bg-[#fbf9fd]"
+                            }`}
+                            onClick={() => setSelectedAttRecordId(log.id)}
+                          >
+                            <td className="py-3.5 pl-2 pr-4 font-semibold text-[#5b3b92]">
+                              {formatDateDisplay(log.date)}
+                            </td>
+                            <td className="py-3.5 px-4">
+                              <span className="rounded-lg bg-[#f0eaf7] px-2.5 py-1 text-xs font-semibold text-[#5b3b92]">
+                                {log.department} - Sec {log.section}
                               </span>
-                              <span className="text-xs font-bold text-[#d93838]">
-                                ✗ {log.absentCount}
-                              </span>
-                              <span className="text-[11px] text-[#8d8197]">
-                                ({log.totalStudents} total)
-                              </span>
-                            </div>
-                          </td>
-                          <td className="py-3.5 px-4">
-                            {log.absentStudentIds.length === 0 ? (
-                              <span className="text-[11px] text-[#1b7e47]">All Present</span>
-                            ) : (
-                              <div className="flex flex-wrap gap-1">
-                                {log.absentStudentIds.map(id => (
-                                  <span
-                                    key={id}
-                                    className="rounded bg-[#fee2e2] px-1.5 py-0.5 font-mono text-[10px] font-bold text-[#dc2626]"
-                                  >
-                                    {id}
-                                  </span>
-                                ))}
+                            </td>
+                            <td className="py-3.5 px-4">
+                              <div className="flex items-center gap-2">
+                                <span className="text-xs font-bold text-[#1b7e47]">
+                                  ✓ {log.presentCount}
+                                </span>
+                                <span className="text-xs font-bold text-[#d93838]">
+                                  ✗ {log.absentCount}
+                                </span>
+                                <span className="text-[11px] text-[#8d8197]">
+                                  ({log.totalStudents} total)
+                                </span>
                               </div>
-                            )}
-                          </td>
-                          <td className="py-3.5 px-4 text-[#71647f]">
-                            {log.description}
-                          </td>
-                          <td className="py-3.5 pr-2 pl-4 text-right">
-                            <button
-                              type="button"
-                              onClick={() => handleDeleteAttendance(log.id)}
-                              className="rounded-lg p-1.5 text-[#b83232] transition hover:bg-[#fcedec]"
-                              title="Delete record"
-                            >
-                              <Trash2 size={15} />
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
+                            </td>
+                            <td className="py-3.5 px-4">
+                              {log.absentStudentIds.length === 0 ? (
+                                <span className="text-[11px] text-[#1b7e47]">All Present</span>
+                              ) : (
+                                <div className="flex flex-wrap gap-1">
+                                  {log.absentStudentIds.map(id => (
+                                    <span
+                                      key={id}
+                                      className="rounded bg-[#fee2e2] px-1.5 py-0.5 font-mono text-[10px] font-bold text-[#dc2626]"
+                                    >
+                                      {id}
+                                    </span>
+                                  ))}
+                                </div>
+                              )}
+                            </td>
+                            <td className="py-3.5 px-4 text-[#71647f]">
+                              {log.description}
+                            </td>
+                            <td className="py-3.5 pr-2 pl-4 text-right">
+                              <div className="flex items-center justify-end gap-1.5" onClick={e => e.stopPropagation()}>
+                                <button
+                                  type="button"
+                                  onClick={() => setSelectedAttRecordId(log.id)}
+                                  className="rounded-lg px-2 py-1 text-xs font-semibold text-[#1b55a8] hover:bg-[#edf4fc]"
+                                  title="Edit Roster"
+                                >
+                                  {isSelected ? "Active" : "Edit Roster"}
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleDeleteAttendance(log.id)}
+                                  className="rounded-lg p-1.5 text-[#b83232] transition hover:bg-[#fcedec]"
+                                  title="Delete record"
+                                >
+                                  <Trash2 size={15} />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
@@ -5073,7 +5622,7 @@ function TeacherWorkspace({ user, onLogout }: { user: User; onLogout: () => void
               </h1>
             </div>
 
-            {/* Filter Card: DEPARTMENT, SECTION, DATE, FETCH BUTTON */}
+            {/* Filter Card: DEPARTMENT, SECTION, DATE, FETCH & EXPORT BUTTON */}
             <div className="rounded-2xl border border-[#eedfce] bg-white p-6 shadow-2xs">
               <form onSubmit={handleFetchRecords} className="flex flex-wrap items-end gap-4">
                 <div>
@@ -5123,7 +5672,42 @@ function TeacherWorkspace({ user, onLogout }: { user: User; onLogout: () => void
                   className="inline-flex items-center gap-2 rounded-xl bg-[#1b55a8] px-6 py-2.5 text-xs font-bold uppercase tracking-[0.08em] text-white shadow-sm transition hover:bg-[#15468d]"
                 >
                   <Search size={14} />
-                  Fetch
+                  Fetch Records
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (fetchedRecords.length === 0) {
+                      showToast("No mark records to export.");
+                      return;
+                    }
+                    const rows: string[][] = [];
+                    fetchedRecords.forEach(rec => {
+                      rec.entries.forEach((e, idx) => {
+                        const studentObj = students.find(s => s.studentId.toLowerCase() === e.studentId.toLowerCase());
+                        rows.push([
+                          String(idx + 1),
+                          `${e.studentName} (${e.studentId})`,
+                          studentObj?.parentName || "—",
+                          `${e.mark} / ${rec.maxMarks}`,
+                          rec.examDescription,
+                          rec.department,
+                          rec.section,
+                          rec.date
+                        ]);
+                      });
+                    });
+                    exportToCsv(`marks_records_${fetchDept}_Sec${fetchSection}.csv`, [
+                      "S.NO", "NAME OF THE STUDENT", "NAME OF THE PARENT", "MARK", "EXAM DESCRIPTION", "DEPARTMENT", "SECTION", "DATE"
+                    ], rows);
+                    showToast("Exported mark statement to CSV!");
+                  }}
+                  className="inline-flex items-center gap-1.5 rounded-xl border border-[#d8cfe0] bg-white px-4 py-2.5 text-xs font-semibold text-[#5b3b92] shadow-2xs hover:bg-[#f4edf9]"
+                  title="Export records to Excel/CSV"
+                >
+                  <FileSpreadsheet size={14} className="text-[#107c41]" />
+                  Export CSV
                 </button>
               </form>
             </div>
@@ -5174,6 +5758,29 @@ function TeacherWorkspace({ user, onLogout }: { user: User; onLogout: () => void
                           <div className="flex items-center gap-2">
                             <button
                               type="button"
+                              onClick={() => {
+                                exportToCsv(`marks_${record.examDescription.replace(/\s+/g, '_')}_${record.date}.csv`, [
+                                  "S.NO", "NAME OF THE STUDENT", "NAME OF THE PARENT", "MARK"
+                                ], record.entries.map((e, idx) => {
+                                  const studentObj = students.find(s => s.studentId.toLowerCase() === e.studentId.toLowerCase());
+                                  return [
+                                    String(idx + 1),
+                                    `${e.studentName} (${e.studentId})`,
+                                    studentObj?.parentName || "—",
+                                    `${e.mark} / ${record.maxMarks}`
+                                  ];
+                                }));
+                                showToast("Exported test marks to CSV!");
+                              }}
+                              className="inline-flex items-center gap-1.5 rounded-xl border border-[#d8cfe0] bg-white px-3 py-2 text-xs font-semibold text-[#5b3b92] shadow-2xs hover:bg-[#f4edf9]"
+                              title="Export this test to CSV"
+                            >
+                              <FileSpreadsheet size={13} className="text-[#107c41]" />
+                              Export CSV
+                            </button>
+
+                            <button
+                              type="button"
                               onClick={() => handleDeleteExamRecord(record.id)}
                               className="rounded-xl border border-[#fee2e2] bg-[#fef2f2] p-2 text-[#dc2626] hover:bg-[#fecaca]"
                               title="Delete Record"
@@ -5222,61 +5829,35 @@ function TeacherWorkspace({ user, onLogout }: { user: User; onLogout: () => void
                           </div>
                         </div>
 
-                        {/* Student Breakdown Table */}
+                        {/* Student Breakdown Table (Matching Mark UI - Percentage, Grade, Status removed) */}
                         <div className="overflow-x-auto rounded-2xl border border-[#e5e7eb]">
                           <table className="w-full text-left text-xs">
                             <thead>
                               <tr className="bg-[#0c2444] text-[11px] font-bold uppercase tracking-[0.12em] text-white">
-                                <th className="py-3 pl-4 pr-3">#</th>
-                                <th className="py-3 px-4">Student ID</th>
-                                <th className="py-3 px-4">Student Name</th>
-                                <th className="py-3 px-4">Score</th>
-                                <th className="py-3 px-4">Percentage</th>
-                                <th className="py-3 px-4">Grade</th>
-                                <th className="py-3 pr-4 pl-3 text-right">Status</th>
+                                <th className="py-3 pl-4 pr-3">S.NO</th>
+                                <th className="py-3 px-4">NAME OF THE STUDENT</th>
+                                <th className="py-3 px-4">NAME OF THE PARENT</th>
+                                <th className="py-3 pr-4 pl-3 text-right">MARK</th>
                               </tr>
                             </thead>
                             <tbody className="divide-y divide-[#f1f3f6]">
                               {record.entries.map((entry, idx) => {
-                                const pct = Math.round((entry.mark / record.maxMarks) * 100);
-                                const isPassed = pct >= 40;
-                                const grade = pct >= 90 ? "A+" : pct >= 80 ? "A" : pct >= 70 ? "B" : pct >= 60 ? "C" : pct >= 40 ? "D" : "F";
+                                const matchedStudent = students.find(s => s.studentId.toLowerCase() === entry.studentId.toLowerCase());
+                                const parentName = matchedStudent?.parentName || "—";
                                 return (
                                   <tr key={entry.studentId} className="hover:bg-[#fbfcfe]">
-                                    <td className="py-3 pl-4 pr-3 font-medium text-[#6b7280]">
+                                    <td className="py-3.5 pl-4 pr-3 font-medium text-[#6b7280]">
                                       {idx + 1}
                                     </td>
-                                    <td className="py-3 px-4 font-mono font-semibold text-[#1e293b]">
-                                      {entry.studentId}
+                                    <td className="py-3.5 px-4 font-semibold text-[#1e293b]">
+                                      <span>{entry.studentName}</span>
+                                      <span className="ml-2 font-mono text-[11px] text-[#5b3b92]">({entry.studentId})</span>
                                     </td>
-                                    <td className="py-3 px-4 font-medium text-[#1e293b]">
-                                      {entry.studentName}
+                                    <td className="py-3.5 px-4 font-medium text-[#4b5563]">
+                                      {parentName}
                                     </td>
-                                    <td className="py-3 px-4 font-bold text-[#1b3a6b]">
-                                      {entry.mark} / {record.maxMarks}
-                                    </td>
-                                    <td className="py-3 px-4 font-semibold text-[#5b3b92]">
-                                      {pct}%
-                                    </td>
-                                    <td className="py-3 px-4">
-                                      <span className={`rounded-md px-2 py-0.5 font-bold ${
-                                        grade === "A+" || grade === "A"
-                                          ? "bg-[#e8f6ed] text-[#1c7e47]"
-                                          : grade === "B" || grade === "C"
-                                          ? "bg-[#edf4fc] text-[#1b55a8]"
-                                          : "bg-[#fdf2e9] text-[#c25b28]"
-                                      }`}>
-                                        {grade}
-                                      </span>
-                                    </td>
-                                    <td className="py-3 pr-4 pl-3 text-right">
-                                      <span className={`rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider ${
-                                        isPassed
-                                          ? "bg-[#e8f6ed] text-[#1c7e47]"
-                                          : "bg-[#fef2f2] text-[#dc2626]"
-                                      }`}>
-                                        {isPassed ? "Pass" : "Fail"}
-                                      </span>
+                                    <td className="py-3.5 pr-4 pl-3 text-right font-bold text-[#1b3a6b]">
+                                      {entry.mark} <span className="text-[11px] font-normal text-[#9ca3af]">/ {record.maxMarks}</span>
                                     </td>
                                   </tr>
                                 );
@@ -5294,6 +5875,193 @@ function TeacherWorkspace({ user, onLogout }: { user: User; onLogout: () => void
         )}
       </div>
     </main>
+
+    {/* WhatsApp Review & Alert Checklist Modal (Work 5) */}
+    {whatsappModalRecord && (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-xs">
+        <div className="flex max-h-[90vh] w-full max-w-3xl flex-col rounded-3xl border border-[#eee6f0] bg-white shadow-2xl">
+          {/* Modal Header */}
+          <div className="flex items-center justify-between border-b border-[#f0e8f4] p-6">
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="grid h-7 w-7 place-items-center rounded-lg bg-[#25d366]/15 text-[#128c7e]">
+                  <MessageCircle size={16} />
+                </span>
+                <h3 className="text-lg font-bold text-[#1b3a6b]">
+                  Parent WhatsApp Attendance Alerts
+                </h3>
+              </div>
+              <p className="mt-1 text-xs text-[#81758e]">
+                {whatsappModalRecord.department} - Section {whatsappModalRecord.section} · {formatDateDisplay(whatsappModalRecord.date)} · ({whatsappModalRecord.presentCount} Present, {whatsappModalRecord.absentCount} Absent)
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setWhatsappModalRecord(null)}
+              className="rounded-full p-2 text-[#9a8ea4] hover:bg-[#f5eff9]"
+            >
+              <X size={18} />
+            </button>
+          </div>
+
+          {/* Filter Toggle Bar */}
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#f7f2f9] bg-[#faf8fc] px-6 py-3">
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setWhatsappFilter("absent")}
+                className={`rounded-xl px-3.5 py-1.5 text-xs font-semibold transition ${
+                  whatsappFilter === "absent"
+                    ? "bg-[#d93838] text-white shadow-xs"
+                    : "border border-[#e4dce9] bg-white text-[#71647f] hover:bg-[#f4edf9]"
+                }`}
+              >
+                ⚠️ Absentees Only ({whatsappModalRecord.absentCount})
+              </button>
+              <button
+                type="button"
+                onClick={() => setWhatsappFilter("all")}
+                className={`rounded-xl px-3.5 py-1.5 text-xs font-semibold transition ${
+                  whatsappFilter === "all"
+                    ? "bg-[#1b55a8] text-white shadow-xs"
+                    : "border border-[#e4dce9] bg-white text-[#71647f] hover:bg-[#f4edf9]"
+                }`}
+              >
+                All Students ({whatsappModalRecord.totalStudents})
+              </button>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => {
+                const targetList = students.filter(
+                  s => s.department.toLowerCase() === whatsappModalRecord.department.toLowerCase() &&
+                       s.section.toLowerCase() === whatsappModalRecord.section.toLowerCase() &&
+                       (whatsappFilter === "all" || whatsappModalRecord.absentStudentIds.includes(s.studentId))
+                );
+                exportToCsv(`whatsapp_attendance_checklist_${whatsappModalRecord.date}.csv`, [
+                  "Student ID", "Student Name", "Status", "Parent Name", "Parent Phone", "Alert Sent"
+                ], targetList.map(s => [
+                  s.studentId,
+                  s.name,
+                  whatsappModalRecord.absentStudentIds.includes(s.studentId) ? "Absent" : "Present",
+                  s.parentName || "",
+                  s.parentPhone || "",
+                  sentWhatsappIds[`${whatsappModalRecord.id}-${s.studentId}`] ? "Yes" : "No"
+                ]));
+                showToast("Exported WhatsApp checklist to CSV!");
+              }}
+              className="inline-flex items-center gap-1.5 rounded-xl border border-[#d8cfe0] bg-white px-3 py-1.5 text-xs font-semibold text-[#5b3b92] shadow-2xs hover:bg-[#f5eff9]"
+            >
+              <FileSpreadsheet size={13} className="text-[#107c41]" />
+              Export Checklist CSV
+            </button>
+          </div>
+
+          {/* Students List */}
+          <div className="flex-1 overflow-y-auto p-6">
+            {(() => {
+              const targetList = students.filter(
+                s => s.department.toLowerCase() === whatsappModalRecord.department.toLowerCase() &&
+                     s.section.toLowerCase() === whatsappModalRecord.section.toLowerCase() &&
+                     (whatsappFilter === "all" || whatsappModalRecord.absentStudentIds.includes(s.studentId))
+              );
+
+              if (targetList.length === 0) {
+                return (
+                  <div className="py-12 text-center text-xs text-[#8d8197]">
+                    {whatsappFilter === "absent"
+                      ? "🎉 No absentees in this session! All students were present."
+                      : "No students found for this batch."}
+                  </div>
+                );
+              }
+
+              return (
+                <div className="space-y-3">
+                  {targetList.map(student => {
+                    const isAbsent = whatsappModalRecord.absentStudentIds.includes(student.studentId);
+                    const key = `${whatsappModalRecord.id}-${student.studentId}`;
+                    const isSent = Boolean(sentWhatsappIds[key]);
+                    const hasPhone = Boolean(student.parentPhone && student.parentPhone.trim() !== "");
+
+                    return (
+                      <div
+                        key={student.id}
+                        className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[#eedfce] bg-white p-4 transition hover:bg-[#fcfbfd]"
+                      >
+                        <div className="flex items-center gap-3">
+                          <span className={`grid h-8 w-8 place-items-center rounded-xl text-xs font-bold ${
+                            isAbsent ? "bg-[#fee2e2] text-[#dc2626]" : "bg-[#e8f6ed] text-[#1c7e47]"
+                          }`}>
+                            {student.studentId.replace(/^[A-Za-z]+/, "") || student.studentId}
+                          </span>
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <p className="text-sm font-semibold text-[#2a203e]">{student.name}</p>
+                              <span className={`rounded-md px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${
+                                isAbsent ? "bg-[#fee2e2] text-[#dc2626]" : "bg-[#e8f6ed] text-[#1c7e47]"
+                              }`}>
+                                {isAbsent ? "Absent" : "Present"}
+                              </span>
+                            </div>
+                            <p className="text-xs text-[#71647f]">
+                              Parent: <span className="font-medium text-[#2a203e]">{student.parentName || "—"}</span>
+                              {hasPhone ? (
+                                <span className="ml-2 font-mono text-[11px] text-[#5b3b92]">{student.parentPhone}</span>
+                              ) : (
+                                <span className="ml-2 rounded-md bg-[#fff7ed] px-1.5 py-0.5 text-[10px] font-semibold text-[#c25b28]">
+                                  ⚠️ No Phone Number
+                                </span>
+                              )}
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                          {hasPhone ? (
+                            <button
+                              type="button"
+                              onClick={() => handleSendWhatsappAlert(student, whatsappModalRecord)}
+                              className={`inline-flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-xs font-semibold shadow-xs transition ${
+                                isSent
+                                  ? "bg-[#e8f6ed] text-[#1c7e47] border border-[#a7f3d0]"
+                                  : "bg-[#25d366] text-white hover:bg-[#1ebd59]"
+                              }`}
+                            >
+                              <MessageCircle size={14} />
+                              {isSent ? "Sent ✓" : "Send WhatsApp Alert"}
+                            </button>
+                          ) : (
+                            <span className="rounded-xl border border-[#fed7aa] bg-[#fffaf5] px-3 py-1.5 text-[11px] text-[#9a3412]">
+                              Phone Missing
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            })()}
+          </div>
+
+          {/* Modal Footer */}
+          <div className="flex items-center justify-between border-t border-[#f0e8f4] p-5">
+            <span className="text-xs text-[#8d8197]">
+              Clicking opens WhatsApp Web / App directly with pre-composed notification.
+            </span>
+            <button
+              type="button"
+              onClick={() => setWhatsappModalRecord(null)}
+              className="rounded-xl bg-[#0f4c81] px-5 py-2 text-xs font-bold text-white shadow-xs hover:bg-[#0b3860]"
+            >
+              Done / Close
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
   </div>
   );
 }
