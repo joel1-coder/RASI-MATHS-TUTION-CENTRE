@@ -3,11 +3,11 @@ import { toast } from "sonner";
 import Portfolio from "./Portfolio";
 import { startLogin } from "@/const";
 import { useAuth } from "@/_core/hooks/useAuth";
-import { AlertCircle, ArrowRight, ArrowUpRight, BarChart3, BookOpen, Building2, CalendarDays, Check, CheckCircle2, ChevronRight, ClipboardCheck, Clock3, Download, Edit3, FileSpreadsheet, FileText, Filter, FolderPlus, GraduationCap, LayoutDashboard, Loader2, LogOut, Menu, MessageCircle, NotebookPen, Plus, Search, ShieldCheck, Sparkles, Trash2, Upload, UserPlus, Users, X } from "lucide-react";
+import { AlertCircle, ArrowRight, ArrowUpRight, BarChart3, BookOpen, Building2, CalendarDays, Check, CheckCircle2, ChevronRight, ClipboardCheck, Clock3, Download, Edit3, ExternalLink, FileCheck, FileSpreadsheet, FileText, FileUp, Filter, FolderPlus, GraduationCap, LayoutDashboard, Loader2, LogOut, Menu, MessageCircle, NotebookPen, Plus, Search, Send, ShieldCheck, Sparkles, Trash2, Upload, UploadCloud, UserPlus, Users, X } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { parseAttendanceCsv, summarizeAttendance } from "@shared/portalData";
 import { COOKIE_NAME } from "@shared/const";
-import { readSiteData } from "@/lib/siteData";
+import { readSiteData, saveSiteData, type StudyMaterial } from "@/lib/siteData";
 
 export type Role = "student" | "parent" | "admin" | "teacher";
 
@@ -271,87 +271,143 @@ function MaterialsView({ type, targetClass }: { type: "paper" | "unit"; targetCl
   const dbData = isPaper ? dbPapersQuery.data : dbUnitsQuery.data;
   const isLoading = isPaper ? dbPapersQuery.isLoading : dbUnitsQuery.isLoading;
 
-  if (isLoading) return <LoadingState label={`Loading ${isPaper ? "question papers" : "unit questions"}…`} />;
+  const localKey = isPaper ? "rasi_dispatched_question_papers" : "rasi_dispatched_unit_questions";
+  const localItems: StudyMaterial[] = useMemo(() => {
+    try {
+      const saved = localStorage.getItem(localKey);
+      if (saved) return JSON.parse(saved);
+    } catch {}
+    const site = readSiteData();
+    return (isPaper ? site.questionPapers : site.unitQuestions) || [];
+  }, [localKey, isPaper]);
 
-  if (dbData && dbData.length > 0) {
-    const list = dbData.filter(item => item.targetClass === targetClass || item.targetClass === "All classes" || !item.targetClass);
-    if (!list.length) return <EmptyState title="No materials for your class" message={`No ${isPaper ? "question papers" : "unit questions"} have been sent to ${targetClass} yet.`} />;
+  // Combine DB and local items, removing duplicate IDs
+  const combinedList = useMemo(() => {
+    const list: StudyMaterial[] = [];
+    const seen = new Set<string>();
 
-    const grouped = list.reduce((acc, item) => {
-      if (!acc[item.subject]) acc[item.subject] = [];
-      acc[item.subject].push(item);
-      return acc;
-    }, {} as Record<string, typeof list>);
+    if (localItems && Array.isArray(localItems)) {
+      for (const item of localItems) {
+        if (!seen.has(String(item.id))) {
+          seen.add(String(item.id));
+          list.push(item);
+        }
+      }
+    }
 
+    if (dbData && Array.isArray(dbData)) {
+      for (const item of dbData) {
+        if (!seen.has(String(item.id))) {
+          seen.add(String(item.id));
+          list.push({
+            id: String(item.id),
+            title: item.title,
+            subject: item.subject,
+            link: item.link || "#",
+            type,
+            targetClass: item.targetClass || "Grade 10",
+          });
+        }
+      }
+    }
+
+    return list;
+  }, [dbData, localItems, type]);
+
+  if (isLoading && !combinedList.length) {
+    return <LoadingState label={`Loading ${isPaper ? "question papers" : "unit questions"}…`} />;
+  }
+
+  const filtered = combinedList.filter(
+    item =>
+      !item.targetClass ||
+      item.targetClass === "All classes" ||
+      item.targetClass.toLowerCase() === targetClass.toLowerCase() ||
+      item.targetClass.toLowerCase().includes(targetClass.toLowerCase()) ||
+      targetClass === "All"
+  );
+
+  if (!filtered.length) {
     return (
-      <div className="grid gap-4 md:grid-cols-2">
-        {Object.entries(grouped).map(([subject, items]) => (
-          <div className="rounded-3xl border border-[#eee6f0] bg-white p-6" key={subject}>
-            <div className="flex items-start justify-between">
-              <div>
-                <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#ef8656]">{subject}</p>
-                <h2 className="mt-2 text-xl font-semibold">{isPaper ? "Question papers" : "Unit questions"}</h2>
-              </div>
-              <BookOpen className="text-[#8060ac]" size={20} />
-            </div>
-            <div className="mt-5 space-y-3">
-              {items.map((item, i) => (
-                <a
-                  href={item.link || "#"}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="flex items-center gap-3 rounded-2xl bg-[#faf7fc] p-4 transition hover:bg-[#f3ecf9]"
-                  key={item.id}
-                >
-                  <span className="text-xs font-bold text-[#ef8656]">0{i + 1}</span>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-semibold leading-5 text-[#5d506c] hover:text-[#6d4b9f]">{item.title}</p>
-                    <span className="text-[10px] font-bold text-[#3c8e83] bg-[#e9f5ed] px-2 py-0.5 rounded-full inline-block mt-1">Target: {item.targetClass}</span>
-                  </div>
-                  <ArrowUpRight size={14} className="ml-auto text-[#aaa0b1]" />
-                </a>
-              ))}
-            </div>
-          </div>
-        ))}
-      </div>
+      <EmptyState
+        title={`No ${isPaper ? "question papers" : "unit questions"} available`}
+        message={`No ${isPaper ? "question papers" : "unit-wise question papers"} have been dispatched for ${targetClass} yet.`}
+      />
     );
   }
 
-  // Fallback to localStorage siteData
-  const data = readSiteData();
-  const list = isPaper ? data.questionPapers : data.unitQuestions;
-  if (!list || !list.length) return <EmptyState title="No materials available" message={`There are no ${isPaper ? "question papers" : "unit questions"} available yet.`} />;
-
-  const grouped = list.reduce((acc, item) => {
-    if (!acc[item.subject]) acc[item.subject] = [];
-    acc[item.subject].push(item);
+  const grouped = filtered.reduce((acc, item) => {
+    const subj = item.subject || "General";
+    if (!acc[subj]) acc[subj] = [];
+    acc[subj].push(item);
     return acc;
-  }, {} as Record<string, typeof list>);
+  }, {} as Record<string, StudyMaterial[]>);
 
   return (
-    <div className="grid gap-4 md:grid-cols-2">
+    <div className="grid gap-6 md:grid-cols-2">
       {Object.entries(grouped).map(([subject, items]) => (
-        <div className="rounded-3xl border border-[#eee6f0] bg-white p-6" key={subject}>
+        <div className="rounded-3xl border border-[#eee6f0] bg-white p-6 shadow-xs" key={subject}>
           <div className="flex items-start justify-between">
             <div>
               <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#ef8656]">{subject}</p>
-              <h2 className="mt-2 text-xl font-semibold">{isPaper ? "Question papers" : "Unit questions"}</h2>
+              <h2 className="mt-2 text-xl font-semibold text-[#1c2434]">
+                {isPaper ? "Question papers" : "Unit-wise questions"}
+              </h2>
             </div>
-            <BookOpen className="text-[#8060ac]" size={20} />
+            <div className="rounded-2xl bg-[#f4edf9] p-2.5 text-[#6d4b9f]">
+              <BookOpen size={20} />
+            </div>
           </div>
+
           <div className="mt-5 space-y-3">
             {items.map((item, i) => (
               <a
-                href={item.link || "#"}
+                href={item.link && item.link !== "#" ? item.link : undefined}
                 target="_blank"
                 rel="noreferrer"
-                className="flex items-center gap-3 rounded-2xl bg-[#faf7fc] p-4 transition hover:bg-[#f3ecf9]"
+                download={item.fileName || undefined}
+                className="group flex items-center justify-between gap-3 rounded-2xl bg-[#faf7fc] p-4 transition hover:border-[#b99cda] hover:bg-[#f2ebf8]"
                 key={item.id}
+                onClick={e => {
+                  if (!item.link || item.link === "#") {
+                    e.preventDefault();
+                    toast.info(`Paper: ${item.title} (${item.fileName || "File attached"})`);
+                  }
+                }}
               >
-                <span className="text-xs font-bold text-[#ef8656]">0{i + 1}</span>
-                <span className="text-sm font-semibold leading-5 text-[#5d506c] hover:text-[#6d4b9f]">{item.title}</span>
-                <ArrowUpRight size={14} className="ml-auto text-[#aaa0b1]" />
+                <div className="flex items-start gap-3 min-w-0">
+                  <span className="grid h-8 w-8 shrink-0 place-items-center rounded-xl bg-[#e9ddf4] text-xs font-bold text-[#6d4b9f]">
+                    {String(i + 1).padStart(2, "0")}
+                  </span>
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold leading-5 text-[#2d213f] group-hover:text-[#5b3b92]">
+                      {item.title}
+                    </p>
+                    <div className="mt-1.5 flex flex-wrap items-center gap-2">
+                      <span className="rounded-md bg-[#e9f5ed] px-2 py-0.5 text-[10px] font-bold text-[#2e7d52]">
+                        {item.targetClass || targetClass}
+                      </span>
+                      {item.term && (
+                        <span className="rounded-md bg-[#fdf2e9] px-2 py-0.5 text-[10px] font-semibold text-[#c25b28]">
+                          {item.term}
+                        </span>
+                      )}
+                      {item.maxMarks && (
+                        <span className="rounded-md bg-[#edf4fc] px-2 py-0.5 text-[10px] font-semibold text-[#1b55a8]">
+                          {item.maxMarks}
+                        </span>
+                      )}
+                      {item.fileSize && (
+                        <span className="text-[10px] text-[#8d8197]">
+                          · {item.fileSize}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+                <div className="shrink-0 text-[#aaa0b1] transition group-hover:text-[#5b3b92]">
+                  <ArrowUpRight size={16} />
+                </div>
               </a>
             ))}
           </div>
@@ -2886,9 +2942,943 @@ function AdminAttendanceManager() {
   );
 }
 
+function AdminQuestionPaperManager() {
+  const [departments] = useState<string[]>(() => {
+    try {
+      const saved = localStorage.getItem("rasi_admin_departments");
+      return saved ? JSON.parse(saved) : INITIAL_DEPARTMENTS;
+    } catch {
+      return INITIAL_DEPARTMENTS;
+    }
+  });
+
+  const [papers, setPapers] = useState<StudyMaterial[]>(() => {
+    try {
+      const saved = localStorage.getItem("rasi_dispatched_question_papers");
+      if (saved) return JSON.parse(saved);
+    } catch {}
+    const site = readSiteData();
+    return site.questionPapers && site.questionPapers.length > 0
+      ? site.questionPapers
+      : [
+          {
+            id: "qp-1",
+            title: "Mathematics Mid-Term Examination 2026",
+            subject: "Mathematics",
+            link: "#",
+            type: "paper",
+            targetClass: "Grade 10",
+            date: "2026-10-02",
+            term: "Term 1 · 2026",
+            maxMarks: "100 Marks",
+            fileName: "Mathematics_MidTerm_2026.pdf",
+            fileSize: "1.4 MB",
+          },
+        ];
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem("rasi_dispatched_question_papers", JSON.stringify(papers));
+      const site = readSiteData();
+      saveSiteData({ ...site, questionPapers: papers });
+    } catch {}
+  }, [papers]);
+
+  const [targetClass, setTargetClass] = useState("Grade 10");
+  const [customClass, setCustomClass] = useState("");
+  const [subject, setSubject] = useState("Mathematics");
+  const [customSubject, setCustomSubject] = useState("");
+  const [title, setTitle] = useState("");
+  const [term, setTerm] = useState("Term 1 · October 2026");
+  const [maxMarks, setMaxMarks] = useState("100 Marks");
+  const [docLink, setDocLink] = useState("");
+  const [uploadedFileName, setUploadedFileName] = useState<string | null>(null);
+  const [uploadedFileSize, setUploadedFileSize] = useState<string | null>(null);
+  const [uploadedFileData, setUploadedFileData] = useState<string | null>(null);
+  const [searchFilter, setSearchFilter] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [toastMsg, setToastMsg] = useState<string | null>(null);
+
+  const showLocalToast = (msg: string) => {
+    setToastMsg(msg);
+    setTimeout(() => setToastMsg(null), 3500);
+  };
+
+  const createMutation = trpc.admin.createQuestionPaper.useMutation();
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadedFileName(file.name);
+    const sizeStr = file.size > 1024 * 1024
+      ? `${(file.size / (1024 * 1024)).toFixed(1)} MB`
+      : `${Math.round(file.size / 1024)} KB`;
+    setUploadedFileSize(sizeStr);
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = reader.result as string;
+      setUploadedFileData(result);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleDispatch = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const finalClass = targetClass === "Custom" ? customClass.trim() : targetClass;
+    const finalSubject = subject === "Custom" ? customSubject.trim() : subject;
+
+    if (!title.trim()) {
+      showLocalToast("Please enter the question paper title.");
+      return;
+    }
+    if (!finalSubject) {
+      showLocalToast("Please enter or select a subject.");
+      return;
+    }
+    if (!finalClass) {
+      showLocalToast("Please specify the target class.");
+      return;
+    }
+
+    const finalLink = uploadedFileData || docLink.trim() || "#";
+
+    setIsSubmitting(true);
+    const newPaper: StudyMaterial = {
+      id: `qp-${Date.now()}`,
+      title: title.trim(),
+      subject: finalSubject,
+      link: finalLink,
+      type: "paper",
+      targetClass: finalClass,
+      date: new Date().toISOString().slice(0, 10),
+      term: term.trim() || "Term 1 · 2026",
+      maxMarks: maxMarks.trim() || "100 Marks",
+      fileName: uploadedFileName || "Question_Paper.pdf",
+      fileSize: uploadedFileSize || "1.2 MB",
+    };
+
+    try {
+      await createMutation.mutateAsync({
+        title: newPaper.title,
+        subject: newPaper.subject,
+        link: newPaper.link,
+        targetClass: newPaper.targetClass || "All classes",
+      });
+    } catch {}
+
+    setPapers(prev => [newPaper, ...prev]);
+    setIsSubmitting(false);
+    setTitle("");
+    setDocLink("");
+    setUploadedFileName(null);
+    setUploadedFileSize(null);
+    setUploadedFileData(null);
+    showLocalToast(`Question paper dispatched to ${finalClass} students and parents!`);
+  };
+
+  const handleDelete = (id: string) => {
+    if (confirm("Remove this question paper?")) {
+      setPapers(papers.filter(p => p.id !== id));
+      showLocalToast("Question paper removed.");
+    }
+  };
+
+  const filteredPapers = papers.filter(p =>
+    p.title.toLowerCase().includes(searchFilter.toLowerCase()) ||
+    p.subject.toLowerCase().includes(searchFilter.toLowerCase()) ||
+    (p.targetClass && p.targetClass.toLowerCase().includes(searchFilter.toLowerCase()))
+  );
+
+  const classOptions = ["Grade 10", "Grade 9", "Grade 11", "Grade 12", "All classes", ...departments.map(d => `${d}`), "Custom"];
+  const subjectOptions = ["Mathematics", "Physics", "Chemistry", "Computer Science", "English", "Biology", "Custom"];
+
+  return (
+    <div className="space-y-8">
+      {/* Local Toast */}
+      {toastMsg && (
+        <div className="fixed bottom-6 right-6 z-50 flex items-center gap-3 rounded-2xl bg-[#0c2340] px-5 py-3.5 text-sm font-medium text-white shadow-2xl transition-all">
+          <CheckCircle2 className="text-[#48bb78]" size={18} />
+          {toastMsg}
+        </div>
+      )}
+
+      {/* Upload and Dispatch Form Card */}
+      <div className="rounded-3xl border border-[#eee6f0] bg-white p-6 md:p-8 shadow-xs">
+        <div className="flex flex-wrap items-center justify-between gap-4 border-b border-[#f3ebf6] pb-5">
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="grid h-8 w-8 place-items-center rounded-xl bg-[#f0e9f7] text-[#5b3b92]">
+                <FileText size={18} />
+              </span>
+              <h2 className="text-xl font-bold text-[#1c2434]">
+                Upload & Dispatch Question Paper
+              </h2>
+            </div>
+            <p className="mt-1 text-xs text-[#81758e]">
+              Fill in examination details, attach question paper document, and dispatch instantly to Student and Parent portals.
+            </p>
+          </div>
+          <div className="rounded-2xl bg-[#f4e9dd] px-3.5 py-1.5 text-xs font-semibold text-[#a7633e]">
+            Live Dispatch Enabled
+          </div>
+        </div>
+
+        <form onSubmit={handleDispatch} className="mt-6 space-y-6">
+          <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+            {/* Target Class */}
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-[0.14em] text-[#4a3e5c]">
+                Target Class / Department
+              </label>
+              <select
+                value={targetClass}
+                onChange={e => setTargetClass(e.target.value)}
+                className="mt-2 w-full rounded-2xl border border-[#e4dce9] bg-white px-4 py-3 text-sm text-[#2a203e] shadow-xs focus:border-[#6d4b9f] focus:outline-none"
+              >
+                {classOptions.map(cls => (
+                  <option key={cls} value={cls}>{cls}</option>
+                ))}
+              </select>
+              {targetClass === "Custom" && (
+                <input
+                  type="text"
+                  required
+                  value={customClass}
+                  onChange={e => setCustomClass(e.target.value)}
+                  placeholder="Enter custom class/batch"
+                  className="mt-2 w-full rounded-2xl border border-[#e4dce9] bg-white px-4 py-2.5 text-sm"
+                />
+              )}
+            </div>
+
+            {/* Subject */}
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-[0.14em] text-[#4a3e5c]">
+                Subject
+              </label>
+              <select
+                value={subject}
+                onChange={e => setSubject(e.target.value)}
+                className="mt-2 w-full rounded-2xl border border-[#e4dce9] bg-white px-4 py-3 text-sm text-[#2a203e] shadow-xs focus:border-[#6d4b9f] focus:outline-none"
+              >
+                {subjectOptions.map(sub => (
+                  <option key={sub} value={sub}>{sub}</option>
+                ))}
+              </select>
+              {subject === "Custom" && (
+                <input
+                  type="text"
+                  required
+                  value={customSubject}
+                  onChange={e => setCustomSubject(e.target.value)}
+                  placeholder="Enter custom subject"
+                  className="mt-2 w-full rounded-2xl border border-[#e4dce9] bg-white px-4 py-2.5 text-sm"
+                />
+              )}
+            </div>
+
+            {/* Term / Period */}
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-[0.14em] text-[#4a3e5c]">
+                Academic Term / Exam Date
+              </label>
+              <input
+                type="text"
+                value={term}
+                onChange={e => setTerm(e.target.value)}
+                placeholder="e.g. Mid-Term 1 · 2026"
+                className="mt-2 w-full rounded-2xl border border-[#e4dce9] bg-white px-4 py-3 text-sm text-[#2a203e] shadow-xs focus:border-[#6d4b9f] focus:outline-none"
+              />
+            </div>
+
+            {/* Paper Title */}
+            <div className="sm:col-span-2">
+              <label className="block text-xs font-bold uppercase tracking-[0.14em] text-[#4a3e5c]">
+                Question Paper Title / Exam Name *
+              </label>
+              <input
+                type="text"
+                required
+                value={title}
+                onChange={e => setTitle(e.target.value)}
+                placeholder="e.g. Mathematics Mid-Term Examination 2026"
+                className="mt-2 w-full rounded-2xl border border-[#e4dce9] bg-white px-4 py-3 text-sm text-[#2a203e] shadow-xs placeholder:text-[#a89cb3] focus:border-[#6d4b9f] focus:outline-none"
+              />
+            </div>
+
+            {/* Max Marks / Duration */}
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-[0.14em] text-[#4a3e5c]">
+                Max Marks / Duration
+              </label>
+              <input
+                type="text"
+                value={maxMarks}
+                onChange={e => setMaxMarks(e.target.value)}
+                placeholder="e.g. 100 Marks · 3 Hours"
+                className="mt-2 w-full rounded-2xl border border-[#e4dce9] bg-white px-4 py-3 text-sm text-[#2a203e] shadow-xs focus:border-[#6d4b9f] focus:outline-none"
+              />
+            </div>
+          </div>
+
+          {/* Upload Area with Upload Icon */}
+          <div className="space-y-3">
+            <label className="block text-xs font-bold uppercase tracking-[0.14em] text-[#4a3e5c]">
+              Attach Question Paper Document (PDF, Word, or Image)
+            </label>
+            <div className="relative rounded-3xl border-2 border-dashed border-[#d8cfe0] bg-[#faf7fc] p-6 text-center transition hover:border-[#6d4b9f] hover:bg-[#f5effb]">
+              <input
+                type="file"
+                accept=".pdf,.doc,.docx,.png,.jpg,.jpeg"
+                onChange={handleFileUpload}
+                className="absolute inset-0 z-10 cursor-pointer opacity-0"
+                title="Click or drag question paper file to upload"
+              />
+              <div className="flex flex-col items-center justify-center">
+                <div className="grid h-14 w-14 place-items-center rounded-2xl bg-[#e9ddf4] text-[#6d4b9f] shadow-xs">
+                  <UploadCloud size={28} />
+                </div>
+                {uploadedFileName ? (
+                  <div className="mt-3">
+                    <p className="text-sm font-bold text-[#2e7d52] flex items-center justify-center gap-1.5">
+                      <CheckCircle2 size={16} /> {uploadedFileName}
+                    </p>
+                    <p className="mt-0.5 text-xs text-[#81758e]">
+                      File ready for dispatch ({uploadedFileSize}) · Click or drop another to replace
+                    </p>
+                  </div>
+                ) : (
+                  <div className="mt-3">
+                    <p className="text-sm font-semibold text-[#2d213f]">
+                      Click to browse or drag & drop question paper file here
+                    </p>
+                    <p className="mt-1 text-xs text-[#8d8197]">
+                      Supports PDF, DOCX, DOC, PNG, JPG (up to 10MB)
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Optional Direct Link */}
+            <div className="flex items-center gap-3 pt-1">
+              <span className="text-xs text-[#8d8197]">Or enter document URL / Google Drive link:</span>
+              <input
+                type="url"
+                value={docLink}
+                onChange={e => setDocLink(e.target.value)}
+                placeholder="https://drive.google.com/... or https://..."
+                className="flex-1 rounded-xl border border-[#e4dce9] bg-white px-3.5 py-2 text-xs text-[#2a203e] shadow-2xs focus:border-[#6d4b9f] focus:outline-none"
+              />
+            </div>
+          </div>
+
+          {/* Submit / Dispatch Button */}
+          <div className="flex flex-wrap items-center justify-between gap-4 border-t border-[#f3ebf6] pt-5">
+            <p className="text-xs text-[#81758e]">
+              Dispatched question papers will immediately appear in the Student & Parent portals under <strong>Question paper</strong>.
+            </p>
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className="flex items-center gap-2 rounded-2xl bg-[#5b3b92] px-8 py-3.5 text-sm font-bold text-white shadow-md transition hover:bg-[#4a2e7c] disabled:opacity-60"
+            >
+              {isSubmitting ? (
+                <Loader2 className="animate-spin" size={16} />
+              ) : (
+                <Send size={16} />
+              )}
+              Dispatch Question Paper to Parents & Students
+            </button>
+          </div>
+        </form>
+      </div>
+
+      {/* Dispatched Question Papers History */}
+      <div className="rounded-3xl border border-[#eee6f0] bg-white p-6 md:p-8 shadow-xs">
+        <div className="flex flex-wrap items-center justify-between gap-4 border-b border-[#f3ebf6] pb-4">
+          <div>
+            <h3 className="text-lg font-bold text-[#1c2434]">
+              Dispatched Question Papers ({papers.length})
+            </h3>
+            <p className="mt-0.5 text-xs text-[#81758e]">
+              Review, download, or manage question papers sent to batches.
+            </p>
+          </div>
+
+          <div className="relative w-full max-w-xs">
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#a89cb3]" size={15} />
+            <input
+              type="text"
+              value={searchFilter}
+              onChange={e => setSearchFilter(e.target.value)}
+              placeholder="Search by title, subject, class..."
+              className="w-full rounded-2xl border border-[#e4dce9] bg-[#faf7fc] py-2 pl-9 pr-4 text-xs text-[#2a203e] outline-none focus:border-[#6d4b9f] focus:bg-white"
+            />
+          </div>
+        </div>
+
+        {filteredPapers.length === 0 ? (
+          <div className="py-12 text-center text-xs text-[#8d8197]">
+            No question papers found. Fill out the dispatch form above to send question papers.
+          </div>
+        ) : (
+          <div className="mt-4 overflow-x-auto">
+            <table className="w-full text-left text-xs">
+              <thead>
+                <tr className="border-b border-[#f0e8f4] text-[11px] font-bold uppercase tracking-[0.1em] text-[#8d8197]">
+                  <th className="py-3 pl-2 pr-4">#</th>
+                  <th className="py-3 px-4">Paper Title</th>
+                  <th className="py-3 px-4">Subject</th>
+                  <th className="py-3 px-4">Target Class</th>
+                  <th className="py-3 px-4">Term / Marks</th>
+                  <th className="py-3 px-4">Status</th>
+                  <th className="py-3 pr-2 pl-4 text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[#f7f2f9]">
+                {filteredPapers.map((paper, idx) => (
+                  <tr key={paper.id} className="transition hover:bg-[#fbf9fd]">
+                    <td className="py-3.5 pl-2 pr-4 font-semibold text-[#8d8197]">
+                      {String(idx + 1).padStart(2, "0")}
+                    </td>
+                    <td className="py-3.5 px-4 font-semibold text-[#2d213f]">
+                      <div className="flex items-center gap-2">
+                        <FileText size={15} className="text-[#6d4b9f] shrink-0" />
+                        <span>{paper.title}</span>
+                      </div>
+                      {paper.fileName && (
+                        <span className="text-[10px] text-[#8d8197] block ml-6">
+                          {paper.fileName} ({paper.fileSize || "PDF"})
+                        </span>
+                      )}
+                    </td>
+                    <td className="py-3.5 px-4">
+                      <span className="rounded-lg bg-[#f0eaf7] px-2.5 py-1 text-xs font-semibold text-[#5b3b92]">
+                        {paper.subject}
+                      </span>
+                    </td>
+                    <td className="py-3.5 px-4">
+                      <span className="rounded-lg bg-[#e9f5ed] px-2.5 py-1 text-xs font-semibold text-[#2e7d52]">
+                        {paper.targetClass || "Grade 10"}
+                      </span>
+                    </td>
+                    <td className="py-3.5 px-4 text-[#71647f]">
+                      <div>{paper.term || "Term 1"}</div>
+                      <div className="text-[10px] text-[#8d8197]">{paper.maxMarks || "100 Marks"}</div>
+                    </td>
+                    <td className="py-3.5 px-4">
+                      <span className="inline-flex items-center gap-1 rounded-full bg-[#e9f5ed] px-2.5 py-0.5 text-[10px] font-bold text-[#1b7e47]">
+                        <Check size={12} /> Dispatched
+                      </span>
+                    </td>
+                    <td className="py-3.5 pr-2 pl-4 text-right">
+                      <div className="flex items-center justify-end gap-2">
+                        {paper.link && paper.link !== "#" ? (
+                          <a
+                            href={paper.link}
+                            target="_blank"
+                            rel="noreferrer"
+                            download={paper.fileName || undefined}
+                            className="rounded-lg p-1.5 text-[#5b3b92] transition hover:bg-[#f0e9f7]"
+                            title="View / Download paper"
+                          >
+                            <ArrowUpRight size={16} />
+                          </a>
+                        ) : null}
+                        <button
+                          type="button"
+                          onClick={() => handleDelete(paper.id)}
+                          className="rounded-lg p-1.5 text-[#b83232] transition hover:bg-[#fcedec]"
+                          title="Delete paper"
+                        >
+                          <Trash2 size={15} />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function AdminUnitPaperManager() {
+  const [departments] = useState<string[]>(() => {
+    try {
+      const saved = localStorage.getItem("rasi_admin_departments");
+      return saved ? JSON.parse(saved) : INITIAL_DEPARTMENTS;
+    } catch {
+      return INITIAL_DEPARTMENTS;
+    }
+  });
+
+  const [unitPapers, setUnitPapers] = useState<StudyMaterial[]>(() => {
+    try {
+      const saved = localStorage.getItem("rasi_dispatched_unit_questions");
+      if (saved) return JSON.parse(saved);
+    } catch {}
+    const site = readSiteData();
+    return site.unitQuestions && site.unitQuestions.length > 0
+      ? site.unitQuestions
+      : [
+          {
+            id: "uq-1",
+            title: "Unit 1: Algebra, Matrices & Determinants - Important Questions",
+            subject: "Mathematics",
+            link: "#",
+            type: "unit",
+            targetClass: "Grade 10",
+            date: "2026-10-02",
+            term: "Unit 1",
+            maxMarks: "25 Questions · 50 Marks",
+            fileName: "unit1_algebra_important_questions.pdf",
+            fileSize: "850 KB",
+          },
+        ];
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem("rasi_dispatched_unit_questions", JSON.stringify(unitPapers));
+      const site = readSiteData();
+      saveSiteData({ ...site, unitQuestions: unitPapers });
+    } catch {}
+  }, [unitPapers]);
+
+  const [targetClass, setTargetClass] = useState("Grade 10");
+  const [customClass, setCustomClass] = useState("");
+  const [subject, setSubject] = useState("Mathematics");
+  const [customSubject, setCustomSubject] = useState("");
+  const [unitNumber, setUnitNumber] = useState("Unit 1");
+  const [unitTitle, setUnitTitle] = useState("");
+  const [weightage, setWeightage] = useState("20 Questions · 50 Marks");
+  const [docLink, setDocLink] = useState("");
+  const [uploadedFileName, setUploadedFileName] = useState<string | null>(null);
+  const [uploadedFileSize, setUploadedFileSize] = useState<string | null>(null);
+  const [uploadedFileData, setUploadedFileData] = useState<string | null>(null);
+  const [searchFilter, setSearchFilter] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [toastMsg, setToastMsg] = useState<string | null>(null);
+
+  const showLocalToast = (msg: string) => {
+    setToastMsg(msg);
+    setTimeout(() => setToastMsg(null), 3500);
+  };
+
+  const createMutation = trpc.admin.createUnitQuestion.useMutation();
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadedFileName(file.name);
+    const sizeStr = file.size > 1024 * 1024
+      ? `${(file.size / (1024 * 1024)).toFixed(1)} MB`
+      : `${Math.round(file.size / 1024)} KB`;
+    setUploadedFileSize(sizeStr);
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = reader.result as string;
+      setUploadedFileData(result);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleDispatch = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const finalClass = targetClass === "Custom" ? customClass.trim() : targetClass;
+    const finalSubject = subject === "Custom" ? customSubject.trim() : subject;
+
+    if (!unitTitle.trim()) {
+      showLocalToast("Please enter the unit title / questions topic.");
+      return;
+    }
+    if (!finalSubject) {
+      showLocalToast("Please enter or select a subject.");
+      return;
+    }
+    if (!finalClass) {
+      showLocalToast("Please specify the target class.");
+      return;
+    }
+
+    const finalLink = uploadedFileData || docLink.trim() || "#";
+
+    setIsSubmitting(true);
+    const newUnit: StudyMaterial = {
+      id: `uq-${Date.now()}`,
+      title: `${unitNumber ? `${unitNumber}: ` : ""}${unitTitle.trim()}`,
+      subject: finalSubject,
+      link: finalLink,
+      type: "unit",
+      targetClass: finalClass,
+      date: new Date().toISOString().slice(0, 10),
+      term: unitNumber || "Unit Practice",
+      maxMarks: weightage.trim() || "20 Questions",
+      fileName: uploadedFileName || "Unit_Questions.pdf",
+      fileSize: uploadedFileSize || "900 KB",
+    };
+
+    try {
+      await createMutation.mutateAsync({
+        title: newUnit.title,
+        subject: newUnit.subject,
+        link: newUnit.link,
+        targetClass: newUnit.targetClass || "All classes",
+      });
+    } catch {}
+
+    setUnitPapers(prev => [newUnit, ...prev]);
+    setIsSubmitting(false);
+    setUnitTitle("");
+    setDocLink("");
+    setUploadedFileName(null);
+    setUploadedFileSize(null);
+    setUploadedFileData(null);
+    showLocalToast(`Unit-wise paper dispatched to ${finalClass} students and parents!`);
+  };
+
+  const handleDelete = (id: string) => {
+    if (confirm("Remove this unit question paper?")) {
+      setUnitPapers(unitPapers.filter(p => p.id !== id));
+      showLocalToast("Unit question paper removed.");
+    }
+  };
+
+  const filteredUnits = unitPapers.filter(p =>
+    p.title.toLowerCase().includes(searchFilter.toLowerCase()) ||
+    p.subject.toLowerCase().includes(searchFilter.toLowerCase()) ||
+    (p.targetClass && p.targetClass.toLowerCase().includes(searchFilter.toLowerCase()))
+  );
+
+  const classOptions = ["Grade 10", "Grade 9", "Grade 11", "Grade 12", "All classes", ...departments.map(d => `${d}`), "Custom"];
+  const subjectOptions = ["Mathematics", "Physics", "Chemistry", "Computer Science", "English", "Biology", "Custom"];
+
+  return (
+    <div className="space-y-8">
+      {/* Local Toast */}
+      {toastMsg && (
+        <div className="fixed bottom-6 right-6 z-50 flex items-center gap-3 rounded-2xl bg-[#0c2340] px-5 py-3.5 text-sm font-medium text-white shadow-2xl transition-all">
+          <CheckCircle2 className="text-[#48bb78]" size={18} />
+          {toastMsg}
+        </div>
+      )}
+
+      {/* Upload and Dispatch Form Card */}
+      <div className="rounded-3xl border border-[#eee6f0] bg-white p-6 md:p-8 shadow-xs">
+        <div className="flex flex-wrap items-center justify-between gap-4 border-b border-[#f3ebf6] pb-5">
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="grid h-8 w-8 place-items-center rounded-xl bg-[#f0e9f7] text-[#5b3b92]">
+                <BookOpen size={18} />
+              </span>
+              <h2 className="text-xl font-bold text-[#1c2434]">
+                Upload & Dispatch Unit-wise Paper
+              </h2>
+            </div>
+            <p className="mt-1 text-xs text-[#81758e]">
+              Curate and dispatch chapter/unit-wise important questions, problem sets, and revision papers to students and parents.
+            </p>
+          </div>
+          <div className="rounded-2xl bg-[#e9f5ed] px-3.5 py-1.5 text-xs font-semibold text-[#2e7d52]">
+            Unit Repository Active
+          </div>
+        </div>
+
+        <form onSubmit={handleDispatch} className="mt-6 space-y-6">
+          <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+            {/* Target Class */}
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-[0.14em] text-[#4a3e5c]">
+                Target Class / Department
+              </label>
+              <select
+                value={targetClass}
+                onChange={e => setTargetClass(e.target.value)}
+                className="mt-2 w-full rounded-2xl border border-[#e4dce9] bg-white px-4 py-3 text-sm text-[#2a203e] shadow-xs focus:border-[#6d4b9f] focus:outline-none"
+              >
+                {classOptions.map(cls => (
+                  <option key={cls} value={cls}>{cls}</option>
+                ))}
+              </select>
+              {targetClass === "Custom" && (
+                <input
+                  type="text"
+                  required
+                  value={customClass}
+                  onChange={e => setCustomClass(e.target.value)}
+                  placeholder="Enter custom class/batch"
+                  className="mt-2 w-full rounded-2xl border border-[#e4dce9] bg-white px-4 py-2.5 text-sm"
+                />
+              )}
+            </div>
+
+            {/* Subject */}
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-[0.14em] text-[#4a3e5c]">
+                Subject
+              </label>
+              <select
+                value={subject}
+                onChange={e => setSubject(e.target.value)}
+                className="mt-2 w-full rounded-2xl border border-[#e4dce9] bg-white px-4 py-3 text-sm text-[#2a203e] shadow-xs focus:border-[#6d4b9f] focus:outline-none"
+              >
+                {subjectOptions.map(sub => (
+                  <option key={sub} value={sub}>{sub}</option>
+                ))}
+              </select>
+              {subject === "Custom" && (
+                <input
+                  type="text"
+                  required
+                  value={customSubject}
+                  onChange={e => setCustomSubject(e.target.value)}
+                  placeholder="Enter custom subject"
+                  className="mt-2 w-full rounded-2xl border border-[#e4dce9] bg-white px-4 py-2.5 text-sm"
+                />
+              )}
+            </div>
+
+            {/* Unit / Chapter Number */}
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-[0.14em] text-[#4a3e5c]">
+                Unit / Chapter Number
+              </label>
+              <input
+                type="text"
+                value={unitNumber}
+                onChange={e => setUnitNumber(e.target.value)}
+                placeholder="e.g. Unit 1, Unit 2, Chapter 4"
+                className="mt-2 w-full rounded-2xl border border-[#e4dce9] bg-white px-4 py-3 text-sm text-[#2a203e] shadow-xs focus:border-[#6d4b9f] focus:outline-none"
+              />
+            </div>
+
+            {/* Unit Title / Topic */}
+            <div className="sm:col-span-2">
+              <label className="block text-xs font-bold uppercase tracking-[0.14em] text-[#4a3e5c]">
+                Unit / Chapter Title & Topic Description *
+              </label>
+              <input
+                type="text"
+                required
+                value={unitTitle}
+                onChange={e => setUnitTitle(e.target.value)}
+                placeholder="e.g. Real Numbers, Polynomials & Pair of Linear Equations"
+                className="mt-2 w-full rounded-2xl border border-[#e4dce9] bg-white px-4 py-3 text-sm text-[#2a203e] shadow-xs placeholder:text-[#a89cb3] focus:border-[#6d4b9f] focus:outline-none"
+              />
+            </div>
+
+            {/* Weightage / Questions info */}
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-[0.14em] text-[#4a3e5c]">
+                Weightage / Question Count
+              </label>
+              <input
+                type="text"
+                value={weightage}
+                onChange={e => setWeightage(e.target.value)}
+                placeholder="e.g. 25 Questions · 50 Marks"
+                className="mt-2 w-full rounded-2xl border border-[#e4dce9] bg-white px-4 py-3 text-sm text-[#2a203e] shadow-xs focus:border-[#6d4b9f] focus:outline-none"
+              />
+            </div>
+          </div>
+
+          {/* Upload Area with Upload Icon */}
+          <div className="space-y-3">
+            <label className="block text-xs font-bold uppercase tracking-[0.14em] text-[#4a3e5c]">
+              Attach Unit-wise Question Paper (PDF, Word, or Image)
+            </label>
+            <div className="relative rounded-3xl border-2 border-dashed border-[#d8cfe0] bg-[#faf7fc] p-6 text-center transition hover:border-[#6d4b9f] hover:bg-[#f5effb]">
+              <input
+                type="file"
+                accept=".pdf,.doc,.docx,.png,.jpg,.jpeg"
+                onChange={handleFileUpload}
+                className="absolute inset-0 z-10 cursor-pointer opacity-0"
+                title="Click or drag unit question paper file to upload"
+              />
+              <div className="flex flex-col items-center justify-center">
+                <div className="grid h-14 w-14 place-items-center rounded-2xl bg-[#e9ddf4] text-[#6d4b9f] shadow-xs">
+                  <UploadCloud size={28} />
+                </div>
+                {uploadedFileName ? (
+                  <div className="mt-3">
+                    <p className="text-sm font-bold text-[#2e7d52] flex items-center justify-center gap-1.5">
+                      <CheckCircle2 size={16} /> {uploadedFileName}
+                    </p>
+                    <p className="mt-0.5 text-xs text-[#81758e]">
+                      File ready for dispatch ({uploadedFileSize}) · Click or drop another to replace
+                    </p>
+                  </div>
+                ) : (
+                  <div className="mt-3">
+                    <p className="text-sm font-semibold text-[#2d213f]">
+                      Click to browse or drag & drop unit question paper file here
+                    </p>
+                    <p className="mt-1 text-xs text-[#8d8197]">
+                      Supports PDF, DOCX, DOC, PNG, JPG (up to 10MB)
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Optional Direct Link */}
+            <div className="flex items-center gap-3 pt-1">
+              <span className="text-xs text-[#8d8197]">Or enter document URL / Google Drive link:</span>
+              <input
+                type="url"
+                value={docLink}
+                onChange={e => setDocLink(e.target.value)}
+                placeholder="https://drive.google.com/... or https://..."
+                className="flex-1 rounded-xl border border-[#e4dce9] bg-white px-3.5 py-2 text-xs text-[#2a203e] shadow-2xs focus:border-[#6d4b9f] focus:outline-none"
+              />
+            </div>
+          </div>
+
+          {/* Submit / Dispatch Button */}
+          <div className="flex flex-wrap items-center justify-between gap-4 border-t border-[#f3ebf6] pt-5">
+            <p className="text-xs text-[#81758e]">
+              Dispatched unit papers will immediately appear in the Student & Parent portals under <strong>Unit question</strong>.
+            </p>
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className="flex items-center gap-2 rounded-2xl bg-[#5b3b92] px-8 py-3.5 text-sm font-bold text-white shadow-md transition hover:bg-[#4a2e7c] disabled:opacity-60"
+            >
+              {isSubmitting ? (
+                <Loader2 className="animate-spin" size={16} />
+              ) : (
+                <Send size={16} />
+              )}
+              Dispatch Unit Paper to Parents & Students
+            </button>
+          </div>
+        </form>
+      </div>
+
+      {/* Dispatched Unit-wise Papers History */}
+      <div className="rounded-3xl border border-[#eee6f0] bg-white p-6 md:p-8 shadow-xs">
+        <div className="flex flex-wrap items-center justify-between gap-4 border-b border-[#f3ebf6] pb-4">
+          <div>
+            <h3 className="text-lg font-bold text-[#1c2434]">
+              Dispatched Unit-wise Papers ({unitPapers.length})
+            </h3>
+            <p className="mt-0.5 text-xs text-[#81758e]">
+              Review, download, or manage unit question papers sent to batches.
+            </p>
+          </div>
+
+          <div className="relative w-full max-w-xs">
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#a89cb3]" size={15} />
+            <input
+              type="text"
+              value={searchFilter}
+              onChange={e => setSearchFilter(e.target.value)}
+              placeholder="Search by unit title, subject, class..."
+              className="w-full rounded-2xl border border-[#e4dce9] bg-[#faf7fc] py-2 pl-9 pr-4 text-xs text-[#2a203e] outline-none focus:border-[#6d4b9f] focus:bg-white"
+            />
+          </div>
+        </div>
+
+        {filteredUnits.length === 0 ? (
+          <div className="py-12 text-center text-xs text-[#8d8197]">
+            No unit-wise papers found. Fill out the dispatch form above to send unit question papers.
+          </div>
+        ) : (
+          <div className="mt-4 overflow-x-auto">
+            <table className="w-full text-left text-xs">
+              <thead>
+                <tr className="border-b border-[#f0e8f4] text-[11px] font-bold uppercase tracking-[0.1em] text-[#8d8197]">
+                  <th className="py-3 pl-2 pr-4">#</th>
+                  <th className="py-3 px-4">Unit Title & Topic</th>
+                  <th className="py-3 px-4">Subject</th>
+                  <th className="py-3 px-4">Target Class</th>
+                  <th className="py-3 px-4">Weightage / Marks</th>
+                  <th className="py-3 px-4">Status</th>
+                  <th className="py-3 pr-2 pl-4 text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[#f7f2f9]">
+                {filteredUnits.map((paper, idx) => (
+                  <tr key={paper.id} className="transition hover:bg-[#fbf9fd]">
+                    <td className="py-3.5 pl-2 pr-4 font-semibold text-[#8d8197]">
+                      {String(idx + 1).padStart(2, "0")}
+                    </td>
+                    <td className="py-3.5 px-4 font-semibold text-[#2d213f]">
+                      <div className="flex items-center gap-2">
+                        <BookOpen size={15} className="text-[#6d4b9f] shrink-0" />
+                        <span>{paper.title}</span>
+                      </div>
+                      {paper.fileName && (
+                        <span className="text-[10px] text-[#8d8197] block ml-6">
+                          {paper.fileName} ({paper.fileSize || "PDF"})
+                        </span>
+                      )}
+                    </td>
+                    <td className="py-3.5 px-4">
+                      <span className="rounded-lg bg-[#f0eaf7] px-2.5 py-1 text-xs font-semibold text-[#5b3b92]">
+                        {paper.subject}
+                      </span>
+                    </td>
+                    <td className="py-3.5 px-4">
+                      <span className="rounded-lg bg-[#e9f5ed] px-2.5 py-1 text-xs font-semibold text-[#2e7d52]">
+                        {paper.targetClass || "Grade 10"}
+                      </span>
+                    </td>
+                    <td className="py-3.5 px-4 text-[#71647f]">
+                      <div>{paper.maxMarks || "20 Questions"}</div>
+                      <div className="text-[10px] text-[#8d8197]">{paper.term || "Unit Practice"}</div>
+                    </td>
+                    <td className="py-3.5 px-4">
+                      <span className="inline-flex items-center gap-1 rounded-full bg-[#e9f5ed] px-2.5 py-0.5 text-[10px] font-bold text-[#1b7e47]">
+                        <Check size={12} /> Dispatched
+                      </span>
+                    </td>
+                    <td className="py-3.5 pr-2 pl-4 text-right">
+                      <div className="flex items-center justify-end gap-2">
+                        {paper.link && paper.link !== "#" ? (
+                          <a
+                            href={paper.link}
+                            target="_blank"
+                            rel="noreferrer"
+                            download={paper.fileName || undefined}
+                            className="rounded-lg p-1.5 text-[#5b3b92] transition hover:bg-[#f0e9f7]"
+                            title="View / Download paper"
+                          >
+                            <ArrowUpRight size={16} />
+                          </a>
+                        ) : null}
+                        <button
+                          type="button"
+                          onClick={() => handleDelete(paper.id)}
+                          className="rounded-lg p-1.5 text-[#b83232] transition hover:bg-[#fcedec]"
+                          title="Delete unit paper"
+                        >
+                          <Trash2 size={15} />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function AdminWorkspace({ user, onLogout }: { user: User; onLogout: () => void }) {
   const studentEmail = "student@portal.com";
-  const [active, setActive] = useState<"Overview" | "Students" | "Attendance" | "Schedule" | "Marks" | "Projects" | "Government exams">("Attendance");
+  const [active, setActive] = useState<"Overview" | "Students" | "Attendance" | "Schedule" | "Marks" | "Projects" | "Government exams" | "Question paper" | "Unit-wise paper">("Attendance");
   const [sessionDate, setSessionDate] = useState(new Date().toISOString().slice(0, 10));
   const [subject, setSubject] = useState("Mathematics");
   const [exercise, setExercise] = useState("");
@@ -2920,6 +3910,8 @@ function AdminWorkspace({ user, onLogout }: { user: User; onLogout: () => void }
           { label: "Marks", icon: <BarChart3 size={16} /> },
           { label: "Projects", icon: <NotebookPen size={16} /> },
           { label: "Government exams", icon: <ShieldCheck size={16} /> },
+          { label: "Question paper", icon: <FileText size={16} /> },
+          { label: "Unit-wise paper", icon: <BookOpen size={16} /> },
         ].map(item => (
           <button
             key={item.label}
@@ -2946,7 +3938,7 @@ function AdminWorkspace({ user, onLogout }: { user: User; onLogout: () => void }
       </header>
       <div className="p-5 md:p-10">
         <div className="mb-8">
-          <Pill>{active === "Students" ? "CREATION / MANAGEMENT" : active === "Attendance" ? "ATTENDANCE" : active === "Government exams" ? "GOV EXAMS" : active.toUpperCase()}</Pill>
+          <Pill>{active === "Students" ? "CREATION / MANAGEMENT" : active === "Attendance" ? "ATTENDANCE" : active === "Government exams" ? "GOV EXAMS" : active === "Question paper" ? "QUESTION PAPERS" : active === "Unit-wise paper" ? "UNIT-WISE PAPERS" : active.toUpperCase()}</Pill>
           <p className="mt-3 max-w-lg text-sm leading-6 text-[#81758e]">
             {active === "Students"
               ? "Comprehensive student enrollment, department batches, single & bulk import management."
@@ -2958,6 +3950,10 @@ function AdminWorkspace({ user, onLogout }: { user: User; onLogout: () => void }
               ? "Assign student project ideas and descriptions with instant dispatch to parents."
               : active === "Government exams"
               ? "Central and Tamil Nadu government examination calendar, criteria, and bulk Excel import."
+              : active === "Question paper"
+              ? "Upload question papers with detail fields and dispatch directly to parent and student portals."
+              : active === "Unit-wise paper"
+              ? "Upload unit-wise and chapter question papers with detail fields and dispatch to parent and student portals."
               : "Manage the linked Student and Parent experience from one protected Admin workspace."}
           </p>
         </div>
@@ -3024,13 +4020,31 @@ function AdminWorkspace({ user, onLogout }: { user: User; onLogout: () => void }
                 Manage TN & Central Government exams, or import Excel/CSV sheets and dispatch to classes.
               </p>
             </button>
+            <button
+              onClick={() => setActive("Question paper")}
+              className="rounded-3xl border border-[#eee6f0] bg-white p-6 text-left transition hover:-translate-y-1"
+            >
+              <FileText className="text-[#6d4b9f]" size={24} />
+              <h2 className="mt-6 text-xl font-semibold">Question Papers</h2>
+              <p className="mt-2 text-sm text-[#887c91]">
+                Upload and dispatch mid-term and annual question papers to students and parents.
+              </p>
+            </button>
+            <button
+              onClick={() => setActive("Unit-wise paper")}
+              className="rounded-3xl border border-[#eee6f0] bg-white p-6 text-left transition hover:-translate-y-1"
+            >
+              <BookOpen className="text-[#6d4b9f]" size={24} />
+              <h2 className="mt-6 text-xl font-semibold">Unit-wise Papers</h2>
+              <p className="mt-2 text-sm text-[#887c91]">
+                Upload and dispatch chapter/unit question papers and practice sets to students and parents.
+              </p>
+            </button>
           </div>
         )}
 
         {active === "Students" && <AdminStudentManager />}
-
         {active === "Attendance" && <AdminAttendanceManager />}
-
         {active === "Schedule" && (
           <div className="grid gap-5 lg:grid-cols-[1fr_1fr]">
             <div className="rounded-3xl border border-[#eee6f0] bg-white p-6">
@@ -3162,6 +4176,8 @@ function AdminWorkspace({ user, onLogout }: { user: User; onLogout: () => void }
         {active === "Marks" && <AdminMarksManager />}
         {active === "Projects" && <AdminProjectsManager />}
         {active === "Government exams" && <AdminGovernmentExamsManager />}
+        {active === "Question paper" && <AdminQuestionPaperManager />}
+        {active === "Unit-wise paper" && <AdminUnitPaperManager />}
       </div>
     </main>
   </div>;
@@ -3522,7 +4538,7 @@ function TeacherWorkspace({ user, onLogout }: { user: User; onLogout: () => void
   };
 
   return (
-    <div className="min-h-screen bg-[#f8f9fb] text-[#1c2434]">
+    <div className="min-h-screen bg-[#f6f2f8] text-[#2a203e]">
       {/* Toast Notification */}
       {toastMessage && (
         <div className="fixed bottom-6 right-6 z-50 flex items-center gap-3 rounded-2xl bg-[#0c2340] px-5 py-3.5 text-sm font-medium text-white shadow-2xl transition-all">
@@ -3531,83 +4547,90 @@ function TeacherWorkspace({ user, onLogout }: { user: User; onLogout: () => void
         </div>
       )}
 
-      {/* TOP NAVBAR (Navy background matching screenshots) */}
-      <header className="sticky top-0 z-40 bg-[#0c2444] text-white shadow-md">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3.5 sm:px-6 lg:px-8">
-          {/* Logo & Brand */}
-          <div className="flex items-center gap-3">
-            <div className="grid h-9 w-9 place-items-center rounded-full bg-[#1e3a61] text-xs font-bold text-white shadow-inner">
-              <ClipboardCheck size={18} className="text-[#f6ae8a]" />
-            </div>
-            <span className="text-base font-bold tracking-tight text-white sm:text-lg">
-              Attendance
-            </span>
-          </div>
-
-          {/* Navigation Links */}
-          <nav className="flex items-center gap-1 sm:gap-4 md:gap-7 text-xs sm:text-sm font-medium">
+      {/* LEFT SIDEBAR (Matching Student and Admin Workspaces) */}
+      <aside className="fixed inset-y-0 left-0 hidden w-64 border-r border-[#ebe3ef] bg-[#fffdfb] p-6 md:block">
+        <Logo />
+        <div className="mt-12">
+          <p className="mb-3 text-[10px] font-bold uppercase tracking-[0.2em] text-[#a296ac]">Teacher workspace</p>
+          {[
+            { id: "home", label: "Attendance", icon: <ClipboardCheck size={16} /> },
+            { id: "attendance_records", label: "Attendance Records", icon: <FileText size={16} /> },
+            { id: "marks_portal", label: "Marks Portal", icon: <BarChart3 size={16} /> },
+            { id: "mark_record", label: "Mark Record", icon: <BookOpen size={16} /> },
+          ].map(item => (
             <button
-              type="button"
-              onClick={() => setActiveTab("home")}
-              className={`relative px-2 py-1 transition ${
-                activeTab === "home"
-                  ? "font-bold text-white after:absolute after:bottom-[-14px] after:left-0 after:right-0 after:h-[3px] after:rounded-t-full after:bg-[#f59e0b]"
-                  : "text-[#9cb3d1] hover:text-white"
+              key={item.id}
+              onClick={() => setActiveTab(item.id as typeof activeTab)}
+              className={`mb-1 flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-sm transition ${
+                activeTab === item.id
+                  ? "bg-[#f0e9f7] font-semibold text-[#5b3b92]"
+                  : "text-[#81758e] hover:bg-[#faf7fc]"
               }`}
             >
-              Home
+              <span>{item.icon}</span>
+              {item.label}
             </button>
-
-            <button
-              type="button"
-              onClick={() => setActiveTab("attendance_records")}
-              className={`relative px-2 py-1 transition ${
-                activeTab === "attendance_records"
-                  ? "font-bold text-white after:absolute after:bottom-[-14px] after:left-0 after:right-0 after:h-[3px] after:rounded-t-full after:bg-[#f59e0b]"
-                  : "text-[#9cb3d1] hover:text-white"
-              }`}
-            >
-              Attendance Records
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setActiveTab("marks_portal")}
-              className={`relative px-2 py-1 transition ${
-                activeTab === "marks_portal"
-                  ? "font-bold text-white after:absolute after:bottom-[-14px] after:left-0 after:right-0 after:h-[3px] after:rounded-t-full after:bg-[#f59e0b]"
-                  : "text-[#9cb3d1] hover:text-white"
-              }`}
-            >
-              Marks Portal
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setActiveTab("mark_record")}
-              className={`relative px-2 py-1 transition ${
-                activeTab === "mark_record"
-                  ? "font-bold text-white after:absolute after:bottom-[-14px] after:left-0 after:right-0 after:h-[3px] after:rounded-t-full after:bg-[#f59e0b]"
-                  : "text-[#9cb3d1] hover:text-white"
-              }`}
-            >
-              Mark Record
-            </button>
-
-            {/* Blue Logout Button */}
-            <button
-              type="button"
-              onClick={onLogout}
-              className="ml-2 rounded-xl bg-[#1b55a8] px-4 py-2 text-xs font-bold text-white shadow-sm transition hover:bg-[#14478a] sm:ml-4 sm:px-5"
-            >
-              Logout
-            </button>
-          </nav>
+          ))}
         </div>
-      </header>
+        <div className="absolute bottom-6 left-6 right-6">
+          <div className="rounded-2xl bg-[#f7f1fb] p-4 text-xs">
+            <p className="font-semibold text-[#5b3b92]">Teacher Desk</p>
+            <p className="mt-1 text-[11px] leading-4 text-[#8d8197]">
+              Record classroom attendance and enter student test marks.
+            </p>
+          </div>
+        </div>
+      </aside>
 
       {/* MAIN CONTENT AREA */}
-      <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+      <main className="md:ml-64">
+        <header className="flex items-center justify-between border-b border-[#ebe3ef] bg-[#fffdfb]/80 px-5 py-5 backdrop-blur md:px-10">
+          <div>
+            <p className="text-xs text-[#978ca1]">Teacher portal</p>
+            <h1 className="mt-1 text-2xl font-semibold tracking-[-0.04em]">Good morning, {user.name.split(" ")[0]}.</h1>
+          </div>
+          <div className="flex items-center gap-3">
+            <div className="hidden text-right sm:block">
+              <p className="text-xs font-semibold">{user.name}</p>
+              <p className="text-[11px] text-[#94889e]">Faculty · Mathematics</p>
+            </div>
+            <button
+              onClick={onLogout}
+              className="rounded-full border border-[#e4dce9] bg-white p-2.5 text-[#796c88] transition hover:text-[#5b3b92]"
+              title="Log out"
+            >
+              <LogOut size={16} />
+            </button>
+          </div>
+        </header>
+
+        <div className="p-5 md:p-10">
+          <div className="mb-8 flex items-center justify-between">
+            <div>
+              <Pill>
+                {activeTab === "home"
+                  ? "ATTENDANCE"
+                  : activeTab === "attendance_records"
+                  ? "ATTENDANCE RECORDS"
+                  : activeTab === "marks_portal"
+                  ? "ENTER MARKS"
+                  : "MARK RECORDS"}
+              </Pill>
+              <p className="mt-3 max-w-lg text-sm leading-6 text-[#81758e]">
+                {activeTab === "home"
+                  ? "Teacher roll chip marking for daily classroom & laboratory sessions."
+                  : activeTab === "attendance_records"
+                  ? "Review recorded classroom attendance history and absentee logs."
+                  : activeTab === "marks_portal"
+                  ? "Filter by department and section to enter student test marks."
+                  : "Search and review archived test mark records."}
+              </p>
+            </div>
+            <div className="hidden rounded-2xl bg-[#f4e9dd] p-4 text-[#a7633e] md:block">
+              <ShieldCheck size={20} />
+              <p className="mt-2 text-[11px] font-semibold">Teacher verified session</p>
+            </div>
+          </div>
         {/* ========================================================= */}
         {/* TAB 1: HOME (Attendance Taking with Chips)           */}
         {/* ========================================================= */}
@@ -4269,8 +5292,9 @@ function TeacherWorkspace({ user, onLogout }: { user: User; onLogout: () => void
             )}
           </div>
         )}
-      </main>
-    </div>
+      </div>
+    </main>
+  </div>
   );
 }
 

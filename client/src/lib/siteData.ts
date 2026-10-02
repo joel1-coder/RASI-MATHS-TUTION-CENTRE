@@ -6,7 +6,19 @@ export type HeroStat = { id: string; value: string; label: string };
 export type Testimonial = { id: string; quote: string; attribution: string };
 export type Announcement = { id: string; title: string; description: string; date: string; target: string };
 export type ContactDetails = { address: string; phone: string; email: string; hours: string };
-export type StudyMaterial = { id: string; title: string; subject: string; link: string; type: "paper" | "unit" };
+export type StudyMaterial = {
+  id: string;
+  title: string;
+  subject: string;
+  link: string;
+  type: "paper" | "unit";
+  targetClass?: string;
+  date?: string;
+  fileName?: string;
+  fileSize?: string;
+  term?: string;
+  maxMarks?: string;
+};
 export type GovExam = { id: string; name: string; month: string; monthIndex: number; group: "Central Government" | "Tamil Nadu Government"; description: string; link?: string };
 export type SiteData = {
   subjects: Subject[];
