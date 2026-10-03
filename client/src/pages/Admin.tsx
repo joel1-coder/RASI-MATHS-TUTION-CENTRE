@@ -5,6 +5,7 @@ import { ArrowLeft, Check, Edit3, ExternalLink, FilePlus2, FileText, LogOut, Plu
 import { useEffect, useMemo, useState } from "react";
 import type { SubjectRecord } from "./Home";
 import { CloudinaryUploader } from "@/components/CloudinaryUploader";
+import { UserManagement } from "@/components/UserManagement";
 import { toast } from "sonner";
 
 type SubjectForm = Omit<SubjectRecord, "id">;
@@ -22,15 +23,18 @@ const blankSubject: SubjectForm = {
 };
 
 const DEPARTMENTS = [
+  "Grade 1",
+  "Grade 2",
+  "Grade 3",
+  "Grade 4",
+  "Grade 5",
+  "Grade 6",
+  "Grade 7",
+  "Grade 8",
+  "Grade 9",
   "Grade 10",
   "Grade 11",
   "Grade 12",
-  "BCA",
-  "BSc(CS)",
-  "BA",
-  "IBSc CS",
-  "BSc Mathematics",
-  "Pure Mathematics",
   "All classes",
 ];
 
@@ -79,7 +83,7 @@ function Field({
 
 export default function Admin() {
   const { user, loading, logout } = useAuth();
-  const [activeTab, setActiveTab] = useState<"subjects" | "papers" | "unitQuestions">("subjects");
+  const [activeTab, setActiveTab] = useState<"subjects" | "papers" | "unitQuestions" | "users">("subjects");
 
   const subjectsQuery = trpc.subjects.all.useQuery(undefined, {
     retry: false,
@@ -302,6 +306,16 @@ export default function Admin() {
             }`}
           >
             Unit Questions (Class Targeted)
+          </button>
+          <button
+            onClick={() => setActiveTab("users")}
+            className={`rounded-xl px-4 py-2.5 text-xs font-bold transition ${
+              activeTab === "users"
+                ? "bg-[#2f315d] text-white shadow-[0_4px_0_#e9b08f]"
+                : "bg-[#fffdfa] text-[#756a7a] hover:bg-[#ede7df]"
+            }`}
+          >
+            User Management
           </button>
         </div>
 
@@ -678,6 +692,11 @@ export default function Admin() {
               )}
             </section>
           </div>
+        )}
+
+        {/* TAB 4: USER MANAGEMENT */}
+        {activeTab === "users" && (
+          <UserManagement />
         )}
       </main>
 

@@ -77,3 +77,389 @@
 @media(max-width:960px){.gov-exams-grid{grid-template-columns:repeat(2,1fr)}}
 @media(max-width:600px){.gov-exams-grid{grid-template-columns:1fr}}
 
+/* RASI dark theme: all overrides stay under the existing dark root class. */
+.dark {
+  --ink: var(--text-primary);
+  --paper: var(--bg-primary);
+  --navy: var(--text-primary);
+  --ochre: var(--accent-gold);
+  --line: var(--border);
+  --white: var(--text-primary);
+  --muted: var(--text-secondary);
+  --purple: var(--accent-blue);
+}
+
+.dark body,
+.dark .site-shell,
+.dark .admin-shell {
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  transition: background-color .3s ease, color .3s ease;
+}
+
+.dark .site-header,
+.dark .admin-header {
+  background: transparent;
+}
+
+.dark .header-inner,
+.dark .admin-header-inner {
+  border-color: var(--border);
+  background: color-mix(in srgb, var(--bg-secondary) 88%, transparent);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, .24);
+}
+
+.dark .brand,
+.dark .admin-brand,
+.dark .admin-view-link,
+.dark .hero h1,
+.dark .section-heading h2,
+.dark .contact-section h2,
+.dark .admin-intro h1,
+.dark .admin-panel-heading h2,
+.dark .subject-row strong,
+.dark .teacher-name-row,
+.dark .teacher-name-row h3,
+.dark .booking-modal h2,
+.dark .booking-form-title,
+.dark .college-title,
+.dark .college-link,
+.dark .gov-month-badge,
+.dark .gov-exam-name,
+.dark .preview-subject h3,
+.dark .preview-teacher h3,
+.dark .preview-announcement h3 {
+  color: var(--text-primary);
+}
+
+.dark .brand-mark {
+  background: linear-gradient(135deg, var(--bg-secondary), var(--accent-blue));
+  color: var(--text-primary);
+  box-shadow: 0 5px 14px rgba(47, 91, 234, .22);
+}
+
+.dark .site-nav a,
+.dark .admin-status,
+.dark .admin-brand small,
+.dark .hero-description,
+.dark .hero-note,
+.dark .panel-label span,
+.dark .hero-stat p,
+.dark .section-description,
+.dark .subject-row span,
+.dark .table-footnote,
+.dark .teacher-bio,
+.dark .attribution,
+.dark .contact-intro,
+.dark .contact-details a,
+.dark .contact-details p,
+.dark .admin-intro > div > p:last-child,
+.dark .admin-summary,
+.dark .admin-form label,
+.dark .list-copy span,
+.dark .admin-footer-actions,
+.dark .text-button,
+.dark .reset-button,
+.dark .preview-toggle-row,
+.dark .live-preview-top small,
+.dark .preview-subject span,
+.dark .preview-teacher span,
+.dark .preview-announcement span,
+.dark .preview-contact span,
+.dark .preview-gallery p,
+.dark .subject-empty,
+.dark .gov-exam-desc,
+.dark .site-footer {
+  color: var(--text-secondary);
+}
+
+.dark .site-nav a:hover,
+.dark .admin-view-link:hover,
+.dark .college-link:hover,
+.dark .gov-link,
+.dark .text-button,
+.dark .reset-button,
+.dark .eyebrow,
+.dark .admin-kicker,
+.dark .panel-arrow,
+.dark .teacher-name-row svg,
+.dark .contact-details svg,
+.dark .gov-link,
+.dark .preview-subject p,
+.dark .preview-teacher p {
+  color: var(--accent-gold-hover);
+}
+
+.dark .nav-login,
+.dark .button-secondary,
+.dark .admin-tabs button,
+.dark .preview-toggle,
+.dark .category-filters button,
+.dark .subject-selects select,
+.dark .testimonial-controls button,
+.dark .modal-close {
+  border-color: var(--border);
+  background: color-mix(in srgb, var(--bg-secondary) 86%, transparent);
+  color: var(--text-primary);
+}
+
+.dark .nav-login:hover,
+.dark .button-secondary:hover,
+.dark .admin-tabs button:hover,
+.dark .preview-toggle:hover,
+.dark .category-filters button:hover,
+.dark .testimonial-controls button:hover:not(:disabled),
+.dark .modal-close:hover {
+  border-color: var(--accent-gold);
+  background: var(--bg-elevated);
+  color: var(--accent-gold-hover);
+}
+
+.dark .hero,
+.dark .stats-section,
+.dark .colleges-section,
+.dark .gov-exams-section,
+.dark .testimonial-section {
+  background: var(--bg-primary);
+  color: var(--text-primary);
+}
+
+.dark .hero::after,
+.dark .stats-section::after,
+.dark .contact-section::before {
+  border-color: rgba(212, 175, 55, .22);
+}
+
+.dark .hero::before,
+.dark blockquote::before {
+  background: var(--accent-gold);
+}
+
+.dark .hero-image-wrap {
+  background: var(--bg-secondary);
+  box-shadow: 0 30px 70px rgba(0, 0, 0, .32);
+}
+
+.dark .glass-panel,
+.dark .subject-table,
+.dark .teacher-card,
+.dark .stat-block,
+.dark .admin-summary,
+.dark .admin-form-panel,
+.dark .admin-list-panel,
+.dark .live-preview,
+.dark .college-card,
+.dark .gov-month-card {
+  border-color: var(--border);
+  background: var(--bg-secondary);
+  box-shadow: 0 18px 38px rgba(0, 0, 0, .22);
+}
+
+.dark .panel-label,
+.dark .hero-stat,
+.dark .subject-row,
+.dark .admin-form input,
+.dark .admin-form textarea,
+.dark .admin-form select,
+.dark .live-preview-top,
+.dark .booking-form,
+.dark .gov-month-header {
+  border-color: var(--border);
+}
+
+.dark .panel-footer,
+.dark .subject-header,
+.dark .preview-contact {
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+}
+
+.dark .button-primary,
+.dark .admin-save-button,
+.dark .admin-add-button,
+.dark .more-details-btn,
+.dark .admin-tabs button.is-active {
+  border-color: var(--accent-gold);
+  background: linear-gradient(135deg, var(--accent-gold-hover), var(--accent-gold-dark));
+  color: var(--bg-primary);
+  box-shadow: 0 10px 24px rgba(184, 134, 11, .22);
+}
+
+.dark .button-primary:hover,
+.dark .admin-save-button:hover,
+.dark .admin-add-button:hover,
+.dark .more-details-btn:hover,
+.dark .admin-tabs button.is-active:hover {
+  background: var(--accent-gold-hover);
+  box-shadow: 0 13px 28px rgba(212, 175, 55, .28);
+}
+
+.dark .button-ochre {
+  border-color: var(--accent-gold);
+  background: var(--accent-gold);
+  color: var(--bg-primary);
+}
+
+.dark .button-ochre:hover {
+  border-color: var(--accent-gold-hover);
+  background: var(--accent-gold-hover);
+}
+
+.dark .admin-form input,
+.dark .admin-form textarea,
+.dark .admin-form select,
+.dark .booking-form input,
+.dark .subject-search,
+.dark .subject-selects select {
+  background: var(--bg-primary);
+  color: var(--text-primary);
+}
+
+.dark .admin-form input::placeholder,
+.dark .admin-form textarea::placeholder,
+.dark .booking-form input::placeholder,
+.dark .subject-search input::placeholder {
+  color: var(--text-secondary);
+}
+
+.dark .admin-form input:focus,
+.dark .admin-form textarea:focus,
+.dark .admin-form select:focus,
+.dark .booking-form input:focus,
+.dark .subject-search:focus-within,
+.dark .subject-selects select:focus,
+.dark button:focus-visible,
+.dark a:focus-visible {
+  border-color: var(--accent-blue);
+  box-shadow: 0 0 0 3px rgba(47, 91, 234, .28);
+  outline-color: var(--accent-blue);
+}
+
+.dark .admin-list-item,
+.dark .preview-subject,
+.dark .preview-teacher,
+.dark .preview-gallery,
+.dark .preview-stat,
+.dark .preview-note,
+.dark .preview-announcement,
+.dark .preview-contact,
+.dark .preview-hint,
+.dark .booking-facts div,
+.dark .gov-exam-item,
+.dark .list-icon {
+  border-color: var(--border);
+  background: var(--bg-elevated);
+}
+
+.dark .list-icon,
+.dark .live-dot,
+.dark .admin-status i,
+.dark .gov-month-count {
+  color: var(--accent-gold);
+}
+
+.dark .list-actions button {
+  color: var(--text-secondary);
+}
+
+.dark .list-actions button:hover {
+  background: var(--bg-elevated);
+  color: var(--accent-gold-hover);
+}
+
+.dark .list-actions button:last-child:hover,
+.dark .accent-red {
+  background: rgba(192, 57, 43, .16);
+  color: var(--accent-red);
+}
+
+.dark .seat-badge,
+.dark .subject-tag,
+.dark .gov-month-count {
+  background: rgba(212, 175, 55, .16);
+  color: var(--accent-gold-hover);
+}
+
+.dark .category-filters button.is-active,
+.dark .preview-toggle.is-on {
+  border-color: var(--accent-gold);
+  background: var(--bg-elevated);
+  color: var(--accent-gold-hover);
+}
+
+.dark .testimonial-controls button:disabled {
+  background: var(--bg-secondary);
+}
+
+.dark .modal-backdrop {
+  background: rgba(5, 8, 15, .72);
+}
+
+.dark .booking-modal {
+  border-color: var(--border);
+  background: var(--bg-secondary);
+  box-shadow: 0 28px 80px rgba(0, 0, 0, .42);
+}
+
+.dark .booking-facts strong,
+.dark .preview-subject b,
+.dark .preview-teacher b {
+  color: var(--accent-gold-hover);
+}
+
+.dark .upload-box {
+  border-color: rgba(212, 175, 55, .5);
+  background: rgba(23, 37, 84, .72);
+}
+
+.dark .upload-box svg,
+.dark .subject-search span {
+  color: var(--accent-gold);
+}
+
+.dark .preview-announcement {
+  background: var(--bg-elevated);
+}
+
+.dark .preview-announcement p,
+.dark .preview-contact p,
+.dark .preview-contact em,
+.dark .eyebrow-light {
+  color: var(--accent-gold-hover);
+}
+
+.dark .preview-stat {
+  background: var(--bg-elevated);
+}
+
+.dark .preview-stat span,
+.dark .stat-block span {
+  color: var(--accent-gold);
+}
+
+.dark .gov-exam-item:hover,
+.dark .college-card:hover,
+.dark .teacher-card:hover {
+  border-color: var(--accent-gold);
+  box-shadow: 0 20px 42px rgba(0, 0, 0, .3);
+}
+
+.dark .tag-tn {
+  background: rgba(192, 57, 43, .16);
+  color: #F2A39A;
+}
+
+.dark .tag-central {
+  background: rgba(47, 91, 234, .18);
+  color: #AFC1FF;
+}
+
+.dark .site-nav,
+.dark .site-nav.is-open {
+  background: color-mix(in srgb, var(--bg-secondary) 96%, transparent);
+}
+
+.dark .menu-toggle {
+  color: var(--text-primary);
+}
+

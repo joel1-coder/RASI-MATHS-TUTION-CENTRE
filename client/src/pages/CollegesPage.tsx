@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { ArrowLeft, ExternalLink } from "lucide-react";
-import { readSiteData, type CollegeItem } from "@/lib/siteData";
+import { readSiteData, defaultTechnicalColleges, defaultNonTechnicalColleges, type CollegeItem } from "@/lib/siteData";
 
 type Category = "technical" | "non-technical";
 type Tier = "Tier 1" | "Tier 2" | "Tier 3";
@@ -83,7 +83,14 @@ export default function CollegesPage() {
   const siteData = readSiteData();
   const [activeTab, setActiveTab] = useState<Category>("technical");
 
-  const colleges = activeTab === "technical" ? siteData.technicalColleges : siteData.nonTechnicalColleges;
+  const rawTechnical = siteData.technicalColleges;
+  const rawNonTechnical = siteData.nonTechnicalColleges;
+
+  // Fallback to hardcoded defaults if localStorage data is empty/stale
+  const allTechnical = rawTechnical.length > 0 ? rawTechnical : defaultTechnicalColleges;
+  const allNonTechnical = rawNonTechnical.length > 0 ? rawNonTechnical : defaultNonTechnicalColleges;
+
+  const colleges = activeTab === "technical" ? allTechnical : allNonTechnical;
   const tier1 = colleges.filter(c => c.tier === "Tier 1");
   const tier2 = colleges.filter(c => c.tier === "Tier 2");
   const tier3 = colleges.filter(c => c.tier === "Tier 3");
@@ -118,13 +125,13 @@ export default function CollegesPage() {
             onClick={() => setActiveTab("technical")}
             className={`rounded-full px-5 py-2 text-sm font-semibold transition ${activeTab === "technical" ? "bg-[#5b3b92] text-white shadow-md" : "border border-[#e4dce9] bg-white text-[#6d4b9f] hover:bg-[#f0e8f8]"}`}
           >
-            Technical ({siteData.technicalColleges.length})
+            Technical ({allTechnical.length})
           </button>
           <button
             onClick={() => setActiveTab("non-technical")}
             className={`rounded-full px-5 py-2 text-sm font-semibold transition ${activeTab === "non-technical" ? "bg-[#5b3b92] text-white shadow-md" : "border border-[#e4dce9] bg-white text-[#6d4b9f] hover:bg-[#f0e8f8]"}`}
           >
-            Non-Technical ({siteData.nonTechnicalColleges.length})
+            Non-Technical ({allNonTechnical.length})
           </button>
         </div>
 

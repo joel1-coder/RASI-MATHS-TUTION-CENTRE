@@ -144,6 +144,22 @@ function RoleLoginPage({ role, onLogin, onBack }: { role: Role; onLogin: (user: 
     e.preventDefault();
     setError("");
     try {
+      // 1️⃣ Check admin-created user accounts first (localStorage)
+      const localAccountsRaw = localStorage.getItem("rasi_user_accounts");
+      if (localAccountsRaw) {
+        const localAccounts: Array<{ id: string; name: string; email: string; password: string; role: string; linkedStudentEmail?: string }> = JSON.parse(localAccountsRaw);
+        const emailKey = email.trim().toLowerCase();
+        const match = localAccounts.find(a => a.email.toLowerCase() === emailKey && a.password === password && a.role === role);
+        if (match) {
+          // Store for session restore
+          try { sessionStorage.setItem("demo-user-email", match.email); } catch {}
+          try { sessionStorage.setItem("rasi_local_user", JSON.stringify(match)); } catch {}
+          onLogin({ role: match.role as Role, name: match.name, email: match.email });
+          return;
+        }
+        // If email matches but password/role doesn't — still fall through to server (might be admin account)
+      }
+      // 2️⃣ Fall back to server TRPC login
       const res = await loginMutation.mutateAsync({ email, password, role });
       if (res.token) {
         try {
@@ -539,47 +555,46 @@ export interface SectionItem {
   department: string;
 }
 
-export const INITIAL_DEPARTMENTS = ["BCA", "BSc(CS)", "BA", "IBSc CS", "Grade 10", "Grade 11", "Grade 12", "BSc Mathematics", "Pure Mathematics"];
+export const INITIAL_DEPARTMENTS = ["Grade 6", "Grade 7", "Grade 8", "Grade 9", "Grade 10", "Grade 11", "Grade 12"];
 
 export const INITIAL_SECTIONS: SectionItem[] = [
-  { id: "sec-bca-a", name: "A", department: "BCA" },
-  { id: "sec-bca-b", name: "B", department: "BCA" },
-  { id: "sec-bsc-a", name: "A", department: "BSc(CS)" },
-  { id: "sec-bsc-b", name: "B", department: "BSc(CS)" },
-  { id: "sec-ba-a", name: "A", department: "BA" },
-  { id: "sec-1", name: "A", department: "Grade 10" },
-  { id: "sec-2", name: "B", department: "Grade 10" },
-  { id: "sec-3", name: "A", department: "IBSc CS" },
-  { id: "sec-4", name: "B", department: "IBSc CS" },
-  { id: "sec-5", name: "Morning Batch", department: "Grade 12" },
-  { id: "sec-6", name: "Evening Batch", department: "Grade 12" },
+  { id: "sec-g6-a",  name: "A",            department: "Grade 6"  },
+  { id: "sec-g6-b",  name: "B",            department: "Grade 6"  },
+  { id: "sec-g7-a",  name: "A",            department: "Grade 7"  },
+  { id: "sec-g7-b",  name: "B",            department: "Grade 7"  },
+  { id: "sec-g8-a",  name: "A",            department: "Grade 8"  },
+  { id: "sec-g8-b",  name: "B",            department: "Grade 8"  },
+  { id: "sec-g9-a",  name: "A",            department: "Grade 9"  },
+  { id: "sec-g9-b",  name: "B",            department: "Grade 9"  },
+  { id: "sec-g10-a", name: "A",            department: "Grade 10" },
+  { id: "sec-g10-b", name: "B",            department: "Grade 10" },
+  { id: "sec-g11-a", name: "Morning Batch",department: "Grade 11" },
+  { id: "sec-g11-b", name: "Evening Batch",department: "Grade 11" },
+  { id: "sec-g12-a", name: "Morning Batch",department: "Grade 12" },
+  { id: "sec-g12-b", name: "Evening Batch",department: "Grade 12" },
 ];
 
 export const INITIAL_STUDENTS: ManagedStudent[] = [
-  // BCA Section A (10 students matching user screenshots BCAA001 - BCAA010)
-  { id: "bca-1", studentId: "BCAA001", name: "Arun Kumar", parentName: "Ramesh Kumar", parentPhone: "+91 98401 23451", email: "arun.kumar@portal.com", department: "BCA", section: "A", status: "active", joinedDate: "2026-01-10" },
-  { id: "bca-2", studentId: "BCAA002", name: "Bala Kumar", parentName: "Sundar Kumar", parentPhone: "+91 98401 23452", email: "bala.kumar@portal.com", department: "BCA", section: "A", status: "active", joinedDate: "2026-01-10" },
-  { id: "bca-3", studentId: "BCAA003", name: "Divya Kumar", parentName: "Priya Kumar", parentPhone: "+91 98401 23453", email: "divya.kumar@portal.com", department: "BCA", section: "A", status: "active", joinedDate: "2026-01-10" },
-  { id: "bca-4", studentId: "BCAA004", name: "Elan Kumar", parentName: "Selvam Kumar", parentPhone: "+91 98401 23454", email: "elan.kumar@portal.com", department: "BCA", section: "A", status: "active", joinedDate: "2026-01-10" },
-  { id: "bca-5", studentId: "BCAA005", name: "Fathima Kumar", parentName: "Rahman Kumar", parentPhone: "+91 98401 23455", email: "fathima.kumar@portal.com", department: "BCA", section: "A", status: "active", joinedDate: "2026-01-10" },
-  { id: "bca-6", studentId: "BCAA006", name: "Ganesh Kumar", parentName: "Murugan Kumar", parentPhone: "+91 98401 23456", email: "ganesh.kumar@portal.com", department: "BCA", section: "A", status: "active", joinedDate: "2026-01-10" },
-  { id: "bca-7", studentId: "BCAA007", name: "Harish Kumar", parentName: "Venkatesh Kumar", parentPhone: "+91 98401 23457", email: "harish.kumar@portal.com", department: "BCA", section: "A", status: "active", joinedDate: "2026-01-10" },
-  { id: "bca-8", studentId: "BCAA008", name: "Ishwarya Kumar", parentName: "Meenakshi Kumar", parentPhone: "+91 98401 23458", email: "ishwarya.kumar@portal.com", department: "BCA", section: "A", status: "active", joinedDate: "2026-01-10" },
-  { id: "bca-9", studentId: "BCAA009", name: "Janani Kumar", parentName: "Muthu Kumar", parentPhone: "+91 98401 23459", email: "janani.kumar@portal.com", department: "BCA", section: "A", status: "active", joinedDate: "2026-01-10" },
-  { id: "bca-10", studentId: "BCAA010", name: "Kavitha Kumar", parentName: "Natarajan Kumar", parentPhone: "+91 98401 23460", email: "kavitha.kumar@portal.com", department: "BCA", section: "A", status: "active", joinedDate: "2026-01-10" },
-
-  // BSc(CS) Section A
-  { id: "bsc-1", studentId: "001", name: "Aditya Nair", parentName: "Suresh Nair", parentPhone: "+91 94441 12233", email: "aditya001@portal.com", department: "BSc(CS)", section: "A", status: "active", joinedDate: "2026-01-12" },
-  { id: "bsc-2", studentId: "002", name: "Bhavna Jain", parentName: "Mahaveer Jain", parentPhone: "+91 94441 12234", email: "bhavna002@portal.com", department: "BSc(CS)", section: "A", status: "active", joinedDate: "2026-01-12" },
-  { id: "bsc-3", studentId: "003", name: "Chetan Deshmukh", parentName: "Pramod Deshmukh", parentPhone: "+91 94441 12235", email: "chetan003@portal.com", department: "BSc(CS)", section: "A", status: "active", joinedDate: "2026-01-12" },
-
   // Grade 10 Section A
-  { id: "stu-1", studentId: "21CS01", name: "Ananya Sharma", parentName: "Ramesh Sharma", parentPhone: "+91 98765 43210", email: "student@portal.com", department: "Grade 10", section: "A", status: "active", joinedDate: "2026-01-15" },
-  { id: "stu-2", studentId: "21CS02", name: "Rohit Verma", parentName: "Sunil Verma", parentPhone: "+91 98765 43211", email: "rohit.verma@portal.com", department: "Grade 10", section: "A", status: "active", joinedDate: "2026-01-20" },
-  { id: "stu-3", studentId: "21CS03", name: "Priya Natarajan", parentName: "Natarajan S.", parentPhone: "+91 98765 43212", email: "priya.n@portal.com", department: "Grade 10", section: "B", status: "active", joinedDate: "2026-02-01" },
-  { id: "stu-4", studentId: "22MAT01", name: "Karthik Sundaram", parentName: "Sundaram K.", parentPhone: "+91 98765 43213", email: "karthik.s@portal.com", department: "Grade 12", section: "Morning Batch", status: "active", joinedDate: "2026-02-10" },
-  { id: "stu-5", studentId: "22MAT02", name: "Deepa R.", parentName: "Ramachandran M.", parentPhone: "+91 98765 43214", email: "deepa.r@portal.com", department: "IBSc CS", section: "A", status: "active", joinedDate: "2026-02-18" },
-  { id: "stu-6", studentId: "22MAT03", name: "Suresh Kumar", parentName: "Krishnan Kumar", parentPhone: "+91 98765 43215", email: "suresh.k@portal.com", department: "IBSc CS", section: "B", status: "inactive", joinedDate: "2026-03-02" },
+  { id: "stu-1",  studentId: "10A001", name: "Ananya Sharma",   parentName: "Ramesh Sharma",     parentPhone: "+91 98765 43210", email: "student@portal.com",       department: "Grade 10", section: "A",            status: "active",   joinedDate: "2026-01-15" },
+  { id: "stu-2",  studentId: "10A002", name: "Rohit Verma",      parentName: "Sunil Verma",       parentPhone: "+91 98765 43211", email: "rohit.verma@portal.com",   department: "Grade 10", section: "A",            status: "active",   joinedDate: "2026-01-20" },
+  { id: "stu-3",  studentId: "10A003", name: "Kavitha Rajan",    parentName: "Rajan S.",          parentPhone: "+91 98765 43212", email: "kavitha.r@portal.com",    department: "Grade 10", section: "A",            status: "active",   joinedDate: "2026-01-22" },
+  { id: "stu-4",  studentId: "10A004", name: "Arun Selvam",      parentName: "Selvam K.",         parentPhone: "+91 98765 43213", email: "arun.s@portal.com",       department: "Grade 10", section: "A",            status: "active",   joinedDate: "2026-01-25" },
+  { id: "stu-5",  studentId: "10A005", name: "Fathima Begum",    parentName: "Abdul Rahman",      parentPhone: "+91 98765 43214", email: "fathima.b@portal.com",   department: "Grade 10", section: "A",            status: "active",   joinedDate: "2026-02-01" },
+  // Grade 10 Section B
+  { id: "stu-6",  studentId: "10B001", name: "Priya Natarajan",  parentName: "Natarajan S.",      parentPhone: "+91 98765 43215", email: "priya.n@portal.com",      department: "Grade 10", section: "B",            status: "active",   joinedDate: "2026-02-01" },
+  { id: "stu-7",  studentId: "10B002", name: "Deepak Kumar",     parentName: "Kumar P.",          parentPhone: "+91 98765 43216", email: "deepak.k@portal.com",    department: "Grade 10", section: "B",            status: "active",   joinedDate: "2026-02-05" },
+  // Grade 11 Morning Batch
+  { id: "stu-8",  studentId: "11M001", name: "Sanjay Murugan",   parentName: "Murugan V.",        parentPhone: "+91 98765 43217", email: "sanjay.m@portal.com",    department: "Grade 11", section: "Morning Batch", status: "active",   joinedDate: "2026-01-10" },
+  { id: "stu-9",  studentId: "11M002", name: "Lakshmi Devi",     parentName: "Devi S.",           parentPhone: "+91 98765 43218", email: "lakshmi.d@portal.com",   department: "Grade 11", section: "Morning Batch", status: "active",   joinedDate: "2026-01-12" },
+  { id: "stu-10", studentId: "11M003", name: "Harish Babu",      parentName: "Babu K.",           parentPhone: "+91 98765 43219", email: "harish.b@portal.com",    department: "Grade 11", section: "Morning Batch", status: "active",   joinedDate: "2026-01-15" },
+  // Grade 12 Morning Batch
+  { id: "stu-11", studentId: "12M001", name: "Karthik Sundaram", parentName: "Sundaram K.",       parentPhone: "+91 98765 43220", email: "karthik.s@portal.com",   department: "Grade 12", section: "Morning Batch", status: "active",   joinedDate: "2026-02-10" },
+  { id: "stu-12", studentId: "12M002", name: "Divya Priya",      parentName: "Ramachandran M.",   parentPhone: "+91 98765 43221", email: "divya.p@portal.com",     department: "Grade 12", section: "Morning Batch", status: "active",   joinedDate: "2026-02-12" },
+  { id: "stu-13", studentId: "12M003", name: "Suresh Krishnan",  parentName: "Krishnan R.",       parentPhone: "+91 98765 43222", email: "suresh.k@portal.com",   department: "Grade 12", section: "Morning Batch", status: "inactive", joinedDate: "2026-03-02" },
+  // Grade 12 Evening Batch
+  { id: "stu-14", studentId: "12E001", name: "Geetha Lakshmi",   parentName: "Lakshmi T.",        parentPhone: "+91 98765 43223", email: "geetha.l@portal.com",    department: "Grade 12", section: "Evening Batch", status: "active",   joinedDate: "2026-01-18" },
+  { id: "stu-15", studentId: "12E002", name: "Arjun Prabhu",     parentName: "Prabhu N.",         parentPhone: "+91 98765 43224", email: "arjun.p@portal.com",     department: "Grade 12", section: "Evening Batch", status: "active",   joinedDate: "2026-01-20" },
 ];
 
 export const loadStoredStudents = (): ManagedStudent[] => {
@@ -622,7 +637,7 @@ function AdminMarksManager() {
 
   const [students] = useState<ManagedStudent[]>(loadStoredStudents);
 
-  const [selectedDept, setSelectedDept] = useState(departments[0] || "BCA");
+  const [selectedDept, setSelectedDept] = useState(departments[0] || "Grade 10");
   const [selectedSection, setSelectedSection] = useState("A");
   const [hasEntered, setHasEntered] = useState(false);
 
@@ -2579,21 +2594,21 @@ const INITIAL_ATTENDANCE_SESSIONS: AttendanceSessionRecord[] = [
   {
     id: "att-sess-1",
     date: "2026-09-14",
-    department: "BCA",
+    department: "Grade 10",
     section: "A",
-    description: "Morning Mathematics practical batch #1",
-    totalStudents: 10,
-    presentCount: 9,
+    description: "Morning Mathematics session",
+    totalStudents: 5,
+    presentCount: 4,
     absentCount: 1,
-    absentStudentIds: ["004"],
+    absentStudentIds: ["10A004"],
     recordedAt: "10:30 AM",
   },
   {
     id: "att-sess-2",
     date: "2026-09-13",
-    department: "BSc(CS)",
-    section: "A",
-    description: "Linear Algebra & Calculus session",
+    department: "Grade 12",
+    section: "Morning Batch",
+    description: "Algebra & Calculus session",
     totalStudents: 3,
     presentCount: 3,
     absentCount: 0,
@@ -2631,7 +2646,7 @@ function AdminAttendanceManager() {
   });
 
   const [attendanceDate, setAttendanceDate] = useState(() => new Date().toISOString().slice(0, 10));
-  const [selectedDept, setSelectedDept] = useState("BCA");
+  const [selectedDept, setSelectedDept] = useState("Grade 10");
   const [selectedSection, setSelectedSection] = useState("A");
   const [description, setDescription] = useState("");
 
@@ -4286,37 +4301,32 @@ export interface TeacherExamRecord {
 const INITIAL_TEACHER_EXAM_RECORDS: TeacherExamRecord[] = [
   {
     id: "mark-rec-1",
-    department: "BCA",
+    department: "Grade 10",
     section: "A",
     date: "2026-09-14",
-    examDescription: "Lab Test 1, Unit Exam",
+    examDescription: "Unit Test 1 — Mathematics",
     maxMarks: 100,
     recordedAt: "11:15 AM",
     entries: [
-      { studentId: "BCAA001", studentName: "Arun Kumar", mark: 88 },
-      { studentId: "BCAA002", studentName: "Bala Kumar", mark: 76 },
-      { studentId: "BCAA003", studentName: "Divya Kumar", mark: 95 },
-      { studentId: "BCAA004", studentName: "Elan Kumar", mark: 82 },
-      { studentId: "BCAA005", studentName: "Fathima Kumar", mark: 90 },
-      { studentId: "BCAA006", studentName: "Ganesh Kumar", mark: 85 },
-      { studentId: "BCAA007", studentName: "Harish Kumar", mark: 79 },
-      { studentId: "BCAA008", studentName: "Ishwarya Kumar", mark: 94 },
-      { studentId: "BCAA009", studentName: "Janani Kumar", mark: 87 },
-      { studentId: "BCAA010", studentName: "Kavitha Kumar", mark: 91 },
+      { studentId: "10A001", studentName: "Ananya Sharma",  mark: 88 },
+      { studentId: "10A002", studentName: "Rohit Verma",    mark: 76 },
+      { studentId: "10A003", studentName: "Kavitha Rajan",  mark: 95 },
+      { studentId: "10A004", studentName: "Arun Selvam",    mark: 82 },
+      { studentId: "10A005", studentName: "Fathima Begum",  mark: 90 },
     ],
   },
   {
     id: "mark-rec-2",
-    department: "BSc(CS)",
-    section: "A",
+    department: "Grade 12",
+    section: "Morning Batch",
     date: "2026-09-13",
-    examDescription: "Linear Algebra & Calculus Practical",
+    examDescription: "Unit Test 1 — Mathematics",
     maxMarks: 100,
     recordedAt: "03:45 PM",
     entries: [
-      { studentId: "001", studentName: "Aditya Nair", mark: 92 },
-      { studentId: "002", studentName: "Bhavna Jain", mark: 86 },
-      { studentId: "003", studentName: "Chetan Deshmukh", mark: 80 },
+      { studentId: "12M001", studentName: "Karthik Sundaram", mark: 92 },
+      { studentId: "12M002", studentName: "Divya Priya",      mark: 86 },
+      { studentId: "12M003", studentName: "Suresh Krishnan",  mark: 80 },
     ],
   },
 ];
@@ -4354,7 +4364,7 @@ function TeacherWorkspace({ user, onLogout }: { user: User; onLogout: () => void
 
   // --- ATTENDANCE STATE (Home Tab) ---
   const [attendanceDate, setAttendanceDate] = useState(() => new Date().toISOString().slice(0, 10));
-  const [selectedDept, setSelectedDept] = useState("BCA");
+  const [selectedDept, setSelectedDept] = useState("Grade 10");
   const [selectedSection, setSelectedSection] = useState("A");
   const [attendanceDescription, setAttendanceDescription] = useState("");
   const [attendanceState, setAttendanceState] = useState<Record<string, "present" | "absent">>({});
@@ -4364,7 +4374,7 @@ function TeacherWorkspace({ user, onLogout }: { user: User; onLogout: () => void
   const [sentWhatsappIds, setSentWhatsappIds] = useState<Record<string, boolean>>({});
 
   // --- ATTENDANCE RECORDS STATE (Tab 2: Filter & Roster Edit) ---
-  const [fetchAttDept, setFetchAttDept] = useState("BCA");
+  const [fetchAttDept, setFetchAttDept] = useState("Grade 10");
   const [fetchAttSection, setFetchAttSection] = useState("A");
   const [fetchAttDate, setFetchAttDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [selectedAttRecordId, setSelectedAttRecordId] = useState<string | null>(null);
@@ -4598,9 +4608,9 @@ function TeacherWorkspace({ user, onLogout }: { user: User; onLogout: () => void
   };
 
   // --- MARKS PORTAL STATE (Enter Marks Tab - Screenshot 1) ---
-  const [marksDept, setMarksDept] = useState("BCA");
+  const [marksDept, setMarksDept] = useState("Grade 10");
   const [marksSection, setMarksSection] = useState("A");
-  const [examDescription, setExamDescription] = useState("Lab Test 1, Unit Exam");
+  const [examDescription, setExamDescription] = useState("Unit Test 1 — Mathematics");
   const [examDate, setExamDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [maxMarks, setMaxMarks] = useState<number>(100);
   const [marksInputMap, setMarksInputMap] = useState<Record<string, number>>({});
@@ -4694,7 +4704,7 @@ function TeacherWorkspace({ user, onLogout }: { user: User; onLogout: () => void
   };
 
   // --- MARK RECORD STATE (Search & Analytics Tab - Screenshot 2) ---
-  const [fetchDept, setFetchDept] = useState("BCA");
+  const [fetchDept, setFetchDept] = useState("Grade 10");
   const [fetchSection, setFetchSection] = useState("A");
   const [fetchDate, setFetchDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [hasFetched, setHasFetched] = useState(true);
@@ -6076,6 +6086,14 @@ export default function Home() {
   const auth = useAuth();
   const [user, setUser] = useState<User | null>(() => {
     try {
+      // 1. Try local custom user
+      const localUser = sessionStorage.getItem("rasi_local_user");
+      if (localUser) {
+        const parsed = JSON.parse(localUser);
+        return { role: parsed.role as Role, name: parsed.name, email: parsed.email };
+      }
+      
+      // 2. Try hardcoded demo user
       const savedEmail = sessionStorage.getItem("demo-user-email");
       if (savedEmail && demoUsers[savedEmail]) {
         return demoUsers[savedEmail];
@@ -6097,6 +6115,7 @@ export default function Home() {
     if (secureUser) void auth.logout();
     try {
       sessionStorage.removeItem("demo-user-email");
+      sessionStorage.removeItem("rasi_local_user");
     } catch {}
     setUser(null);
     setActivePortal(false);
