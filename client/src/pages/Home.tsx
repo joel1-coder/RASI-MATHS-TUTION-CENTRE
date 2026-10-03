@@ -89,8 +89,8 @@ function RoleChooser({ onChoose, onClose }: { onChoose: (role: Role) => void; on
     { role: "admin", title: "Admin login", description: "Manage students, marks, attendance and centre updates.", icon: <ShieldCheck size={22} /> },
   ];
   return (
-    <div className="fixed inset-0 z-50 grid place-items-center bg-[#21193a]/50 p-4 backdrop-blur-sm">
-      <div className="relative w-full max-w-4xl rounded-[28px] bg-[#fffdfb] p-7 shadow-2xl">
+    <div className="fixed inset-0 z-50 grid place-items-center bg-[#21193a]/50 p-4 backdrop-blur-sm dark:bg-[#05080f]/75">
+      <div className="relative w-full max-w-4xl rounded-[28px] bg-[#fffdfb] p-7 shadow-2xl dark:bg-[#0F1B3D]">
         <button onClick={onClose} className="absolute right-5 top-5 rounded-full p-2 text-[#897c99] hover:bg-[#f2edf7]">
           <X size={18} />
         </button>
@@ -181,7 +181,7 @@ function RoleLoginPage({ role, onLogin, onBack }: { role: Role; onLogin: (user: 
   };
 
   return (
-    <div className="min-h-screen bg-[#f5f0f8] text-[#271f3c]">
+    <div className="min-h-screen bg-[#f5f0f8] text-[#271f3c] dark:bg-[#0B0F1A] dark:text-[#F8F1DC]">
       <div className="mx-auto grid min-h-screen max-w-6xl items-center gap-10 px-5 py-8 md:grid-cols-[.9fr_1.1fr] md:px-10">
         <div className="hidden md:block">
           <Logo />
@@ -201,7 +201,7 @@ function RoleLoginPage({ role, onLogin, onBack }: { role: Role; onLogin: (user: 
           <button onClick={onBack} className="mb-6 flex items-center gap-2 text-xs font-semibold text-[#6d4b9f]">
             <ArrowRight className="rotate-180" size={14} /> Choose another login
           </button>
-          <div className="rounded-[28px] bg-[#fffdfb] p-7 shadow-xl shadow-[#b7a6c8]/20">
+          <div className="rounded-[28px] bg-[#fffdfb] p-7 shadow-xl shadow-[#b7a6c8]/20 dark:bg-[#0F1B3D] dark:shadow-black/40">
             <div className="md:hidden">
               <Logo />
               <div className="mt-7" />
