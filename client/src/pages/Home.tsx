@@ -9,6 +9,7 @@ import { parseAttendanceCsv, summarizeAttendance } from "@shared/portalData";
 import { COOKIE_NAME } from "@shared/const";
 import { readSiteData, saveSiteData, type StudyMaterial } from "@/lib/siteData";
 import { exportToCsv } from "@/lib/exportCsv";
+import ThemeToggle from "@/components/ThemeToggle";
 
 export type Role = "student" | "parent" | "admin" | "teacher";
 
@@ -89,8 +90,9 @@ function RoleChooser({ onChoose, onClose }: { onChoose: (role: Role) => void; on
     { role: "admin", title: "Admin login", description: "Manage students, marks, attendance and centre updates.", icon: <ShieldCheck size={22} /> },
   ];
   return (
-    <div className="fixed inset-0 z-50 grid place-items-center bg-[#21193a]/50 p-4 backdrop-blur-sm dark:bg-[#05080f]/75">
+    <div className="role-chooser fixed inset-0 z-50 grid place-items-center bg-[#21193a]/50 p-4 backdrop-blur-sm dark:bg-[#05080f]/75">
       <div className="relative w-full max-w-4xl rounded-[28px] bg-[#fffdfb] p-7 shadow-2xl dark:bg-[#0F1B3D]">
+        <ThemeToggle className="absolute right-14 top-5" />
         <button onClick={onClose} className="absolute right-5 top-5 rounded-full p-2 text-[#897c99] hover:bg-[#f2edf7]">
           <X size={18} />
         </button>
@@ -181,7 +183,8 @@ function RoleLoginPage({ role, onLogin, onBack }: { role: Role; onLogin: (user: 
   };
 
   return (
-    <div className="min-h-screen bg-[#f5f0f8] text-[#271f3c] dark:bg-[#0B0F1A] dark:text-[#F8F1DC]">
+    <div className="login-shell relative min-h-screen bg-[#f5f0f8] text-[#271f3c] dark:bg-[#0B0F1A] dark:text-[#F8F1DC]">
+      <ThemeToggle className="absolute right-5 top-5 z-10" />
       <div className="mx-auto grid min-h-screen max-w-6xl items-center gap-10 px-5 py-8 md:grid-cols-[.9fr_1.1fr] md:px-10">
         <div className="hidden md:block">
           <Logo />
@@ -6122,10 +6125,10 @@ export default function Home() {
   };
 
   if (currentUser && (activePortal || isPortalUrl)) {
-    if (currentUser.role === "student") return <StudentWorkspace user={currentUser} onLogout={logout} />;
-    if (currentUser.role === "parent") return <ParentWorkspace user={currentUser} onLogout={logout} />;
-    if (currentUser.role === "teacher") return <TeacherWorkspace user={currentUser} onLogout={logout} />;
-    if (currentUser.role === "admin") return <AdminWorkspace user={currentUser} onLogout={logout} />;
+    if (currentUser.role === "student") return <div className="portal-shell"><ThemeToggle className="fixed right-5 top-5 z-[60] sm:right-24" /><StudentWorkspace user={currentUser} onLogout={logout} /></div>;
+    if (currentUser.role === "parent") return <div className="portal-shell"><ThemeToggle className="fixed right-5 top-5 z-[60] sm:right-24" /><ParentWorkspace user={currentUser} onLogout={logout} /></div>;
+    if (currentUser.role === "teacher") return <div className="portal-shell"><ThemeToggle className="fixed right-5 top-5 z-[60] sm:right-24" /><TeacherWorkspace user={currentUser} onLogout={logout} /></div>;
+    if (currentUser.role === "admin") return <div className="portal-shell"><ThemeToggle className="fixed right-5 top-5 z-[60] sm:right-24" /><AdminWorkspace user={currentUser} onLogout={logout} /></div>;
   }
 
   if (selectedRole) {

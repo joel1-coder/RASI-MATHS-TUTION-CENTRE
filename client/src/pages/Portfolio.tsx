@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { readSiteData, type SiteData } from "@/lib/siteData";
+import ThemeToggle from "@/components/ThemeToggle";
 
 const imageBase = "https://images.unsplash.com";
 
@@ -85,12 +86,15 @@ export default function Portfolio({ onLogin, user, onGoToPortal, onLogout }: Por
 
   return (
     <div className="site-shell">
+      <img className="site-watermark" src="/rasi-logo.png" alt="" aria-hidden="true" />
       <header className="site-header">
         <div className="page-width header-inner">
           <a className="brand" href="#top" aria-label="Rasi Maths Tuition Centre home" onClick={closeMenu}>
-            <span className="brand-mark">RM</span>
+            <img className="brand-logo" src="/rasi-logo.png" alt="RASI Maths Tuition Centre logo" />
             <span className="brand-name">Rasi Maths Tuition Centre</span>
           </a>
+
+          <ThemeToggle />
 
           <button
             className="menu-toggle"
@@ -413,6 +417,7 @@ export default function Portfolio({ onLogin, user, onGoToPortal, onLogout }: Por
             </a>
           </div>
           <span>Learning, thoughtfully.</span>
+          <span>Made by a person from 2024 batch.</span>
         </div>
       </footer>
     </div>

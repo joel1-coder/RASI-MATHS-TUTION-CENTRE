@@ -189,3 +189,82 @@
     }
   }
 }
+
+/* Role portals retain their existing light declarations; these rules only activate under dark mode. */
+.dark .portal-shell,
+.dark .login-shell,
+.dark .role-chooser {
+  background-color: var(--bg-primary) !important;
+  color: var(--text-primary) !important;
+}
+
+.dark .portal-shell [class*="bg-white"],
+.dark .portal-shell [class*="bg-[#fff"],
+.dark .portal-shell [class*="bg-[#faf"],
+.dark .portal-shell [class*="bg-[#f6"],
+.dark .portal-shell [class*="bg-[#f7"],
+.dark .portal-shell [class*="bg-[#f4"],
+.dark .login-shell [class*="bg-white"],
+.dark .login-shell [class*="bg-[#fff"],
+.dark .login-shell [class*="bg-[#f7"],
+.dark .role-chooser [class*="bg-[#fff"],
+.dark .role-chooser [class*="bg-[#faf"] {
+  background-color: var(--bg-secondary) !important;
+  border-color: var(--border) !important;
+}
+
+.dark .portal-shell [class*="bg-[#f0"],
+.dark .portal-shell [class*="bg-[#e9"],
+.dark .portal-shell [class*="bg-[#f3"],
+.dark .portal-shell [class*="bg-[#5b3b92]"],
+.dark .login-shell [class*="bg-[#f5"],
+.dark .login-shell [class*="bg-[#f7"],
+.dark .role-chooser [class*="bg-[#f5"],
+.dark .role-chooser [class*="bg-[#f4"] {
+  background-color: var(--bg-elevated) !important;
+  border-color: var(--border) !important;
+}
+
+.dark .portal-shell [class*="text-[#2"],
+.dark .portal-shell [class*="text-[#3"],
+.dark .portal-shell [class*="text-[#4"],
+.dark .login-shell [class*="text-[#2"],
+.dark .login-shell [class*="text-[#3"],
+.dark .login-shell [class*="text-[#4"],
+.dark .role-chooser [class*="text-[#2"],
+.dark .role-chooser [class*="text-[#3"],
+.dark .role-chooser [class*="text-[#4"] {
+  color: var(--text-primary) !important;
+}
+
+.dark .portal-shell [class*="text-[#7"],
+.dark .portal-shell [class*="text-[#8"],
+.dark .portal-shell [class*="text-[#9"],
+.dark .login-shell [class*="text-[#7"],
+.dark .login-shell [class*="text-[#8"],
+.dark .login-shell [class*="text-[#9"],
+.dark .role-chooser [class*="text-[#7"],
+.dark .role-chooser [class*="text-[#8"],
+.dark .role-chooser [class*="text-[#9"] {
+  color: var(--text-secondary) !important;
+}
+
+.dark .portal-shell [class*="text-[#5b3b92]"],
+.dark .portal-shell [class*="text-[#6d4b9f]"],
+.dark .portal-shell [class*="text-[#8060ac]"],
+.dark .login-shell [class*="text-[#5b3b92]"],
+.dark .login-shell [class*="text-[#6d4b9f]"],
+.dark .role-chooser [class*="text-[#6d4b9f]"] {
+  color: var(--accent-gold-hover) !important;
+}
+
+.dark .portal-shell input,
+.dark .portal-shell select,
+.dark .portal-shell textarea,
+.dark .login-shell input,
+.dark .login-shell select,
+.dark .login-shell textarea {
+  background-color: var(--bg-primary) !important;
+  border-color: var(--border) !important;
+  color: var(--text-primary) !important;
+}
