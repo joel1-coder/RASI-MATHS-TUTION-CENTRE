@@ -6073,10 +6073,186 @@ function TeacherWorkspace({ user, onLogout }: { user: User; onLogout: () => void
 }
 
 function Dashboard({ user, onLogout }: { user: User; onLogout: () => void }) {
-  const [active, setActive] = useState("Overview"); const isAdmin = user.role === "admin";
-  const metrics = user.role === "admin" ? [["48", "Active students", Users], ["94%", "Attendance average", ClipboardCheck], ["12", "Batches running", BookOpen], ["6", "New requests", MessageCircle]] : user.role === "student" ? [["92%", "Attendance", ClipboardCheck], ["86%", "Average score", BarChart3], ["04", "Upcoming classes", CalendarDays], ["07", "Open projects", NotebookPen]] : [["92%", "Child attendance", ClipboardCheck], ["86%", "Current average", BarChart3], ["03", "Projects this term", NotebookPen], ["04", "Updates this week", MessageCircle]];
-  return <div className="min-h-screen bg-[#f6f2f8] text-[#2a203e]"><aside className="fixed inset-y-0 left-0 hidden w-64 border-r border-[#ebe3ef] bg-[#fffdfb] p-6 md:block"><Logo /><div className="mt-12"><p className="mb-3 text-[10px] font-bold uppercase tracking-[0.2em] text-[#a296ac]">Your workspace</p>{navItems(user.role).map((item, i) => <button key={item} onClick={() => setActive(item)} className={`mb-1 flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-sm ${active === item ? "bg-[#f0e9f7] font-semibold text-[#5b3b92]" : "text-[#81758e] hover:bg-[#faf7fc]"}`}><span className="text-xs">{i === 0 ? <LayoutDashboard size={16} /> : i === 1 ? <Users size={16} /> : i === 2 ? <BarChart3 size={16} /> : <BookOpen size={16} />}</span>{item}</button>)}</div><div className="absolute bottom-6 left-6 right-6"><div className="rounded-2xl bg-[#f7f1fb] p-4"><p className="text-xs font-semibold">Need help?</p><p className="mt-1 text-[11px] leading-4 text-[#8d8197]">Talk to the centre team about your learning plan.</p><button className="mt-3 text-xs font-semibold text-[#5b3b92]">Message team <ArrowRight className="ml-1 inline" size={12} /></button></div></div></aside><main className="md:ml-64"><header className="flex items-center justify-between border-b border-[#ebe3ef] bg-[#fffdfb]/80 px-5 py-5 backdrop-blur md:px-10"><div><p className="text-xs text-[#978ca1]">{isAdmin ? "System controller" : user.role === "parent" ? "Parent portal" : "Student portal"}</p><h1 className="mt-1 text-2xl font-semibold tracking-[-0.04em]">Good morning, {user.name.split(" ")[0]}.</h1></div><div className="flex items-center gap-3"><div className="hidden text-right sm:block"><p className="text-xs font-semibold">{user.name}</p><p className="text-[11px] text-[#94889e]">{user.email}</p></div><button onClick={onLogout} className="rounded-full border border-[#e4dce9] bg-white p-2.5 text-[#796c88] hover:text-[#5b3b92]" title="Log out"><LogOut size={16} /></button></div></header><div className="p-5 md:p-10"><div className="mb-8 flex items-center justify-between"><div><Pill>{active}</Pill><p className="mt-3 max-w-lg text-sm leading-6 text-[#81758e]">{active === "Overview" ? isAdmin ? "A clear view of what is happening across Rasi Maths today." : "Everything you need to keep learning steady and visible." : `${active} is ready for your ${user.role === "admin" ? "management" : "review"}.`}</p></div><div className="hidden rounded-2xl bg-[#f4e9dd] p-4 text-[#a7633e] md:block"><ShieldCheck size={20} /><p className="mt-2 text-[11px] font-semibold">Privacy-first access</p></div></div><div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">{metrics.map(([value, label, Icon]) => <div key={label as string} className="rounded-3xl border border-[#eee6f0] bg-white p-5 shadow-sm"><div className="flex items-start justify-between"><p className="text-3xl font-semibold text-[#5b3b92]">{value as string}</p><span className="rounded-xl bg-[#f4edf9] p-2 text-[#8060ac]"><Icon size={17} /></span></div><p className="mt-6 text-xs text-[#877b91]">{label as string}</p></div>)}</div><div className="mt-8 grid gap-5 lg:grid-cols-[1.3fr_.7fr]"><div className="rounded-3xl border border-[#eee6f0] bg-white p-6"><div className="flex items-center justify-between"><h2 className="font-semibold">{isAdmin ? "Recent activity" : "Your learning snapshot"}</h2><button className="text-xs font-semibold text-[#6d4b9f]">View all <ChevronRight className="inline" size={14} /></button></div><div className="mt-6 space-y-4">{(isAdmin ? [["New marks uploaded", "Grade 10 Mathematics · 12 minutes ago"], ["Attendance updated", "Physics batch · Today, 9:40 AM"], ["Demo request received", "Parent enquiry · Yesterday"]] : [["Mathematics", "Unit test · 18 / 20", "On track"], ["Physics", "Next class · Tuesday, 5:00 PM", "Upcoming"], ["Study plan", "3 tasks due this week", "Keep going"]]).map((r, i) => <div className="flex items-center justify-between rounded-2xl bg-[#faf7fc] p-4" key={r[0]}><div className="flex items-center gap-3"><span className="grid h-9 w-9 place-items-center rounded-xl bg-[#e9ddf4] text-[#6e4b9e]"><Check size={16} /></span><div><p className="text-sm font-semibold">{r[0]}</p><p className="mt-1 text-xs text-[#8d8197]">{r[1]}</p></div></div><span className="text-[11px] font-semibold text-[#ef8656]">{r[2]}</span></div>)}</div></div><div className="rounded-3xl bg-[#5b3b92] p-6 text-white"><Sparkles className="text-[#f8b08b]" size={20} /><h2 className="mt-8 text-2xl font-semibold">Small steps,<br /><em className="font-serif font-normal">strong habits.</em></h2><p className="mt-4 text-sm leading-6 text-white/65">Consistency makes the difference. Keep showing up for the next question.</p><button className="mt-8 rounded-full bg-white px-4 py-2.5 text-xs font-semibold text-[#5b3b92]">Open learning plan <ArrowRight className="ml-1 inline" size={13} /></button></div></div></div></main></div>;
+  const [active, setActive] = useState("Overview");
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const isAdmin = user.role === "admin";
+
+  const metrics = user.role === "admin"
+    ? [["48", "Active students", Users], ["94%", "Attendance average", ClipboardCheck], ["12", "Batches running", BookOpen], ["6", "New requests", MessageCircle]]
+    : user.role === "student"
+    ? [["92%", "Attendance", ClipboardCheck], ["86%", "Average score", BarChart3], ["04", "Upcoming classes", CalendarDays], ["07", "Open projects", NotebookPen]]
+    : [["92%", "Child attendance", ClipboardCheck], ["86%", "Current average", BarChart3], ["03", "Projects this term", NotebookPen], ["04", "Updates this week", MessageCircle]];
+
+  const navIcons = [<LayoutDashboard size={16} />, <Users size={16} />, <BarChart3 size={16} />, <BookOpen size={16} />];
+  const items = isAdmin
+    ? ["Overview", "Students", "Analytics", "Resources"]
+    : user.role === "student"
+    ? ["Overview", "My Progress", "Marks", "Materials"]
+    : ["Overview", "Child Progress", "Reports", "Updates"];
+
+  const SidebarContent = () => (
+    <>
+      <Logo />
+      <div className="mt-10">
+        <p className="mb-3 text-[10px] font-bold uppercase tracking-[0.2em] text-[#a296ac]">Your workspace</p>
+        {items.map((item, i) => (
+          <button
+            key={item}
+            onClick={() => { setActive(item); setSidebarOpen(false); }}
+            className={`mb-1 flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-sm transition ${
+              active === item ? "bg-[#f0e9f7] font-semibold text-[#5b3b92]" : "text-[#81758e] hover:bg-[#faf7fc]"
+            }`}
+          >
+            <span className="text-xs">{navIcons[i]}</span>{item}
+          </button>
+        ))}
+      </div>
+      <div className="absolute bottom-6 left-6 right-6">
+        <div className="rounded-2xl bg-[#f7f1fb] p-4">
+          <p className="text-xs font-semibold">Need help?</p>
+          <p className="mt-1 text-[11px] leading-4 text-[#8d8197]">Talk to the centre team about your learning plan.</p>
+          <button className="mt-3 text-xs font-semibold text-[#5b3b92]">Message team <ArrowRight className="ml-1 inline" size={12} /></button>
+        </div>
+      </div>
+    </>
+  );
+
+  return (
+    <div className="min-h-screen bg-[#f6f2f8] text-[#2a203e]">
+      {/* Mobile overlay */}
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-black/40 md:hidden"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
+      {/* Mobile slide-in sidebar */}
+      <aside className={`fixed inset-y-0 left-0 z-50 w-72 border-r border-[#ebe3ef] bg-[#fffdfb] p-6 transition-transform duration-300 md:hidden ${
+        sidebarOpen ? "translate-x-0" : "-translate-x-full"
+      }`}>
+        <button
+          onClick={() => setSidebarOpen(false)}
+          className="absolute right-4 top-4 rounded-full p-1.5 text-[#81758e] hover:bg-[#f0e9f7]"
+        >
+          <X size={18} />
+        </button>
+        <SidebarContent />
+      </aside>
+
+      {/* Desktop sidebar */}
+      <aside className="fixed inset-y-0 left-0 hidden w-64 border-r border-[#ebe3ef] bg-[#fffdfb] p-6 md:block">
+        <SidebarContent />
+      </aside>
+
+      <main className="md:ml-64">
+        {/* Header */}
+        <header className="flex items-center justify-between border-b border-[#ebe3ef] bg-[#fffdfb]/80 px-4 py-4 backdrop-blur md:px-10">
+          <div className="flex items-center gap-3">
+            {/* Hamburger — mobile only */}
+            <button
+              onClick={() => setSidebarOpen(true)}
+              className="flex h-9 w-9 items-center justify-center rounded-xl border border-[#e4dce9] bg-white text-[#796c88] hover:text-[#5b3b92] md:hidden"
+              aria-label="Open menu"
+            >
+              <Menu size={18} />
+            </button>
+            <div>
+              <p className="text-xs text-[#978ca1]">
+                {isAdmin ? "System controller" : user.role === "parent" ? "Parent portal" : "Student portal"}
+              </p>
+              <h1 className="mt-0.5 text-lg font-semibold tracking-tight sm:text-2xl">
+                Good morning, {user.name.split(" ")[0]}.
+              </h1>
+            </div>
+          </div>
+
+          {/* Right side: theme toggle + name + logout */}
+          <div className="flex items-center gap-2">
+            <ThemeToggle />
+            <div className="hidden text-right sm:block">
+              <p className="text-xs font-semibold">{user.name}</p>
+              <p className="text-[11px] text-[#94889e]">{user.email}</p>
+            </div>
+            <button
+              onClick={onLogout}
+              className="flex h-9 w-9 items-center justify-center rounded-full border border-[#e4dce9] bg-white text-[#796c88] hover:text-[#5b3b92]"
+              title="Log out"
+            >
+              <LogOut size={16} />
+            </button>
+          </div>
+        </header>
+
+        <div className="p-4 md:p-10">
+          <div className="mb-8 flex items-center justify-between">
+            <div>
+              <Pill>{active}</Pill>
+              <p className="mt-3 max-w-lg text-sm leading-6 text-[#81758e]">
+                {active === "Overview"
+                  ? isAdmin
+                    ? "A clear view of what is happening across Rasi Maths today."
+                    : "Everything you need to keep learning steady and visible."
+                  : `${active} is ready for your ${user.role === "admin" ? "management" : "review"}.`}
+              </p>
+            </div>
+            <div className="hidden rounded-2xl bg-[#f4e9dd] p-4 text-[#a7633e] md:block">
+              <ShieldCheck size={20} />
+              <p className="mt-2 text-[11px] font-semibold">Privacy-first access</p>
+            </div>
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {metrics.map(([value, label, Icon]) => (
+              <div key={label as string} className="rounded-3xl border border-[#eee6f0] bg-white p-5 shadow-sm">
+                <div className="flex items-start justify-between">
+                  <p className="text-3xl font-semibold text-[#5b3b92]">{value as string}</p>
+                  <span className="rounded-xl bg-[#f4edf9] p-2 text-[#8060ac]">
+                    <Icon size={17} />
+                  </span>
+                </div>
+                <p className="mt-6 text-xs text-[#877b91]">{label as string}</p>
+              </div>
+            ))}
+          </div>
+
+          <div className="mt-8 grid gap-5 lg:grid-cols-[1.3fr_.7fr]">
+            <div className="rounded-3xl border border-[#eee6f0] bg-white p-6">
+              <div className="flex items-center justify-between">
+                <h2 className="font-semibold">{isAdmin ? "Recent activity" : "Your learning snapshot"}</h2>
+                <button className="text-xs font-semibold text-[#6d4b9f]">View all <ChevronRight className="inline" size={14} /></button>
+              </div>
+              <div className="mt-6 space-y-4">
+                {(isAdmin
+                  ? [["New marks uploaded", "Grade 10 Mathematics · 12 minutes ago"], ["Attendance updated", "Physics batch · Today, 9:40 AM"], ["Demo request received", "Parent enquiry · Yesterday"]]
+                  : [["Mathematics", "Unit test · 18 / 20", "On track"], ["Physics", "Next class · Tuesday, 5:00 PM", "Upcoming"], ["Study plan", "3 tasks due this week", "Keep going"]]
+                ).map((r, i) => (
+                  <div key={r[0]} className="flex items-center justify-between rounded-2xl bg-[#faf7fc] p-4">
+                    <div className="flex items-center gap-3">
+                      <span className="grid h-9 w-9 place-items-center rounded-xl bg-[#e9ddf4] text-[#6e4b9e]"><Check size={16} /></span>
+                      <div>
+                        <p className="text-sm font-semibold">{r[0]}</p>
+                        <p className="mt-1 text-xs text-[#8d8197]">{r[1]}</p>
+                      </div>
+                    </div>
+                    <span className="text-[11px] font-semibold text-[#ef8656]">{r[2]}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="rounded-3xl bg-[#5b3b92] p-6 text-white">
+              <Sparkles className="text-[#f8b08b]" size={20} />
+              <h2 className="mt-8 text-2xl font-semibold">Small steps,<br /><em className="font-serif font-normal">strong habits.</em></h2>
+              <p className="mt-4 text-sm leading-6 text-white/65">Consistency makes the difference. Keep showing up for the next question.</p>
+              <button className="mt-8 rounded-full bg-white px-4 py-2.5 text-xs font-semibold text-[#5b3b92]">Open learning plan <ArrowRight className="ml-1 inline" size={13} /></button>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+  );
 }
+
 
 export default function Home() {
   const auth = useAuth();
@@ -6112,10 +6288,10 @@ export default function Home() {
   };
 
   if (currentUser && (activePortal || isPortalUrl)) {
-    if (currentUser.role === "student") return <div className="portal-shell"><ThemeToggle className="fixed right-5 top-5 z-[60] sm:right-24" /><StudentWorkspace user={currentUser} onLogout={logout} /></div>;
-    if (currentUser.role === "parent") return <div className="portal-shell"><ThemeToggle className="fixed right-5 top-5 z-[60] sm:right-24" /><ParentWorkspace user={currentUser} onLogout={logout} /></div>;
-    if (currentUser.role === "teacher") return <div className="portal-shell"><ThemeToggle className="fixed right-5 top-5 z-[60] sm:right-24" /><TeacherWorkspace user={currentUser} onLogout={logout} /></div>;
-    if (currentUser.role === "admin") return <div className="portal-shell"><ThemeToggle className="fixed right-5 top-5 z-[60] sm:right-24" /><AdminWorkspace user={currentUser} onLogout={logout} /></div>;
+    if (currentUser.role === "student") return <div className="portal-shell"><ThemeToggle className="fixed right-5 top-5 z-[60] sm:right-24 md:hidden" /><StudentWorkspace user={currentUser} onLogout={logout} /></div>;
+    if (currentUser.role === "parent") return <div className="portal-shell"><ThemeToggle className="fixed right-5 top-5 z-[60] sm:right-24 md:hidden" /><ParentWorkspace user={currentUser} onLogout={logout} /></div>;
+    if (currentUser.role === "teacher") return <div className="portal-shell"><ThemeToggle className="fixed right-5 top-5 z-[60] sm:right-24 md:hidden" /><TeacherWorkspace user={currentUser} onLogout={logout} /></div>;
+    if (currentUser.role === "admin") return <div className="portal-shell"><AdminWorkspace user={currentUser} onLogout={logout} /></div>;
   }
 
   if (selectedRole) {
