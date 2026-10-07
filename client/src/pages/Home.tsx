@@ -20,12 +20,9 @@ export type User = {
   password?: string;
 };
 
-export const demoUsers: Record<string, User & { password: string }> = {
-  "student@portal.com": { role: "student", name: "Ananya Sharma", email: "student@portal.com", password: "student123" },
-  "teacher@portal.com": { role: "teacher", name: "Prof. Aarav Menon", email: "teacher@portal.com", password: "teacher123" },
-  "parent@portal.com":  { role: "parent",  name: "Ramesh Sharma",  email: "parent@portal.com",  password: "parent123"  },
-  "admin@portal.com":   { role: "admin",   name: "Centre Admin",  email: "admin@portal.com",   password: "admin123"   },
-};
+// Login is DB-backed. No hardcoded credentials are stored client-side.
+export const demoUsers: Record<string, User & { password: string }> = {};
+
 
 function Pill({ children }: { children: React.ReactNode }) {
   return (
@@ -56,9 +53,11 @@ function EmptyState({ title, message }: { title: string; message: string }) {
 function Logo() {
   return (
     <a href="/" className="flex items-center gap-3 text-[#251f37]" aria-label="Rasi Maths home">
-      <span className="grid h-10 w-10 place-items-center rounded-xl bg-[#2f315d] text-xs font-bold tracking-[0.12em] text-white shadow-[0_8px_0_#e9b08f]">
-        RM
-      </span>
+      <img
+        src="/rasi-logo.png"
+        alt="Rasi Maths Tuition Centre"
+        className="h-10 w-10 rounded-xl object-cover shadow-[0_4px_0_#e9b08f]"
+      />
       <span className="leading-tight">
         <strong className="block text-sm font-bold tracking-[-0.02em]">Rasi Maths</strong>
         <small className="text-[9px] font-semibold uppercase tracking-[0.2em] text-[#90859b]">Tuition centre</small>

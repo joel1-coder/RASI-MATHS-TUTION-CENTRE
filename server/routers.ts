@@ -3,7 +3,7 @@ import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { adminProcedure, protectedProcedure, publicProcedure, router } from "./_core/trpc";
 import { TRPCError } from "@trpc/server";
-import { createSubject, deleteSubject, getDb, listFeaturedSubjects, listScheduleSessions, listStudentAttendance, listSubjects, updateSubject, upsertScheduleSession, upsertStudentAttendance, listColleges, listGovernmentExams, listMarkStatements, listStudentProjects, setUserRoleByEmail, upsertCollege, upsertGovernmentExam, upsertMarkStatement, upsertStudentProject, upsertUser, createQuestionPaper, deleteQuestionPaper, listQuestionPapers, createUnitQuestion, deleteUnitQuestion, listUnitQuestions, upsertBulkMarks, upsertBulkProjects, upsertBulkGovernmentExams } from "./db";
+import { createSubject, deleteSubject, getDb, listFeaturedSubjects, listScheduleSessions, listStudentAttendance, listSubjects, updateSubject, upsertScheduleSession, upsertStudentAttendance, listColleges, listGovernmentExams, listMarkStatements, listStudentProjects, setUserRoleByEmail, upsertCollege, upsertGovernmentExam, upsertMarkStatement, upsertStudentProject, upsertUser, createQuestionPaper, deleteQuestionPaper, listQuestionPapers, createUnitQuestion, deleteUnitQuestion, listUnitQuestions, upsertBulkMarks, upsertBulkProjects, upsertBulkGovernmentExams, getUserByEmail, upsertPortalUser, deletePortalUser, listPortalUsers } from "./db";
 import { subjects } from "../drizzle/schema";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
@@ -25,12 +25,12 @@ const subjectFields = {
 const subjectInput = z.object(subjectFields);
 const subjectUpdateInput = subjectInput.partial().extend({ id: z.number().int().positive() });
 
-const VALID_CREDENTIALS: Record<string, { role: "student" | "parent" | "admin" | "teacher"; name: string; email: string; password: string; linkedStudentEmail?: string }> = {
-  "student@portal.com": { role: "student", name: "Ananya Sharma", email: "student@portal.com", password: "student123" },
-  "parent@portal.com":  { role: "parent",  name: "Ramesh Sharma",  email: "parent@portal.com",  password: "parent123", linkedStudentEmail: "student@portal.com" },
-  "teacher@portal.com": { role: "teacher", name: "Prof. Aarav Menon", email: "teacher@portal.com", password: "teacher123" },
-  "admin@portal.com":   { role: "admin",   name: "Centre Admin",  email: "admin@portal.com",   password: "admin123" },
-};
+// ── Admin bootstrap: one hard-coded admin account for first-time setup ────────
+// Once you log in as admin and create real accounts via User Management,
+// you may rotate this password by updating ADMIN_BOOTSTRAP_PASSWORD in Vercel env.
+const BOOTSTRAP_ADMIN_EMAIL    = process.env.ADMIN_BOOTSTRAP_EMAIL    ?? "admin@rasi.edu";
+const BOOTSTRAP_ADMIN_PASSWORD = process.env.ADMIN_BOOTSTRAP_PASSWORD ?? "RasiAdmin@2026";
+const BOOTSTRAP_ADMIN_NAME     = "Centre Admin";
 
 async function getFeaturedCount() {
   const db = await getDb();
@@ -52,41 +52,66 @@ export const appRouter = router({
       }))
       .mutation(async ({ input, ctx }) => {
         const emailKey = input.email.trim().toLowerCase();
-        const cred = VALID_CREDENTIALS[emailKey];
 
-        if (!cred || cred.password !== input.password) {
+        // ── 1. Bootstrap admin check (works even before DB migration runs) ──
+        if (
+          emailKey === BOOTSTRAP_ADMIN_EMAIL.toLowerCase() &&
+          input.password === BOOTSTRAP_ADMIN_PASSWORD &&
+          (!input.role || input.role === "admin")
+        ) {
+          // Seed this admin into the DB so it persists
+          try {
+            await upsertPortalUser({
+              email: emailKey,
+              name: BOOTSTRAP_ADMIN_NAME,
+              password: BOOTSTRAP_ADMIN_PASSWORD,
+              role: "admin",
+            });
+          } catch (e) {
+            console.warn("[Auth] Bootstrap admin DB seed warning:", e);
+          }
+          const openId = `portal_user_${emailKey.replace(/[^a-z0-9]/g, "_")}`;
+          const token = await sdk.signSession({ openId, appId: ENV.appId, name: BOOTSTRAP_ADMIN_NAME });
+          const cookieOptions = getSessionCookieOptions(ctx.req);
+          ctx.res.cookie(COOKIE_NAME, token, cookieOptions);
+          return {
+            success: true,
+            token,
+            user: { id: 0, openId, email: emailKey, name: BOOTSTRAP_ADMIN_NAME, role: "admin" as const, linkedStudentEmail: null },
+          };
+        }
+
+        // ── 2. DB lookup ──────────────────────────────────────────────────────
+        const dbUser = await getUserByEmail(emailKey);
+
+        if (!dbUser || !dbUser.portalPassword || dbUser.portalPassword !== input.password) {
           throw new TRPCError({
             code: "UNAUTHORIZED",
             message: "Invalid email or password. Access denied.",
           });
         }
 
-        if (input.role && cred.role !== input.role) {
+        if (input.role && dbUser.role !== input.role) {
           throw new TRPCError({
             code: "UNAUTHORIZED",
             message: `This account is not registered for the ${input.role} role.`,
           });
         }
 
-        const openId = `portal_user_${emailKey.replace(/[^a-z0-9]/g, "_")}`;
-
+        // Update last signed-in timestamp
         try {
           await upsertUser({
-            openId,
-            email: cred.email,
-            name: cred.name,
-            role: cred.role,
-            linkedStudentEmail: cred.linkedStudentEmail ?? null,
-            loginMethod: "password",
+            openId: dbUser.openId,
+            lastSignedIn: new Date(),
           });
         } catch (e) {
-          console.warn("[Auth Login Upsert Warning]", e);
+          console.warn("[Auth] lastSignedIn update warning:", e);
         }
 
         const token = await sdk.signSession({
-          openId,
+          openId: dbUser.openId,
           appId: ENV.appId,
-          name: cred.name,
+          name: dbUser.name ?? "",
         });
 
         const cookieOptions = getSessionCookieOptions(ctx.req);
@@ -96,12 +121,12 @@ export const appRouter = router({
           success: true,
           token,
           user: {
-            id: 1,
-            openId,
-            email: cred.email,
-            name: cred.name,
-            role: cred.role,
-            linkedStudentEmail: cred.linkedStudentEmail ?? null,
+            id: dbUser.id,
+            openId: dbUser.openId,
+            email: dbUser.email ?? emailKey,
+            name: dbUser.name ?? "",
+            role: dbUser.role,
+            linkedStudentEmail: dbUser.linkedStudentEmail ?? null,
           },
         };
       }),
@@ -173,6 +198,47 @@ export const appRouter = router({
     createUnitQuestion: adminProcedure.input(z.object({ title: z.string().min(1), subject: z.string().min(1), link: z.string().min(1), targetClass: z.string().min(1) })).mutation(({ input }) => createUnitQuestion(input)),
     deleteUnitQuestion: adminProcedure.input(z.object({ id: z.number().int().positive() })).mutation(({ input }) => deleteUnitQuestion(input.id)),
     listUnitQuestions: adminProcedure.query(() => listUnitQuestions()),
+
+    // ── Portal User Management (saves to Supabase DB) ────────────────────────
+    createPortalUser: adminProcedure
+      .input(z.object({
+        email: z.string().email(),
+        name: z.string().min(1).max(120),
+        password: z.string().min(4).max(100),
+        role: z.enum(["student", "parent", "teacher", "admin"]),
+        linkedStudentEmail: z.string().email().optional().nullable(),
+      }))
+      .mutation(({ input }) => upsertPortalUser({
+        email: input.email,
+        name: input.name,
+        password: input.password,
+        role: input.role,
+        linkedStudentEmail: input.linkedStudentEmail ?? null,
+      })),
+
+    updatePortalUser: adminProcedure
+      .input(z.object({
+        email: z.string().email(),
+        name: z.string().min(1).max(120),
+        password: z.string().min(4).max(100),
+        role: z.enum(["student", "parent", "teacher", "admin"]),
+        linkedStudentEmail: z.string().email().optional().nullable(),
+      }))
+      .mutation(({ input }) => upsertPortalUser({
+        email: input.email,
+        name: input.name,
+        password: input.password,
+        role: input.role,
+        linkedStudentEmail: input.linkedStudentEmail ?? null,
+      })),
+
+    deletePortalUser: adminProcedure
+      .input(z.object({ email: z.string().email() }))
+      .mutation(({ input }) => deletePortalUser(input.email)),
+
+    listPortalUsers: adminProcedure
+      .input(z.object({ role: z.enum(["student", "parent", "teacher"]).optional() }))
+      .query(({ input }) => listPortalUsers(input.role)),
   }),
 
   materials: router({

@@ -41,9 +41,11 @@ const DEPARTMENTS = [
 function Logo() {
   return (
     <a href="/" className="flex items-center gap-3 text-[#251f37]">
-      <span className="grid h-10 w-10 place-items-center rounded-xl bg-[#2f315d] text-xs font-bold tracking-[0.12em] text-white shadow-[0_8px_0_#e9b08f]">
-        RM
-      </span>
+      <img
+        src="/rasi-logo.png"
+        alt="Rasi Maths Tuition Centre"
+        className="h-10 w-10 rounded-xl object-cover shadow-[0_4px_0_#e9b08f]"
+      />
       <span className="leading-tight">
         <strong className="block text-sm font-bold">Rasi Maths</strong>
         <small className="text-[9px] font-semibold uppercase tracking-[0.2em] text-[#90859b]">

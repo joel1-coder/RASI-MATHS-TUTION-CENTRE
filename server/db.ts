@@ -68,6 +68,75 @@ export async function getUserByOpenId(openId: string) {
   return result.length > 0 ? result[0] : undefined;
 }
 
+/** Look up a portal user by email (used for password-based login) */
+export async function getUserByEmail(email: string) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select().from(users).where(eq(users.email, email.trim().toLowerCase())).limit(1);
+  return result.length > 0 ? result[0] : undefined;
+}
+
+/**
+ * Create or fully update a portal user (admin-managed account with password).
+ * openId is derived from email so it is stable and predictable.
+ */
+export async function upsertPortalUser(input: {
+  email: string;
+  name: string;
+  password: string;
+  role: "student" | "parent" | "teacher" | "admin";
+  linkedStudentEmail?: string | null;
+}) {
+  const db = await getDb();
+  if (!db) throw new Error("Database is not available");
+  const emailKey = input.email.trim().toLowerCase();
+  const openId = `portal_user_${emailKey.replace(/[^a-z0-9]/g, "_")}`;
+  const values = {
+    openId,
+    email: emailKey,
+    name: input.name,
+    role: input.role,
+    portalPassword: input.password,
+    linkedStudentEmail: input.linkedStudentEmail ?? null,
+    loginMethod: "password" as const,
+    lastSignedIn: new Date(),
+  };
+  await db
+    .insert(users)
+    .values(values)
+    .onConflictDoUpdate({
+      target: users.openId,
+      set: {
+        email: values.email,
+        name: values.name,
+        role: values.role,
+        portalPassword: values.portalPassword,
+        linkedStudentEmail: values.linkedStudentEmail,
+        loginMethod: values.loginMethod,
+        updatedAt: new Date(),
+      },
+    });
+  const result = await db.select().from(users).where(eq(users.openId, openId)).limit(1);
+  return result[0];
+}
+
+/** Delete a portal user by email */
+export async function deletePortalUser(email: string) {
+  const db = await getDb();
+  if (!db) return;
+  await db.delete(users).where(eq(users.email, email.trim().toLowerCase()));
+}
+
+/** List all portal users (with password) - admin only */
+export async function listPortalUsers(role?: "student" | "parent" | "teacher") {
+  const db = await getDb();
+  if (!db) return [];
+  if (role) {
+    return db.select().from(users).where(eq(users.role, role)).orderBy(asc(users.createdAt));
+  }
+  return db.select().from(users).orderBy(asc(users.role), asc(users.createdAt));
+}
+
 export async function setUserRoleByEmail(email: string, role: "user" | "admin" | "student" | "parent" | "teacher", linkedStudentEmail?: string) {
   const db = await getDb();
   if (!db) return undefined;
