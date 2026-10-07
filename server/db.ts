@@ -1,4 +1,4 @@
-import { and, asc, desc, eq } from "drizzle-orm";
+import { and, asc, desc, eq, or } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 import { colleges, governmentExams, InsertCollege, InsertGovernmentExam, InsertMarkStatement, InsertStudentAttendance, InsertStudentProject, InsertUser, InsertScheduleSession, markStatements, scheduleSessions, studentAttendance, studentProjects, subjects, InsertSubject, users, questionPapers, unitQuestions, InsertQuestionPaper, InsertUnitQuestion } from "../drizzle/schema";
@@ -68,11 +68,18 @@ export async function getUserByOpenId(openId: string) {
   return result.length > 0 ? result[0] : undefined;
 }
 
-/** Look up a portal user by email (used for password-based login) */
-export async function getUserByEmail(email: string) {
+/** Look up a portal user by email or student ID (used for password-based login) */
+export async function getUserByEmail(emailOrId: string) {
   const db = await getDb();
   if (!db) return undefined;
-  const result = await db.select().from(users).where(eq(users.email, email.trim().toLowerCase())).limit(1);
+  const key = emailOrId.trim().toLowerCase();
+  const openIdKey = `portal_user_${key.replace(/[^a-z0-9]/g, "_")}`;
+  const result = await db.select().from(users).where(
+    or(
+      eq(users.email, key),
+      eq(users.openId, openIdKey)
+    )
+  ).limit(1);
   return result.length > 0 ? result[0] : undefined;
 }
 

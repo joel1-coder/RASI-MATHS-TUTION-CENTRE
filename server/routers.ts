@@ -46,7 +46,7 @@ export const appRouter = router({
     me: publicProcedure.query(opts => opts.ctx.user),
     login: publicProcedure
       .input(z.object({
-        email: z.string().email(),
+        email: z.string().min(1),
         password: z.string().min(1),
         role: z.enum(["student", "parent", "admin", "teacher"]).optional(),
       }))
@@ -239,7 +239,67 @@ export const appRouter = router({
     listPortalUsers: adminProcedure
       .input(z.object({ role: z.enum(["student", "parent", "teacher"]).optional() }))
       .query(({ input }) => listPortalUsers(input.role)),
-  }),
+
+    // ── Bulk student + parent login creation (called when admin adds students) ──
+    bulkCreateStudentLogins: adminProcedure
+      .input(z.object({
+        students: z.array(z.object({
+          studentId:      z.string().optional(),
+          studentName:    z.string().min(1),
+          studentEmail:   z.string().min(1),
+          studentPassword: z.string().min(1),
+          parentName:     z.string().optional().default("Parent"),
+          parentEmail:    z.string().optional(),
+          parentPassword: z.string().min(1).optional(),
+        })).min(1).max(500),
+      }))
+      .mutation(async ({ input }) => {
+        const results: { email: string; role: string; success: boolean; error?: string }[] = [];
+        for (const s of input.students) {
+          // Create student portal login (by studentEmail)
+          try {
+            await upsertPortalUser({
+              email: s.studentEmail,
+              name:  s.studentName,
+              password: s.studentPassword,
+              role: "student",
+              linkedStudentEmail: null,
+            });
+            // If studentId is distinct, also register login alias so student can log in using studentId
+            if (s.studentId && s.studentId.trim().toLowerCase() !== s.studentEmail.trim().toLowerCase()) {
+              await upsertPortalUser({
+                email: s.studentId.trim(),
+                name:  s.studentName,
+                password: s.studentPassword,
+                role: "student",
+                linkedStudentEmail: s.studentEmail,
+              });
+            }
+            results.push({ email: s.studentEmail, role: "student", success: true });
+          } catch (e: any) {
+            results.push({ email: s.studentEmail, role: "student", success: false, error: e?.message });
+          }
+          // Create parent portal login (only if parent email + password provided)
+          if (s.parentEmail && s.parentPassword) {
+            try {
+              await upsertPortalUser({
+                email: s.parentEmail,
+                name:  s.parentName || "Parent",
+                password: s.parentPassword,
+                role: "parent",
+                linkedStudentEmail: s.studentEmail,
+              });
+              results.push({ email: s.parentEmail, role: "parent", success: true });
+            } catch (e: any) {
+              results.push({ email: s.parentEmail, role: "parent", success: false, error: e?.message });
+            }
+          }
+        }
+        const successful = results.filter(r => r.success).length;
+        const failed     = results.filter(r => !r.success).length;
+        return { successful, failed, results };
+      }),
+  }),  // end admin router
 
   materials: router({
     questionPapers: protectedProcedure.input(z.object({ targetClass: z.string().optional() })).query(({ input }) => listQuestionPapers(input.targetClass)),

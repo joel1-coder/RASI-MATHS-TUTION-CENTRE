@@ -23,6 +23,12 @@ export type User = {
 // Login is DB-backed. No hardcoded credentials are stored client-side.
 export const demoUsers: Record<string, User & { password: string }> = {};
 
+export const DEFAULT_SUBJECTS = [
+  { name: "MATHS", code: "MAT-01", summary: "Standard mathematical reasoning and core syllabus", isFeatured: 1, questionCount: 25, durationMinutes: 60 },
+  { name: "PHYSICS", code: "PHY-01", summary: "Mechanics, waves and foundational physical principles", isFeatured: 1, questionCount: 25, durationMinutes: 60 },
+  { name: "CHEMISTRY", code: "CHE-01", summary: "Inorganic, organic and physical chemical concepts", isFeatured: 1, questionCount: 25, durationMinutes: 60 },
+];
+
 
 function Pill({ children }: { children: React.ReactNode }) {
   return (
@@ -147,9 +153,9 @@ function RoleLoginPage({ role, onLogin, onBack }: { role: Role; onLogin: (user: 
       // 1️⃣ Check admin-created user accounts first (localStorage)
       const localAccountsRaw = localStorage.getItem("rasi_user_accounts");
       if (localAccountsRaw) {
-        const localAccounts: Array<{ id: string; name: string; email: string; password: string; role: string; linkedStudentEmail?: string }> = JSON.parse(localAccountsRaw);
+        const localAccounts: Array<{ id: string; name: string; email: string; password: string; role: string; linkedStudentEmail?: string; studentId?: string }> = JSON.parse(localAccountsRaw);
         const emailKey = email.trim().toLowerCase();
-        const match = localAccounts.find(a => a.email.toLowerCase() === emailKey && a.password === password && a.role === role);
+        const match = localAccounts.find(a => (a.email.toLowerCase() === emailKey || a.studentId?.toLowerCase() === emailKey) && a.password === password && a.role === role);
         if (match) {
           // Store for session restore
           try { sessionStorage.setItem("demo-user-email", match.email); } catch {}
@@ -213,13 +219,13 @@ function RoleLoginPage({ role, onLogin, onBack }: { role: Role; onLogin: (user: 
             <div className="mt-3"></div>
             <form onSubmit={submit} className="mt-7 space-y-4">
               <label className="block text-xs font-semibold uppercase tracking-[0.15em] text-[#776c88]">
-                Email
+                {role === "student" ? "Student ID or Email" : "Email"}
                 <input
-                  type="email"
+                  type={role === "student" ? "text" : "email"}
                   required
                   value={email}
                   onChange={e => setEmail(e.target.value)}
-                  placeholder={`your ${role} email`}
+                  placeholder={role === "student" ? "Student ID or email" : `your ${role} email`}
                   className="mt-2 w-full rounded-2xl border border-[#e6deeb] bg-white px-4 py-3 text-sm outline-none focus:border-[#8c68cf]"
                 />
               </label>
@@ -538,6 +544,7 @@ export interface ManagedStudent {
   name: string;
   parentName?: string;
   parentPhone?: string;
+  parentEmail?: string;
   email: string;
   department: string;
   section: string;
@@ -1683,6 +1690,7 @@ function AdminStudentManager() {
   });
 
   const [students, setStudents] = useState<ManagedStudent[]>(loadStoredStudents);
+  const bulkCreateLoginsMutation = trpc.admin.bulkCreateStudentLogins.useMutation();
 
   // Save changes to localStorage
   useEffect(() => {
@@ -1706,8 +1714,11 @@ function AdminStudentManager() {
   const [singleStudent, setSingleStudent] = useState({
     studentId: "",
     name: "",
+    studentPassword: "",
     parentName: "",
     parentPhone: "",
+    parentEmail: "",
+    parentPassword: "",
     email: "",
     department: departments[0] || "Grade 10",
     section: "A",
@@ -1776,7 +1787,7 @@ function AdminStudentManager() {
   };
 
   // Add Single Student
-  const handleAddSingleStudent = (e: React.FormEvent) => {
+  const handleAddSingleStudent = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!singleStudent.studentId.trim() || !singleStudent.name.trim() || !singleStudent.email.trim()) {
       showToast("Please fill in Student ID, Name, and Email.");
@@ -1786,12 +1797,17 @@ function AdminStudentManager() {
       showToast(`Student ID "${singleStudent.studentId}" is already assigned.`);
       return;
     }
+    const stuPass = singleStudent.studentPassword.trim() || "123456";
+    const parPass = singleStudent.parentPassword.trim();
+    const parEmail = singleStudent.parentEmail.trim();
+
     const newStudent: ManagedStudent = {
       id: `stu-${Date.now()}`,
       studentId: singleStudent.studentId.trim(),
       name: singleStudent.name.trim(),
       parentName: singleStudent.parentName.trim() || undefined,
       parentPhone: singleStudent.parentPhone.trim() || undefined,
+      parentEmail: parEmail || undefined,
       email: singleStudent.email.trim(),
       department: singleStudent.department || departments[0] || "General",
       section: singleStudent.section.trim() || "A",
@@ -1799,26 +1815,82 @@ function AdminStudentManager() {
       joinedDate: new Date().toISOString().slice(0, 10),
     };
     setStudents([newStudent, ...students]);
+
+    // Automatically create student & parent portal logins in the database
+    try {
+      await bulkCreateLoginsMutation.mutateAsync({
+        students: [{
+          studentId: newStudent.studentId,
+          studentName: newStudent.name,
+          studentEmail: newStudent.email,
+          studentPassword: stuPass,
+          parentName: newStudent.parentName || "Parent",
+          parentEmail: parEmail || undefined,
+          parentPassword: parPass || undefined,
+        }],
+      });
+
+      // Also sync to local user accounts cache for instant same-device login
+      try {
+        const raw = localStorage.getItem("rasi_user_accounts") || "[]";
+        const arr = JSON.parse(raw);
+        arr.push({
+          id: `local-stu-${Date.now()}`,
+          name: newStudent.name,
+          email: newStudent.email,
+          studentId: newStudent.studentId,
+          password: stuPass,
+          role: "student",
+        });
+        if (newStudent.studentId && newStudent.studentId.toLowerCase() !== newStudent.email.toLowerCase()) {
+          arr.push({
+            id: `local-stuid-${Date.now()}`,
+            name: newStudent.name,
+            email: newStudent.studentId,
+            password: stuPass,
+            role: "student",
+          });
+        }
+        if (parEmail && parPass) {
+          arr.push({
+            id: `local-par-${Date.now()}`,
+            name: newStudent.parentName || "Parent",
+            email: parEmail,
+            password: parPass,
+            role: "parent",
+            linkedStudentEmail: newStudent.email,
+          });
+        }
+        localStorage.setItem("rasi_user_accounts", JSON.stringify(arr));
+      } catch {}
+
+      showToast(`Student "${newStudent.name}" added & portal logins created in database ✓`);
+    } catch (err: any) {
+      showToast(`Student record saved! (Login sync notice: ${err?.message || "Saved locally"})`);
+    }
+
     setSingleStudent({
       studentId: "",
       name: "",
+      studentPassword: "",
       parentName: "",
       parentPhone: "",
+      parentEmail: "",
+      parentPassword: "",
       email: "",
       department: departments[0] || "Grade 10",
       section: "A",
     });
-    showToast(`Student "${newStudent.name}" (${newStudent.studentId}) added!`);
   };
 
-  // Download Sample Template
+  // Download Sample Template with Student's password & Parent's password columns
   const handleDownloadTemplate = () => {
     exportToCsv("students_import_template.csv", [
-      "studentId", "name", "parentName", "parentPhone", "email", "section", "department"
+      "studentId", "name", "parentName", "parentPhone", "email", "parentEmail", "Student's password", "Parent's password", "section", "department"
     ], [
-      ["23CS101", "Aarav Patel", "Kishore Patel", "+91 98401 11223", "aarav.p@portal.com", "A", "Grade 10"],
-      ["23CS102", "Meera Krishnan", "Krishnan S.", "+91 98401 11224", "meera.k@portal.com", "A", "Grade 10"],
-      ["23CS103", "Vikram Singhania", "Rajesh Singhania", "+91 98401 11225", "vikram.s@portal.com", "B", "Grade 12"]
+      ["23CS101", "Aarav Patel", "Kishore Patel", "+91 98401 11223", "aarav.p@portal.com", "kishore.patel@gmail.com", "aarav123", "parent123", "A", "Grade 10"],
+      ["23CS102", "Meera Krishnan", "Krishnan S.", "+91 98401 11224", "meera.k@portal.com", "krishnan.s@gmail.com", "meera123", "parent456", "A", "Grade 10"],
+      ["23CS103", "Vikram Singhania", "Rajesh Singhania", "+91 98401 11225", "vikram.s@portal.com", "rajesh.s@gmail.com", "vikram123", "parent789", "B", "Grade 12"]
     ]);
     showToast("Sample template downloaded!");
   };
@@ -1838,7 +1910,7 @@ function AdminStudentManager() {
   };
 
   // Confirm Bulk Import
-  const handleConfirmImport = () => {
+  const handleConfirmImport = async () => {
     if (!bulkFileText.trim()) {
       showToast("Please choose a valid CSV file first.");
       return;
@@ -1850,16 +1922,28 @@ function AdminStudentManager() {
     }
 
     const header = lines[0].toLowerCase().split(",").map(h => h.trim().replace(/^["']|["']$/g, ""));
-    const idIdx = header.findIndex(h => h.includes("id") || h.includes("studentid") || h.includes("roll"));
-    const nameIdx = header.findIndex(h => (h.includes("name") || h.includes("student")) && !h.includes("parent"));
+    const idIdx = header.findIndex(h => h.includes("studentid") || h.includes("student id") || h.includes("roll") || h === "id");
+    const nameIdx = header.findIndex(h => (h.includes("name") || h.includes("student")) && !h.includes("parent") && !h.includes("pass"));
     const pNameIdx = header.findIndex(h => h.includes("parent") && (h.includes("name") || !h.includes("phone")));
-    const pPhoneIdx = header.findIndex(h => (h.includes("parent") || h.includes("phone") || h.includes("mobile") || h.includes("contact")) && !h.includes("email"));
-    const emailIdx = header.findIndex(h => h.includes("email") || h.includes("mail"));
+    const pPhoneIdx = header.findIndex(h => (h.includes("parent") || h.includes("phone") || h.includes("mobile") || h.includes("contact")) && !h.includes("email") && !h.includes("pass"));
+    const pEmailIdx = header.findIndex(h => h.includes("parent") && (h.includes("email") || h.includes("mail")));
+    const emailIdx = header.findIndex(h => (h.includes("email") || h.includes("mail")) && !h.includes("parent"));
+    const stuPassIdx = header.findIndex(h => (h.includes("student") && h.includes("pass")) || h === "studentpassword" || h.includes("student's password"));
+    const parPassIdx = header.findIndex(h => (h.includes("parent") && h.includes("pass")) || h === "parentpassword" || h.includes("parent's password"));
     const secIdx = header.findIndex(h => h.includes("section") || h.includes("batch") || h.includes("sec"));
     const deptIdx = header.findIndex(h => h.includes("department") || h.includes("dept") || h.includes("class"));
 
     let importedCount = 0;
     const newRecords: ManagedStudent[] = [];
+    const bulkLoginPayload: {
+      studentId?: string;
+      studentName: string;
+      studentEmail: string;
+      studentPassword: string;
+      parentName?: string;
+      parentEmail?: string;
+      parentPassword?: string;
+    }[] = [];
 
     for (let i = 1; i < lines.length; i++) {
       const row = lines[i].split(",").map(c => c.trim().replace(/^["']|["']$/g, ""));
@@ -1867,9 +1951,12 @@ function AdminStudentManager() {
 
       const sid = (idIdx !== -1 ? row[idIdx] : row[0]) || `RM-${Date.now()}-${i}`;
       const sname = (nameIdx !== -1 ? row[nameIdx] : row[1]) || "Imported Student";
-      const sparentName = pNameIdx !== -1 ? row[pNameIdx] : "Parent";
-      const sparentPhone = pPhoneIdx !== -1 ? row[pPhoneIdx] : "+91 98401 23450";
-      const semail = (emailIdx !== -1 ? row[emailIdx] : row[2]) || `student_${i}@portal.com`;
+      const sparentName = (pNameIdx !== -1 && row[pNameIdx]) ? row[pNameIdx] : "Parent";
+      const sparentPhone = (pPhoneIdx !== -1 && row[pPhoneIdx]) ? row[pPhoneIdx] : "+91 98401 23450";
+      const sparentEmail = (pEmailIdx !== -1 && row[pEmailIdx]) ? row[pEmailIdx] : "";
+      const semail = (emailIdx !== -1 && row[emailIdx]) ? row[emailIdx] : `student_${i}@portal.com`;
+      const sStudentPass = (stuPassIdx !== -1 && row[stuPassIdx]) ? row[stuPassIdx] : "123456";
+      const sParentPass = (parPassIdx !== -1 && row[parPassIdx]) ? row[parPassIdx] : (sparentEmail ? "123456" : "");
       const ssec = bulkSection.trim() || (secIdx !== -1 ? row[secIdx] : row[3]) || "A";
       const sdept = bulkDept.trim() || (deptIdx !== -1 ? row[deptIdx] : row[4]) || departments[0] || "General";
 
@@ -1880,11 +1967,21 @@ function AdminStudentManager() {
           name: sname,
           parentName: sparentName,
           parentPhone: sparentPhone,
+          parentEmail: sparentEmail || undefined,
           email: semail,
           department: sdept,
           section: ssec,
           status: "active",
           joinedDate: new Date().toISOString().slice(0, 10),
+        });
+        bulkLoginPayload.push({
+          studentId: sid,
+          studentName: sname,
+          studentEmail: semail,
+          studentPassword: sStudentPass,
+          parentName: sparentName,
+          parentEmail: sparentEmail || undefined,
+          parentPassword: sParentPass || undefined,
         });
         importedCount++;
       }
@@ -1892,8 +1989,54 @@ function AdminStudentManager() {
 
     if (importedCount > 0) {
       setStudents(prev => [...newRecords, ...prev]);
-      showToast(`Successfully imported ${importedCount} students!`);
-      setImportStatus(`✅ Imported ${importedCount} new student records.`);
+
+      // Automatically create Student & Parent portal logins in the database
+      try {
+        await bulkCreateLoginsMutation.mutateAsync({ students: bulkLoginPayload });
+
+        // Also sync local storage accounts cache
+        try {
+          const raw = localStorage.getItem("rasi_user_accounts") || "[]";
+          const arr = JSON.parse(raw);
+          for (const item of bulkLoginPayload) {
+            arr.push({
+              id: `local-stu-${Date.now()}-${Math.random()}`,
+              name: item.studentName,
+              email: item.studentEmail,
+              studentId: item.studentId,
+              password: item.studentPassword,
+              role: "student",
+            });
+            if (item.studentId && item.studentId.toLowerCase() !== item.studentEmail.toLowerCase()) {
+              arr.push({
+                id: `local-stuid-${Date.now()}-${Math.random()}`,
+                name: item.studentName,
+                email: item.studentId,
+                password: item.studentPassword,
+                role: "student",
+              });
+            }
+            if (item.parentEmail && item.parentPassword) {
+              arr.push({
+                id: `local-par-${Date.now()}-${Math.random()}`,
+                name: item.parentName || "Parent",
+                email: item.parentEmail,
+                password: item.parentPassword,
+                role: "parent",
+                linkedStudentEmail: item.studentEmail,
+              });
+            }
+          }
+          localStorage.setItem("rasi_user_accounts", JSON.stringify(arr));
+        } catch {}
+
+        showToast(`Successfully imported ${importedCount} students & created logins in DB!`);
+        setImportStatus(`✅ Imported ${importedCount} students & created Student and Parent logins in DB.`);
+      } catch (err: any) {
+        showToast(`Imported ${importedCount} students locally! (Login note: ${err?.message || "Saved locally"})`);
+        setImportStatus(`✅ Imported ${importedCount} new student records.`);
+      }
+
       setSelectedFileName("");
       setBulkFileText("");
     } else {
@@ -2116,6 +2259,27 @@ function AdminStudentManager() {
               />
             </div>
             <div>
+              <label className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.1em] text-[#81758e]">Email (Student)</label>
+              <input
+                type="email"
+                required
+                value={singleStudent.email}
+                onChange={e => setSingleStudent({ ...singleStudent, email: e.target.value })}
+                placeholder="student@portal.com"
+                className="w-full rounded-2xl border border-[#e4dce9] bg-white px-3.5 py-2.5 text-sm focus:border-[#5b3b92] focus:outline-none"
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.1em] text-[#81758e]">Student's password</label>
+              <input
+                type="text"
+                value={singleStudent.studentPassword}
+                onChange={e => setSingleStudent({ ...singleStudent, studentPassword: e.target.value })}
+                placeholder="e.g. stu1234"
+                className="w-full rounded-2xl border border-[#e4dce9] bg-white px-3.5 py-2.5 text-sm focus:border-[#5b3b92] focus:outline-none"
+              />
+            </div>
+            <div>
               <label className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.1em] text-[#81758e]">Parent Name</label>
               <input
                 type="text"
@@ -2136,13 +2300,22 @@ function AdminStudentManager() {
               />
             </div>
             <div>
-              <label className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.1em] text-[#81758e]">Email</label>
+              <label className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.1em] text-[#81758e]">Parent's email</label>
               <input
                 type="email"
-                required
-                value={singleStudent.email}
-                onChange={e => setSingleStudent({ ...singleStudent, email: e.target.value })}
-                placeholder="Email Address"
+                value={singleStudent.parentEmail}
+                onChange={e => setSingleStudent({ ...singleStudent, parentEmail: e.target.value })}
+                placeholder="parent@gmail.com"
+                className="w-full rounded-2xl border border-[#e4dce9] bg-white px-3.5 py-2.5 text-sm focus:border-[#5b3b92] focus:outline-none"
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.1em] text-[#81758e]">Parent's password</label>
+              <input
+                type="text"
+                value={singleStudent.parentPassword}
+                onChange={e => setSingleStudent({ ...singleStudent, parentPassword: e.target.value })}
+                placeholder="e.g. parent1234"
                 className="w-full rounded-2xl border border-[#e4dce9] bg-white px-3.5 py-2.5 text-sm focus:border-[#5b3b92] focus:outline-none"
               />
             </div>
@@ -2188,7 +2361,7 @@ function AdminStudentManager() {
           <h2 className="text-base font-bold text-[#2a203e]">Bulk Import Students (Excel / CSV)</h2>
         </div>
         <p className="mt-2 text-xs leading-5 text-[#81758e]">
-          Upload an Excel (<code className="rounded bg-[#f4edf9] px-1 py-0.5 text-[#5b3b92]">.xlsx</code>) or CSV (<code className="rounded bg-[#f4edf9] px-1 py-0.5 text-[#5b3b92]">.csv</code>) file to add many students at once. Your file should have columns: <strong className="text-[#2a203e]">studentId, name, email, section</strong>. Department is chosen below.
+          Upload an Excel (<code className="rounded bg-[#f4edf9] px-1 py-0.5 text-[#5b3b92]">.xlsx</code>) or CSV (<code className="rounded bg-[#f4edf9] px-1 py-0.5 text-[#5b3b92]">.csv</code>) file to add many students at once. Your file should have columns: <strong className="text-[#2a203e]">studentId, name, email, parentEmail, Student's password, Parent's password, section, department</strong>. Student and Parent logins will automatically be created in the database!
         </p>
 
         {/* Download template button */}
@@ -2480,7 +2653,7 @@ function AdminStudentManager() {
                 </div>
               </div>
 
-              <div className="grid gap-3 sm:grid-cols-2">
+              <div className="grid gap-3 sm:grid-cols-3">
                 <div>
                   <label className="mb-1 block font-semibold uppercase tracking-[0.08em] text-[#71647f]">Parent Name</label>
                   <input
@@ -2492,12 +2665,22 @@ function AdminStudentManager() {
                   />
                 </div>
                 <div>
-                  <label className="mb-1 block font-semibold uppercase tracking-[0.08em] text-[#71647f]">Parent Phone / WhatsApp</label>
+                  <label className="mb-1 block font-semibold uppercase tracking-[0.08em] text-[#71647f]">Parent Phone</label>
                   <input
                     type="text"
                     value={editingStudent.parentPhone || ""}
                     onChange={e => setEditingStudent({ ...editingStudent, parentPhone: e.target.value })}
                     placeholder="e.g. +91 98401 23456"
+                    className="w-full rounded-2xl border border-[#e4dce9] px-3.5 py-2.5 focus:border-[#5b3b92] focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="mb-1 block font-semibold uppercase tracking-[0.08em] text-[#71647f]">Parent's email</label>
+                  <input
+                    type="email"
+                    value={editingStudent.parentEmail || ""}
+                    onChange={e => setEditingStudent({ ...editingStudent, parentEmail: e.target.value })}
+                    placeholder="parent@gmail.com"
                     className="w-full rounded-2xl border border-[#e4dce9] px-3.5 py-2.5 focus:border-[#5b3b92] focus:outline-none"
                   />
                 </div>
