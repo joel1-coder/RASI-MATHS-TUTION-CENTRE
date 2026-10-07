@@ -1797,9 +1797,9 @@ function AdminStudentManager() {
       showToast(`Student ID "${singleStudent.studentId}" is already assigned.`);
       return;
     }
-    const stuPass = singleStudent.studentPassword.trim() || "123456";
-    const parPass = singleStudent.parentPassword.trim();
-    const parEmail = singleStudent.parentEmail.trim();
+    const enteredStudentPassword = singleStudent.studentPassword.trim() || "123456";
+    const enteredParentPassword = singleStudent.parentPassword.trim();
+    const parentContactEmail = singleStudent.parentEmail.trim();
 
     const newStudent: ManagedStudent = {
       id: `stu-${Date.now()}`,
@@ -1807,7 +1807,7 @@ function AdminStudentManager() {
       name: singleStudent.name.trim(),
       parentName: singleStudent.parentName.trim() || undefined,
       parentPhone: singleStudent.parentPhone.trim() || undefined,
-      parentEmail: parEmail || undefined,
+      parentEmail: parentContactEmail || undefined,
       email: singleStudent.email.trim(),
       department: singleStudent.department || departments[0] || "General",
       section: singleStudent.section.trim() || "A",
@@ -1823,10 +1823,10 @@ function AdminStudentManager() {
           studentId: newStudent.studentId,
           studentName: newStudent.name,
           studentEmail: newStudent.email,
-          studentPassword: stuPass,
+          studentPassword: enteredStudentPassword,
           parentName: newStudent.parentName || "Parent",
-          parentEmail: parEmail || undefined,
-          parentPassword: parPass || undefined,
+          parentEmail: parentContactEmail || undefined,
+          parentPassword: enteredParentPassword || undefined,
         }],
       });
 
@@ -1839,7 +1839,7 @@ function AdminStudentManager() {
           name: newStudent.name,
           email: newStudent.email,
           studentId: newStudent.studentId,
-          password: stuPass,
+          password: enteredStudentPassword,
           role: "student",
         });
         if (newStudent.studentId && newStudent.studentId.toLowerCase() !== newStudent.email.toLowerCase()) {
@@ -1847,16 +1847,16 @@ function AdminStudentManager() {
             id: `local-stuid-${Date.now()}`,
             name: newStudent.name,
             email: newStudent.studentId,
-            password: stuPass,
+            password: enteredStudentPassword,
             role: "student",
           });
         }
-        if (parEmail && parPass) {
+        if (parentContactEmail && enteredParentPassword) {
           arr.push({
             id: `local-par-${Date.now()}`,
             name: newStudent.parentName || "Parent",
-            email: parEmail,
-            password: parPass,
+            email: parentContactEmail,
+            password: enteredParentPassword,
             role: "parent",
             linkedStudentEmail: newStudent.email,
           });
@@ -1955,8 +1955,8 @@ function AdminStudentManager() {
       const sparentPhone = (pPhoneIdx !== -1 && row[pPhoneIdx]) ? row[pPhoneIdx] : "+91 98401 23450";
       const sparentEmail = (pEmailIdx !== -1 && row[pEmailIdx]) ? row[pEmailIdx] : "";
       const semail = (emailIdx !== -1 && row[emailIdx]) ? row[emailIdx] : `student_${i}@portal.com`;
-      const sStudentPass = (stuPassIdx !== -1 && row[stuPassIdx]) ? row[stuPassIdx] : "123456";
-      const sParentPass = (parPassIdx !== -1 && row[parPassIdx]) ? row[parPassIdx] : (sparentEmail ? "123456" : "");
+      const parsedStudentPassword = (stuPassIdx !== -1 && row[stuPassIdx]) ? row[stuPassIdx] : "123456";
+      const parsedParentPassword = (parPassIdx !== -1 && row[parPassIdx]) ? row[parPassIdx] : (sparentEmail ? "123456" : "");
       const ssec = bulkSection.trim() || (secIdx !== -1 ? row[secIdx] : row[3]) || "A";
       const sdept = bulkDept.trim() || (deptIdx !== -1 ? row[deptIdx] : row[4]) || departments[0] || "General";
 
@@ -1978,10 +1978,10 @@ function AdminStudentManager() {
           studentId: sid,
           studentName: sname,
           studentEmail: semail,
-          studentPassword: sStudentPass,
+          studentPassword: parsedStudentPassword,
           parentName: sparentName,
           parentEmail: sparentEmail || undefined,
-          parentPassword: sParentPass || undefined,
+          parentPassword: parsedParentPassword || undefined,
         });
         importedCount++;
       }
