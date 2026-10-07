@@ -126,7 +126,6 @@ function RoleChooser({ onChoose, onClose }: { onChoose: (role: Role) => void; on
 }
 
 function RoleLoginPage({ role, onLogin, onBack }: { role: Role; onLogin: (user: User) => void; onBack: () => void }) {
-  const account = Object.values(demoUsers).find(user => user.role === role)!;
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -220,7 +219,7 @@ function RoleLoginPage({ role, onLogin, onBack }: { role: Role; onLogin: (user: 
                   required
                   value={email}
                   onChange={e => setEmail(e.target.value)}
-                  placeholder={account.email}
+                  placeholder={`your ${role} email`}
                   className="mt-2 w-full rounded-2xl border border-[#e6deeb] bg-white px-4 py-3 text-sm outline-none focus:border-[#8c68cf]"
                 />
               </label>
@@ -244,11 +243,6 @@ function RoleLoginPage({ role, onLogin, onBack }: { role: Role; onLogin: (user: 
                 Sign in to {role} portal <ArrowRight size={16} />
               </button>
             </form>
-            <div className="mt-6 rounded-2xl bg-[#f7f2fb] p-4 text-xs text-[#746785]">
-              <p className="mb-2 font-semibold text-[#44325f]">Authorized {role} credentials</p>
-              <p>ID: {account.email}</p>
-              <p>Password: {account.password}</p>
-            </div>
           </div>
         </div>
       </div>
@@ -6088,17 +6082,11 @@ export default function Home() {
   const auth = useAuth();
   const [user, setUser] = useState<User | null>(() => {
     try {
-      // 1. Try local custom user
+      // Try local custom user
       const localUser = sessionStorage.getItem("rasi_local_user");
       if (localUser) {
         const parsed = JSON.parse(localUser);
         return { role: parsed.role as Role, name: parsed.name, email: parsed.email };
-      }
-      
-      // 2. Try hardcoded demo user
-      const savedEmail = sessionStorage.getItem("demo-user-email");
-      if (savedEmail && demoUsers[savedEmail]) {
-        return demoUsers[savedEmail];
       }
     } catch {}
     return null;
