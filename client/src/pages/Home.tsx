@@ -595,7 +595,7 @@ export const INITIAL_STUDENTS: ManagedStudent[] = [
 
 export const loadStoredStudents = (): ManagedStudent[] => {
   try {
-    const saved = localStorage.getItem("rasi_admin_students");
+    const saved = localStorage.getItem("rasi_v2_admin_students");
     if (!saved) return INITIAL_STUDENTS;
     const parsed: ManagedStudent[] = JSON.parse(saved);
     // Ensure every record has parent info merged if missing
@@ -615,7 +615,7 @@ export const loadStoredStudents = (): ManagedStudent[] => {
 function AdminMarksManager() {
   const [departments] = useState<string[]>(() => {
     try {
-      const saved = localStorage.getItem("rasi_admin_departments");
+      const saved = localStorage.getItem("rasi_v2_admin_departments");
       return saved ? JSON.parse(saved) : INITIAL_DEPARTMENTS;
     } catch {
       return INITIAL_DEPARTMENTS;
@@ -624,7 +624,7 @@ function AdminMarksManager() {
 
   const [sections] = useState<SectionItem[]>(() => {
     try {
-      const saved = localStorage.getItem("rasi_admin_sections");
+      const saved = localStorage.getItem("rasi_v2_admin_sections");
       return saved ? JSON.parse(saved) : INITIAL_SECTIONS;
     } catch {
       return INITIAL_SECTIONS;
@@ -954,7 +954,7 @@ function AdminMarksManager() {
 function AdminProjectsManager() {
   const [departments] = useState<string[]>(() => {
     try {
-      const saved = localStorage.getItem("rasi_admin_departments");
+      const saved = localStorage.getItem("rasi_v2_admin_departments");
       return saved ? JSON.parse(saved) : INITIAL_DEPARTMENTS;
     } catch {
       return INITIAL_DEPARTMENTS;
@@ -963,7 +963,7 @@ function AdminProjectsManager() {
 
   const [sections] = useState<SectionItem[]>(() => {
     try {
-      const saved = localStorage.getItem("rasi_admin_sections");
+      const saved = localStorage.getItem("rasi_v2_admin_sections");
       return saved ? JSON.parse(saved) : INITIAL_SECTIONS;
     } catch {
       return INITIAL_SECTIONS;
@@ -972,14 +972,14 @@ function AdminProjectsManager() {
 
   const [students] = useState<ManagedStudent[]>(() => {
     try {
-      const saved = localStorage.getItem("rasi_admin_students");
+      const saved = localStorage.getItem("rasi_v2_admin_students");
       return saved ? JSON.parse(saved) : INITIAL_STUDENTS;
     } catch {
       return INITIAL_STUDENTS;
     }
   });
 
-  const [selectedDept, setSelectedDept] = useState(departments[0] || "BCA");
+  const [selectedDept, setSelectedDept] = useState(departments[0] || "Grade 10");
   const [selectedSection, setSelectedSection] = useState("A");
   const [hasEntered, setHasEntered] = useState(false);
 
@@ -1277,7 +1277,7 @@ function AdminGovernmentExamsManager() {
 
   const [departments] = useState<string[]>(() => {
     try {
-      const saved = localStorage.getItem("rasi_admin_departments");
+      const saved = localStorage.getItem("rasi_v2_admin_departments");
       return saved ? JSON.parse(saved) : INITIAL_DEPARTMENTS;
     } catch {
       return INITIAL_DEPARTMENTS;
@@ -1666,7 +1666,7 @@ Tamil Nadu Government,TN TRB PG Teacher,Post Graduation + B.Ed,150,110 / 150`;
 function AdminStudentManager() {
   const [departments, setDepartments] = useState<string[]>(() => {
     try {
-      const saved = localStorage.getItem("rasi_admin_departments");
+      const saved = localStorage.getItem("rasi_v2_admin_departments");
       return saved ? JSON.parse(saved) : INITIAL_DEPARTMENTS;
     } catch {
       return INITIAL_DEPARTMENTS;
@@ -1675,7 +1675,7 @@ function AdminStudentManager() {
 
   const [sections, setSections] = useState<SectionItem[]>(() => {
     try {
-      const saved = localStorage.getItem("rasi_admin_sections");
+      const saved = localStorage.getItem("rasi_v2_admin_sections");
       return saved ? JSON.parse(saved) : INITIAL_SECTIONS;
     } catch {
       return INITIAL_SECTIONS;
@@ -1686,15 +1686,15 @@ function AdminStudentManager() {
 
   // Save changes to localStorage
   useEffect(() => {
-    try { localStorage.setItem("rasi_admin_departments", JSON.stringify(departments)); } catch {}
+    try { localStorage.setItem("rasi_v2_admin_departments", JSON.stringify(departments)); } catch {}
   }, [departments]);
 
   useEffect(() => {
-    try { localStorage.setItem("rasi_admin_sections", JSON.stringify(sections)); } catch {}
+    try { localStorage.setItem("rasi_v2_admin_sections", JSON.stringify(sections)); } catch {}
   }, [sections]);
 
   useEffect(() => {
-    try { localStorage.setItem("rasi_admin_students", JSON.stringify(students)); } catch {}
+    try { localStorage.setItem("rasi_v2_admin_students", JSON.stringify(students)); } catch {}
   }, [students]);
 
   // Form states
@@ -1709,7 +1709,7 @@ function AdminStudentManager() {
     parentName: "",
     parentPhone: "",
     email: "",
-    department: departments[0] || "IBSc CS",
+    department: departments[0] || "Grade 10",
     section: "A",
   });
 
@@ -1805,7 +1805,7 @@ function AdminStudentManager() {
       parentName: "",
       parentPhone: "",
       email: "",
-      department: departments[0] || "IBSc CS",
+      department: departments[0] || "Grade 10",
       section: "A",
     });
     showToast(`Student "${newStudent.name}" (${newStudent.studentId}) added!`);
@@ -1816,7 +1816,7 @@ function AdminStudentManager() {
     exportToCsv("students_import_template.csv", [
       "studentId", "name", "parentName", "parentPhone", "email", "section", "department"
     ], [
-      ["23CS101", "Aarav Patel", "Kishore Patel", "+91 98401 11223", "aarav.p@portal.com", "A", "IBSc CS"],
+      ["23CS101", "Aarav Patel", "Kishore Patel", "+91 98401 11223", "aarav.p@portal.com", "A", "Grade 10"],
       ["23CS102", "Meera Krishnan", "Krishnan S.", "+91 98401 11224", "meera.k@portal.com", "A", "Grade 10"],
       ["23CS103", "Vikram Singhania", "Rajesh Singhania", "+91 98401 11225", "vikram.s@portal.com", "B", "Grade 12"]
     ]);
@@ -1987,7 +1987,7 @@ function AdminStudentManager() {
             required
             value={newDeptName}
             onChange={e => setNewDeptName(e.target.value)}
-            placeholder="Department name (e.g. IBSc CS)"
+            placeholder="Department name (e.g. Grade 10)"
             className="flex-1 rounded-2xl border border-[#e4dce9] bg-white px-4 py-3 text-sm transition focus:border-[#5b3b92] focus:outline-none focus:ring-2 focus:ring-[#5b3b92]/20"
           />
           <button
@@ -2616,7 +2616,7 @@ const INITIAL_ATTENDANCE_SESSIONS: AttendanceSessionRecord[] = [
 function AdminAttendanceManager() {
   const [departments] = useState<string[]>(() => {
     try {
-      const saved = localStorage.getItem("rasi_admin_departments");
+      const saved = localStorage.getItem("rasi_v2_admin_departments");
       return saved ? JSON.parse(saved) : INITIAL_DEPARTMENTS;
     } catch {
       return INITIAL_DEPARTMENTS;
@@ -2625,7 +2625,7 @@ function AdminAttendanceManager() {
 
   const [sections] = useState<SectionItem[]>(() => {
     try {
-      const saved = localStorage.getItem("rasi_admin_sections");
+      const saved = localStorage.getItem("rasi_v2_admin_sections");
       return saved ? JSON.parse(saved) : INITIAL_SECTIONS;
     } catch {
       return INITIAL_SECTIONS;
@@ -2634,7 +2634,7 @@ function AdminAttendanceManager() {
 
   const [students] = useState<ManagedStudent[]>(() => {
     try {
-      const saved = localStorage.getItem("rasi_admin_students");
+      const saved = localStorage.getItem("rasi_v2_admin_students");
       return saved ? JSON.parse(saved) : INITIAL_STUDENTS;
     } catch {
       return INITIAL_STUDENTS;
@@ -3039,7 +3039,7 @@ function AdminAttendanceManager() {
 function AdminQuestionPaperManager() {
   const [departments] = useState<string[]>(() => {
     try {
-      const saved = localStorage.getItem("rasi_admin_departments");
+      const saved = localStorage.getItem("rasi_v2_admin_departments");
       return saved ? JSON.parse(saved) : INITIAL_DEPARTMENTS;
     } catch {
       return INITIAL_DEPARTMENTS;
@@ -3506,7 +3506,7 @@ function AdminQuestionPaperManager() {
 function AdminUnitPaperManager() {
   const [departments] = useState<string[]>(() => {
     try {
-      const saved = localStorage.getItem("rasi_admin_departments");
+      const saved = localStorage.getItem("rasi_v2_admin_departments");
       return saved ? JSON.parse(saved) : INITIAL_DEPARTMENTS;
     } catch {
       return INITIAL_DEPARTMENTS;
@@ -4333,7 +4333,7 @@ function TeacherWorkspace({ user, onLogout }: { user: User; onLogout: () => void
   // Load shared departments, sections and students
   const [departments] = useState<string[]>(() => {
     try {
-      const saved = localStorage.getItem("rasi_admin_departments");
+      const saved = localStorage.getItem("rasi_v2_admin_departments");
       return saved ? JSON.parse(saved) : INITIAL_DEPARTMENTS;
     } catch {
       return INITIAL_DEPARTMENTS;
@@ -4342,7 +4342,7 @@ function TeacherWorkspace({ user, onLogout }: { user: User; onLogout: () => void
 
   const [sections] = useState<SectionItem[]>(() => {
     try {
-      const saved = localStorage.getItem("rasi_admin_sections");
+      const saved = localStorage.getItem("rasi_v2_admin_sections");
       return saved ? JSON.parse(saved) : INITIAL_SECTIONS;
     } catch {
       return INITIAL_SECTIONS;
