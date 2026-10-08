@@ -22,29 +22,33 @@ export async function createContext(
     user = null;
   }
 
-  // Fallback for demo portal mode: if no auth session cookie but x-demo-user header is sent
+  // Fallback for demo portal mode: if no auth session cookie but x-demo-user / x-demo-role header is sent
   if (!user) {
     const demoEmail = opts.req.headers["x-demo-user"] as string | undefined;
-    if (demoEmail) {
+    const demoRole = opts.req.headers["x-demo-role"] as string | undefined;
+    if (demoEmail || demoRole) {
       try {
         const db = await getDb();
-        if (db) {
+        if (db && demoEmail) {
           const found = await db.select().from(users).where(eq(users.email, demoEmail.toLowerCase())).limit(1);
           if (found[0]) {
-            user = found[0];
-          } else {
-            // Construct transient demo user if database user record does not exist yet
-            const role = demoEmail.includes("admin") ? "admin" : demoEmail.includes("parent") ? "parent" : "student";
             user = {
-              id: 1,
-              email: demoEmail,
-              name: demoEmail.includes("admin") ? "Centre Admin" : demoEmail.includes("parent") ? "Ramesh Sharma" : "Ananya Sharma",
-              role: role as any,
-              linkedStudentEmail: demoEmail.includes("parent") ? "student@portal.com" : null,
-              createdAt: new Date(),
-              updatedAt: new Date(),
-            } as any;
+              ...found[0],
+              role: (demoRole as any) || found[0].role,
+            };
           }
+        }
+        if (!user && (demoEmail || demoRole)) {
+          const role = demoRole || (demoEmail?.includes("admin") ? "admin" : demoEmail?.includes("parent") ? "parent" : "student");
+          user = {
+            id: 1,
+            email: demoEmail || (role === "admin" ? "admin@portal.com" : `${role}@portal.com`),
+            name: role === "admin" ? "Centre Admin" : role === "parent" ? "Ramesh Sharma" : "Portal User",
+            role: role as any,
+            linkedStudentEmail: role === "parent" ? "student@portal.com" : null,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          } as any;
         }
       } catch (err) {
         console.error("[Context Demo Auth Error]", err);

@@ -155,18 +155,26 @@ function RoleLoginPage({ role, onLogin, onBack }: { role: Role; onLogin: (user: 
       if (localAccountsRaw) {
         const localAccounts: Array<{ id: string; name: string; email: string; password: string; role: string; linkedStudentEmail?: string; studentId?: string }> = JSON.parse(localAccountsRaw);
         const emailKey = email.trim().toLowerCase();
-        const match = localAccounts.find(a => (a.email.toLowerCase() === emailKey || a.studentId?.toLowerCase() === emailKey) && a.password === password && a.role === role);
+        const enteredPass = password.trim();
+        const match = localAccounts.find(a => (a.email.toLowerCase() === emailKey || a.studentId?.toLowerCase() === emailKey) && a.password.trim() === enteredPass && a.role === role);
         if (match) {
           // Store for session restore
           try { sessionStorage.setItem("demo-user-email", match.email); } catch {}
           try { sessionStorage.setItem("rasi_local_user", JSON.stringify(match)); } catch {}
+          // Also set server cookie in background if available
+          try {
+            const res = await loginMutation.mutateAsync({ email: match.email, password: match.password, role });
+            if (res.token) {
+              sessionStorage.setItem("manus-cookie", `${COOKIE_NAME}=${res.token}`);
+            }
+          } catch {}
           onLogin({ role: match.role as Role, name: match.name, email: match.email });
           return;
         }
         // If email matches but password/role doesn't — still fall through to server (might be admin account)
       }
       // 2️⃣ Fall back to server TRPC login
-      const res = await loginMutation.mutateAsync({ email, password, role });
+      const res = await loginMutation.mutateAsync({ email: email.trim(), password: password.trim(), role });
       if (res.token) {
         try {
           sessionStorage.setItem("manus-cookie", `${COOKIE_NAME}=${res.token}`);
@@ -1816,7 +1824,47 @@ function AdminStudentManager() {
     };
     setStudents([newStudent, ...students]);
 
-    // Automatically create student & parent portal logins in the database
+    // 1. Sync to local user accounts cache immediately for instant login access
+    try {
+      const raw = localStorage.getItem("rasi_user_accounts") || "[]";
+      const arr: any[] = JSON.parse(raw);
+      // Remove any existing records with the same email or studentId to prevent stale credentials
+      const filtered = arr.filter((a: any) =>
+        a.email?.toLowerCase() !== newStudent.email.toLowerCase() &&
+        a.studentId?.toLowerCase() !== newStudent.studentId.toLowerCase() &&
+        (!parentContactEmail || a.email?.toLowerCase() !== parentContactEmail.toLowerCase())
+      );
+      filtered.push({
+        id: `local-stu-${Date.now()}`,
+        name: newStudent.name,
+        email: newStudent.email,
+        studentId: newStudent.studentId,
+        password: enteredStudentPassword,
+        role: "student",
+      });
+      if (newStudent.studentId && newStudent.studentId.toLowerCase() !== newStudent.email.toLowerCase()) {
+        filtered.push({
+          id: `local-stuid-${Date.now()}`,
+          name: newStudent.name,
+          email: newStudent.studentId,
+          password: enteredStudentPassword,
+          role: "student",
+        });
+      }
+      if (parentContactEmail && enteredParentPassword) {
+        filtered.push({
+          id: `local-par-${Date.now()}`,
+          name: newStudent.parentName || "Parent",
+          email: parentContactEmail,
+          password: enteredParentPassword,
+          role: "parent",
+          linkedStudentEmail: newStudent.email,
+        });
+      }
+      localStorage.setItem("rasi_user_accounts", JSON.stringify(filtered));
+    } catch {}
+
+    // 2. Automatically create student & parent portal logins in the database
     try {
       await bulkCreateLoginsMutation.mutateAsync({
         students: [{
@@ -1829,44 +1877,9 @@ function AdminStudentManager() {
           parentPassword: enteredParentPassword || undefined,
         }],
       });
-
-      // Also sync to local user accounts cache for instant same-device login
-      try {
-        const raw = localStorage.getItem("rasi_user_accounts") || "[]";
-        const arr = JSON.parse(raw);
-        arr.push({
-          id: `local-stu-${Date.now()}`,
-          name: newStudent.name,
-          email: newStudent.email,
-          studentId: newStudent.studentId,
-          password: enteredStudentPassword,
-          role: "student",
-        });
-        if (newStudent.studentId && newStudent.studentId.toLowerCase() !== newStudent.email.toLowerCase()) {
-          arr.push({
-            id: `local-stuid-${Date.now()}`,
-            name: newStudent.name,
-            email: newStudent.studentId,
-            password: enteredStudentPassword,
-            role: "student",
-          });
-        }
-        if (parentContactEmail && enteredParentPassword) {
-          arr.push({
-            id: `local-par-${Date.now()}`,
-            name: newStudent.parentName || "Parent",
-            email: parentContactEmail,
-            password: enteredParentPassword,
-            role: "parent",
-            linkedStudentEmail: newStudent.email,
-          });
-        }
-        localStorage.setItem("rasi_user_accounts", JSON.stringify(arr));
-      } catch {}
-
       showToast(`Student "${newStudent.name}" added & portal logins created in database ✓`);
     } catch (err: any) {
-      showToast(`Student record saved! (Login sync notice: ${err?.message || "Saved locally"})`);
+      showToast(`Student record saved! (Account created locally: ${err?.message || "Sync warning"})`);
     }
 
     setSingleStudent({
@@ -1990,50 +2003,49 @@ function AdminStudentManager() {
     if (importedCount > 0) {
       setStudents(prev => [...newRecords, ...prev]);
 
-      // Automatically create Student & Parent portal logins in the database
+      // 1. Sync local storage accounts cache immediately for instant login access
       try {
-        await bulkCreateLoginsMutation.mutateAsync({ students: bulkLoginPayload });
-
-        // Also sync local storage accounts cache
-        try {
-          const raw = localStorage.getItem("rasi_user_accounts") || "[]";
-          const arr = JSON.parse(raw);
-          for (const item of bulkLoginPayload) {
+        const raw = localStorage.getItem("rasi_user_accounts") || "[]";
+        const arr = JSON.parse(raw);
+        for (const item of bulkLoginPayload) {
+          arr.push({
+            id: `local-stu-${Date.now()}-${Math.random()}`,
+            name: item.studentName,
+            email: item.studentEmail,
+            studentId: item.studentId,
+            password: item.studentPassword,
+            role: "student",
+          });
+          if (item.studentId && item.studentId.toLowerCase() !== item.studentEmail.toLowerCase()) {
             arr.push({
-              id: `local-stu-${Date.now()}-${Math.random()}`,
+              id: `local-stuid-${Date.now()}-${Math.random()}`,
               name: item.studentName,
-              email: item.studentEmail,
-              studentId: item.studentId,
+              email: item.studentId,
               password: item.studentPassword,
               role: "student",
             });
-            if (item.studentId && item.studentId.toLowerCase() !== item.studentEmail.toLowerCase()) {
-              arr.push({
-                id: `local-stuid-${Date.now()}-${Math.random()}`,
-                name: item.studentName,
-                email: item.studentId,
-                password: item.studentPassword,
-                role: "student",
-              });
-            }
-            if (item.parentEmail && item.parentPassword) {
-              arr.push({
-                id: `local-par-${Date.now()}-${Math.random()}`,
-                name: item.parentName || "Parent",
-                email: item.parentEmail,
-                password: item.parentPassword,
-                role: "parent",
-                linkedStudentEmail: item.studentEmail,
-              });
-            }
           }
-          localStorage.setItem("rasi_user_accounts", JSON.stringify(arr));
-        } catch {}
+          if (item.parentEmail && item.parentPassword) {
+            arr.push({
+              id: `local-par-${Date.now()}-${Math.random()}`,
+              name: item.parentName || "Parent",
+              email: item.parentEmail,
+              password: item.parentPassword,
+              role: "parent",
+              linkedStudentEmail: item.studentEmail,
+            });
+          }
+        }
+        localStorage.setItem("rasi_user_accounts", JSON.stringify(arr));
+      } catch {}
 
+      // 2. Automatically create Student & Parent portal logins in the database
+      try {
+        await bulkCreateLoginsMutation.mutateAsync({ students: bulkLoginPayload });
         showToast(`Successfully imported ${importedCount} students & created logins in DB!`);
         setImportStatus(`✅ Imported ${importedCount} students & created Student and Parent logins in DB.`);
       } catch (err: any) {
-        showToast(`Imported ${importedCount} students locally! (Login note: ${err?.message || "Saved locally"})`);
+        showToast(`Imported ${importedCount} students locally! (Database sync note: ${err?.message || "Saved locally"})`);
         setImportStatus(`✅ Imported ${importedCount} new student records.`);
       }
 

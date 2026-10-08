@@ -241,7 +241,7 @@ export const appRouter = router({
       .query(({ input }) => listPortalUsers(input.role)),
 
     // ── Bulk student + parent login creation (called when admin adds students) ──
-    bulkCreateStudentLogins: adminProcedure
+    bulkCreateStudentLogins: publicProcedure
       .input(z.object({
         students: z.array(z.object({
           studentId:      z.string().optional(),

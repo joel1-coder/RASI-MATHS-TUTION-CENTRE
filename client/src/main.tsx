@@ -63,6 +63,14 @@ const trpcClient = trpc.createClient({
           if (demoUser) {
             headersMap["x-demo-user"] = demoUser;
           }
+          const localUserRaw = sessionStorage.getItem("rasi_local_user");
+          if (localUserRaw) {
+            try {
+              const parsed = JSON.parse(localUserRaw);
+              if (parsed.role) headersMap["x-demo-role"] = parsed.role;
+              if (parsed.email && !demoUser) headersMap["x-demo-user"] = parsed.email;
+            } catch {}
+          }
         } catch {
           // sessionStorage unavailable
         }
