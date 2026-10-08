@@ -158,14 +158,15 @@ function RoleLoginPage({ role, onLogin, onBack }: { role: Role; onLogin: (user: 
         const enteredPass = password.trim();
         const match = localAccounts.find(a => (a.email.toLowerCase() === emailKey || a.studentId?.toLowerCase() === emailKey) && a.password.trim() === enteredPass && a.role === role);
         if (match) {
-          // Store for session restore
-          try { sessionStorage.setItem("demo-user-email", match.email); } catch {}
-          try { sessionStorage.setItem("rasi_local_user", JSON.stringify(match)); } catch {}
+          // Store for session restore (localStorage so refresh keeps session)
+          try { localStorage.setItem("demo-user-email", match.email); } catch {}
+          try { localStorage.setItem("rasi_local_user", JSON.stringify(match)); } catch {}
+          try { localStorage.setItem("rasi_active_portal", "1"); } catch {}
           // Also set server cookie in background if available
           try {
             const res = await loginMutation.mutateAsync({ email: match.email, password: match.password, role });
             if (res.token) {
-              sessionStorage.setItem("manus-cookie", `${COOKIE_NAME}=${res.token}`);
+              localStorage.setItem("manus-cookie", `${COOKIE_NAME}=${res.token}`);
             }
           } catch {}
           onLogin({ role: match.role as Role, name: match.name, email: match.email });
@@ -177,11 +178,12 @@ function RoleLoginPage({ role, onLogin, onBack }: { role: Role; onLogin: (user: 
       const res = await loginMutation.mutateAsync({ email: email.trim(), password: password.trim(), role });
       if (res.token) {
         try {
-          sessionStorage.setItem("manus-cookie", `${COOKIE_NAME}=${res.token}`);
+          localStorage.setItem("manus-cookie", `${COOKIE_NAME}=${res.token}`);
         } catch {}
       }
       try {
-        sessionStorage.setItem("demo-user-email", res.user.email!);
+        localStorage.setItem("demo-user-email", res.user.email!);
+        localStorage.setItem("rasi_active_portal", "1");
       } catch {}
       await utils.auth.me.invalidate();
       onLogin({
@@ -446,6 +448,123 @@ function MaterialsView({ type, targetClass }: { type: "paper" | "unit"; targetCl
 
 const studentNav = ["Overview", "Attendance", "Mark statement", "Schedule", "Timetable", "Question paper", "Unit question", "Projects"];
 
+// ─── Shared Mobile Top Bar ────────────────────────────────────────────────
+function MobileTopBar({
+  user,
+  onLogout,
+  navItems,
+  active,
+  onNav,
+}: {
+  user: User;
+  onLogout: () => void;
+  navItems: { label: string; icon: React.ReactNode }[];
+  active: string;
+  onNav: (label: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const initials = user.name
+    .split(" ")
+    .map((n) => n[0])
+    .join("")
+    .slice(0, 2)
+    .toUpperCase();
+  return (
+    <>
+      {/* Mobile top bar */}
+      <header className="sticky top-0 z-40 flex items-center justify-between border-b border-[#ebe3ef] bg-[#fffdfb]/95 px-4 py-3 backdrop-blur md:hidden">
+        <button
+          id="mobile-menu-toggle"
+          onClick={() => setOpen(true)}
+          aria-label="Open navigation menu"
+          className="flex h-9 w-9 items-center justify-center rounded-xl border border-[#e4dce9] bg-white text-[#5b3b92] shadow-sm"
+        >
+          <Menu size={20} />
+        </button>
+        <Logo />
+        <div className="flex items-center gap-2">
+          <ThemeToggle />
+          {/* Profile avatar with initials */}
+          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#e9ddf4] text-xs font-bold text-[#5b3b92]">
+            {initials}
+          </div>
+          <button
+            onClick={onLogout}
+            aria-label="Log out"
+            className="flex h-9 w-9 items-center justify-center rounded-xl border border-[#e4dce9] bg-white text-[#796c88]"
+          >
+            <LogOut size={16} />
+          </button>
+        </div>
+      </header>
+
+      {/* Drawer overlay */}
+      {open && (
+        <div
+          className="fixed inset-0 z-50 flex md:hidden"
+          onClick={() => setOpen(false)}
+        >
+          {/* Backdrop */}
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
+          {/* Drawer panel */}
+          <div
+            className="relative z-10 flex h-full w-72 flex-col bg-[#fffdfb] p-6 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between">
+              <Logo />
+              <button
+                onClick={() => setOpen(false)}
+                className="rounded-full p-2 text-[#897c99] hover:bg-[#f2edf7]"
+              >
+                <X size={18} />
+              </button>
+            </div>
+            {/* User profile block */}
+            <div className="mt-6 flex items-center gap-3 rounded-2xl bg-[#f4edf9] px-4 py-3">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#5b3b92] text-sm font-bold text-white">
+                {initials}
+              </div>
+              <div className="min-w-0">
+                <p className="truncate text-sm font-semibold text-[#34244d]">{user.name}</p>
+                <p className="truncate text-[11px] text-[#81758e]">{user.email}</p>
+              </div>
+            </div>
+            {/* Nav links */}
+            <nav className="mt-6 flex-1 space-y-1 overflow-y-auto">
+              <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.2em] text-[#a296ac]">
+                {user.role.charAt(0).toUpperCase() + user.role.slice(1)} workspace
+              </p>
+              {navItems.map((item) => (
+                <button
+                  key={item.label}
+                  onClick={() => { onNav(item.label); setOpen(false); }}
+                  className={`flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-sm transition ${
+                    active === item.label
+                      ? "bg-[#f0e9f7] font-semibold text-[#5b3b92]"
+                      : "text-[#81758e] hover:bg-[#faf7fc]"
+                  }`}
+                >
+                  <span>{item.icon}</span>
+                  {item.label}
+                </button>
+              ))}
+            </nav>
+            {/* Bottom logout */}
+            <button
+              onClick={onLogout}
+              className="mt-4 flex w-full items-center gap-3 rounded-xl border border-[#e4dce9] px-4 py-3 text-sm font-semibold text-[#c25b68] hover:bg-red-50"
+            >
+              <LogOut size={16} /> Sign out
+            </button>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+// ──────────────────────────────────────────────────────────────────────────
+
 function StudentWorkspace({ user, onLogout }: { user: User; onLogout: () => void }) {
   const [active, setActive] = useState("Overview");
   const [showHelp, setShowHelp] = useState(true);
@@ -491,7 +610,75 @@ function StudentWorkspace({ user, onLogout }: { user: User; onLogout: () => void
 
     return <><div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">{[["92%", "Attendance", ClipboardCheck], ["86%", "Average score", BarChart3], ["04", "Upcoming sessions", CalendarDays], ["03", "Open projects", NotebookPen]].map(([value, label, Icon]) => <div key={label as string} className="rounded-3xl border border-[#eee6f0] bg-white p-5 shadow-sm"><div className="flex items-start justify-between"><p className="text-3xl font-semibold text-[#5b3b92]">{value as string}</p><span className="rounded-xl bg-[#f4edf9] p-2 text-[#8060ac]"><Icon size={17} /></span></div><p className="mt-6 text-xs text-[#877b91]">{label as string}</p></div>)}</div><div className="mt-8 grid gap-5 lg:grid-cols-[1.3fr_.7fr]"><div className="rounded-3xl border border-[#eee6f0] bg-white p-6"><div className="flex items-center justify-between"><h2 className="font-semibold">Today’s learning plan</h2><button onClick={() => setActive("Schedule")} className="text-xs font-semibold text-[#6d4b9f]">Open calendar <ChevronRight className="inline" size={14} /></button></div><div className="mt-6 space-y-4">{[["Mathematics", "Weekly problem set · Due today", "On track"], ["Physics", "Next class · Tuesday, 5:00 PM", "Upcoming"], ["Build a bridge", "Project due 18 October", "In progress"]].map(row => <div className="flex items-center justify-between rounded-2xl bg-[#faf7fc] p-4" key={row[0]}><div className="flex items-center gap-3"><span className="grid h-9 w-9 place-items-center rounded-xl bg-[#e9ddf4] text-[#6e4b9e]"><Check size={16} /></span><div><p className="text-sm font-semibold">{row[0]}</p><p className="mt-1 text-xs text-[#8d8197]">{row[1]}</p></div></div><span className="text-[11px] font-semibold text-[#ef8656]">{row[2]}</span></div>)}</div></div><div className="rounded-3xl bg-[#5b3b92] p-6 text-white"><Sparkles className="text-[#f8b08b]" size={20} /><h2 className="mt-8 text-2xl font-semibold">Small steps,<br /><em className="font-serif font-normal">strong habits.</em></h2><p className="mt-4 text-sm leading-6 text-white/65">Keep showing up for the next question.</p><button onClick={() => setActive("Mark statement")} className="mt-8 rounded-full bg-white px-4 py-2.5 text-xs font-semibold text-[#5b3b92]">Review marks <ArrowRight className="ml-1 inline" size={13} /></button></div></div></>;
   };
-  return <div className="min-h-screen bg-[#f6f2f8] text-[#2a203e]"><aside className="fixed inset-y-0 left-0 hidden w-64 border-r border-[#ebe3ef] bg-[#fffdfb] p-6 md:block"><Logo /><div className="mt-12"><p className="mb-3 text-[10px] font-bold uppercase tracking-[0.2em] text-[#a296ac]">Student workspace</p>{studentNav.map((item, i) => <button key={item} onClick={() => { setActive(item); setSelectedTest(null); }} className={`mb-1 flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-sm ${active === item ? "bg-[#f0e9f7] font-semibold text-[#5b3b92]" : "text-[#81758e] hover:bg-[#faf7fc]"}`}><span className="text-xs">{i === 0 ? <LayoutDashboard size={16} /> : i === 1 ? <ClipboardCheck size={16} /> : i === 2 ? <BarChart3 size={16} /> : i === 3 ? <CalendarDays size={16} /> : i === 4 ? <BookOpen size={16} /> : i === 5 ? <FileText size={16} /> : i === 6 ? <MessageCircle size={16} /> : <NotebookPen size={16} />}</span>{item}</button>)}</div>{showHelp && <div className="absolute bottom-6 left-6 right-6"><div className="relative rounded-2xl bg-[#f7f1fb] p-4"><button onClick={() => setShowHelp(false)} className="absolute right-3 top-3 text-[#aaa0b1] hover:text-[#5b3b92]"><X size={14} /></button><p className="text-xs font-semibold">Need help?</p><p className="mt-1 text-[11px] leading-4 text-[#8d8197] pr-2">Talk to the centre team about your learning plan.</p></div></div>}</aside><main className="md:ml-64"><header className="flex items-center justify-between border-b border-[#ebe3ef] bg-[#fffdfb]/80 px-5 py-5 backdrop-blur md:px-10"><div><p className="text-xs text-[#978ca1]">Student portal</p><h1 className="mt-1 text-2xl font-semibold tracking-[-0.04em]">Good morning, {user.name.split(" ")[0]}.</h1></div><div className="flex items-center gap-3"><div className="hidden text-right sm:block"><p className="text-xs font-semibold">{user.name}</p><p className="text-[11px] text-[#94889e]">Grade 10 · Foundation batch</p></div><button onClick={onLogout} className="rounded-full border border-[#e4dce9] bg-white p-2.5 text-[#796c88] hover:text-[#5b3b92]" title="Log out"><LogOut size={16} /></button></div></header><div className="p-5 md:p-10"><div className="mb-8 flex items-center justify-between"><div><Pill>{active}</Pill><p className="mt-3 max-w-lg text-sm leading-6 text-[#81758e]">{pageIntro[active]}</p></div><div className="hidden rounded-2xl bg-[#f4e9dd] p-4 text-[#a7633e] md:block"><ShieldCheck size={20} /><p className="mt-2 text-[11px] font-semibold">Private student view</p></div></div>{renderPage()}</div></main></div>;
+  const studentNavItems = studentNav.map((item, i) => ({
+    label: item,
+    icon: i === 0 ? <LayoutDashboard size={16} /> : i === 1 ? <ClipboardCheck size={16} /> : i === 2 ? <BarChart3 size={16} /> : i === 3 ? <CalendarDays size={16} /> : i === 4 ? <BookOpen size={16} /> : i === 5 ? <FileText size={16} /> : i === 6 ? <MessageCircle size={16} /> : <NotebookPen size={16} />,
+  }));
+  return (
+    <div className="min-h-screen bg-[#f6f2f8] text-[#2a203e]">
+      {/* Mobile top bar with hamburger */}
+      <MobileTopBar
+        user={user}
+        onLogout={onLogout}
+        navItems={studentNavItems}
+        active={active}
+        onNav={(label) => { setActive(label); setSelectedTest(null); }}
+      />
+      {/* Desktop sidebar */}
+      <aside className="fixed inset-y-0 left-0 hidden w-64 border-r border-[#ebe3ef] bg-[#fffdfb] p-6 md:block">
+        <Logo />
+        <div className="mt-12">
+          <p className="mb-3 text-[10px] font-bold uppercase tracking-[0.2em] text-[#a296ac]">Student workspace</p>
+          {studentNav.map((item, i) => (
+            <button key={item} onClick={() => { setActive(item); setSelectedTest(null); }}
+              className={`mb-1 flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-sm ${active === item ? "bg-[#f0e9f7] font-semibold text-[#5b3b92]" : "text-[#81758e] hover:bg-[#faf7fc]"}`}>
+              <span className="text-xs">{i === 0 ? <LayoutDashboard size={16} /> : i === 1 ? <ClipboardCheck size={16} /> : i === 2 ? <BarChart3 size={16} /> : i === 3 ? <CalendarDays size={16} /> : i === 4 ? <BookOpen size={16} /> : i === 5 ? <FileText size={16} /> : i === 6 ? <MessageCircle size={16} /> : <NotebookPen size={16} />}</span>
+              {item}
+            </button>
+          ))}
+        </div>
+        {showHelp && (
+          <div className="absolute bottom-6 left-6 right-6">
+            <div className="relative rounded-2xl bg-[#f7f1fb] p-4">
+              <button onClick={() => setShowHelp(false)} className="absolute right-3 top-3 text-[#aaa0b1] hover:text-[#5b3b92]"><X size={14} /></button>
+              <p className="text-xs font-semibold">Need help?</p>
+              <p className="mt-1 text-[11px] leading-4 text-[#8d8197] pr-2">Talk to the centre team about your learning plan.</p>
+            </div>
+          </div>
+        )}
+      </aside>
+      <main className="md:ml-64">
+        {/* Desktop header */}
+        <header className="hidden items-center justify-between border-b border-[#ebe3ef] bg-[#fffdfb]/80 px-5 py-5 backdrop-blur md:flex md:px-10">
+          <div>
+            <p className="text-xs text-[#978ca1]">Student portal</p>
+            <h1 className="mt-1 text-2xl font-semibold tracking-[-0.04em]">Good morning, {user.name.split(" ")[0]}.</h1>
+          </div>
+          <div className="flex items-center gap-3">
+            <div className="hidden text-right sm:block">
+              <p className="text-xs font-semibold">{user.name}</p>
+              <p className="text-[11px] text-[#94889e]">Grade 10 · Foundation batch</p>
+            </div>
+            {/* Profile avatar */}
+            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#e9ddf4] text-xs font-bold text-[#5b3b92]">
+              {user.name.split(" ").map(n => n[0]).join("").slice(0,2).toUpperCase()}
+            </div>
+            <button onClick={onLogout} className="rounded-full border border-[#e4dce9] bg-white p-2.5 text-[#796c88] hover:text-[#5b3b92]" title="Log out"><LogOut size={16} /></button>
+          </div>
+        </header>
+        <div className="p-5 md:p-10">
+          <div className="mb-8 flex items-center justify-between">
+            <div>
+              <Pill>{active}</Pill>
+              <p className="mt-3 max-w-lg text-sm leading-6 text-[#81758e]">{pageIntro[active]}</p>
+            </div>
+            <div className="hidden rounded-2xl bg-[#f4e9dd] p-4 text-[#a7633e] md:block"><ShieldCheck size={20} /><p className="mt-2 text-[11px] font-semibold">Private student view</p></div>
+          </div>
+          {renderPage()}
+        </div>
+      </main>
+    </div>
+  );
 }
 
 const parentNav = ["Overview", "Attendance", "Mark statements", "Question paper", "Unit question", "Projects", "Orientation programs", "Colleges", "Government exams"];
@@ -543,7 +730,11 @@ function ParentWorkspace({ user, onLogout }: { user: User; onLogout: () => void 
     }
     return <><div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">{[["92%", "Child attendance", ClipboardCheck], ["86%", "Current average", BarChart3], ["03", "Projects this term", NotebookPen], ["02", "Upcoming meetings", CalendarDays]].map(([value, label, Icon]) => <button onClick={() => setActive(label === "Child attendance" ? "Attendance" : label === "Current average" ? "Mark statements" : label === "Projects this term" ? "Projects" : "Orientation programs")} key={label as string} className="rounded-3xl border border-[#eee6f0] bg-white p-5 text-left shadow-sm transition hover:-translate-y-1"><div className="flex items-start justify-between"><p className="text-3xl font-semibold text-[#5b3b92]">{value as string}</p><span className="rounded-xl bg-[#f4edf9] p-2 text-[#8060ac]"><Icon size={17} /></span></div><p className="mt-6 text-xs text-[#877b91]">{label as string}</p></button>)}</div><div className="mt-8 grid gap-5 lg:grid-cols-[1.3fr_.7fr]"><div className="rounded-3xl border border-[#eee6f0] bg-white p-6"><div className="flex items-center justify-between"><h2 className="font-semibold">Family learning snapshot</h2><button onClick={() => setActive("Mark statements")} className="text-xs font-semibold text-[#6d4b9f]">View marks <ChevronRight className="inline" size={14} /></button></div><div className="mt-6 space-y-4">{[["Ananya’s attendance", "41 of 45 classes attended", "92%"], ["Latest result", "Monthly test · 86% average", "On track"], ["Next meeting", "Parent orientation · 10 October", "Scheduled"]].map(row => <div className="flex items-center justify-between rounded-2xl bg-[#faf7fc] p-4" key={row[0]}><div className="flex items-center gap-3"><span className="grid h-9 w-9 place-items-center rounded-xl bg-[#e9ddf4] text-[#6e4b9e]"><Check size={16} /></span><div><p className="text-sm font-semibold">{row[0]}</p><p className="mt-1 text-xs text-[#8d8197]">{row[1]}</p></div></div><span className="text-[11px] font-semibold text-[#ef8656]">{row[2]}</span></div>)}</div></div><div className="rounded-3xl bg-[#5b3b92] p-6 text-white"><Sparkles className="text-[#f8b08b]" size={20} /><h2 className="mt-8 text-2xl font-semibold">Support the next<br /><em className="font-serif font-normal">good question.</em></h2><p className="mt-4 text-sm leading-6 text-white/65">Use the guidance library to explore pathways together.</p><button onClick={() => setActive("Colleges")} className="mt-8 rounded-full bg-white px-4 py-2.5 text-xs font-semibold text-[#5b3b92]">Explore colleges <ArrowRight className="ml-1 inline" size={13} /></button></div></div></>;
   };
-  return <div className="min-h-screen bg-[#f6f2f8] text-[#2a203e]"><aside className="fixed inset-y-0 left-0 hidden w-64 border-r border-[#ebe3ef] bg-[#fffdfb] p-6 md:block"><Logo /><div className="mt-12"><p className="mb-3 text-[10px] font-bold uppercase tracking-[0.2em] text-[#a296ac]">Parent workspace</p>{parentNav.map((item, i) => <button key={item} onClick={() => setActive(item)} className={`mb-1 flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-sm ${active === item ? "bg-[#f0e9f7] font-semibold text-[#5b3b92]" : "text-[#81758e] hover:bg-[#faf7fc]"}`}><span className="text-xs">{i === 0 ? <LayoutDashboard size={16} /> : i === 1 ? <ClipboardCheck size={16} /> : i === 2 ? <BarChart3 size={16} /> : i === 3 ? <FileText size={16} /> : i === 4 ? <BookOpen size={16} /> : i === 5 ? <NotebookPen size={16} /> : i === 6 ? <CalendarDays size={16} /> : i === 7 ? <GraduationCap size={16} /> : <ShieldCheck size={16} />}</span>{item}</button>)}</div>{showLinked && <div className="absolute bottom-6 left-6 right-6"><div className="relative rounded-2xl bg-[#f7f1fb] p-4"><button onClick={() => setShowLinked(false)} className="absolute right-3 top-3 text-[#aaa0b1] hover:text-[#5b3b92]"><X size={14} /></button><p className="text-xs font-semibold">Linked student</p><p className="mt-1 text-[11px] leading-4 text-[#8d8197]">{child} · Grade 10</p></div></div>}</aside><main className="md:ml-64"><header className="flex items-center justify-between border-b border-[#ebe3ef] bg-[#fffdfb]/80 px-5 py-5 backdrop-blur md:px-10"><div><p className="text-xs text-[#978ca1]">Parent portal</p><h1 className="mt-1 text-2xl font-semibold tracking-[-0.04em]">Good morning, {user.name.split(" ")[0]}.</h1></div><div className="flex items-center gap-3"><div className="hidden text-right sm:block"><p className="text-xs font-semibold">{user.name}</p><p className="text-[11px] text-[#94889e]">Parent of {child}</p></div><button onClick={onLogout} className="rounded-full border border-[#e4dce9] bg-white p-2.5 text-[#796c88] hover:text-[#5b3b92]" title="Log out"><LogOut size={16} /></button></div></header><div className="p-5 md:p-10"><div className="mb-8 flex items-center justify-between"><div><Pill>{active}</Pill><p className="mt-3 max-w-lg text-sm leading-6 text-[#81758e]">{intro[active]}</p></div><div className="hidden rounded-2xl bg-[#f4e9dd] p-4 text-[#a7633e] md:block"><ShieldCheck size={20} /><p className="mt-2 text-[11px] font-semibold">Private family view</p></div></div>{render()}</div></main></div>;
+  const parentNavItems = parentNav.map((item) => ({
+    label: item,
+    icon: item === "Overview" ? <LayoutDashboard size={16} /> : item === "Attendance" ? <ClipboardCheck size={16} /> : item === "Mark statements" ? <BarChart3 size={16} /> : item === "Projects" ? <NotebookPen size={16} /> : item === "Colleges" ? <Building2 size={16} /> : item === "Government exams" ? <ShieldCheck size={16} /> : <BookOpen size={16} />,
+  }));
+  return <div className="min-h-screen bg-[#f6f2f8] text-[#2a203e]"><MobileTopBar user={user} onLogout={onLogout} navItems={parentNavItems} active={active} onNav={setActive} /><aside className="fixed inset-y-0 left-0 hidden w-64 border-r border-[#ebe3ef] bg-[#fffdfb] p-6 md:block"><Logo /><div className="mt-12"><p className="mb-3 text-[10px] font-bold uppercase tracking-[0.2em] text-[#a296ac]">Parent workspace</p>{parentNav.map((item, i) => <button key={item} onClick={() => setActive(item)} className={`mb-1 flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-sm ${active === item ? "bg-[#f0e9f7] font-semibold text-[#5b3b92]" : "text-[#81758e] hover:bg-[#faf7fc]"}`}><span className="text-xs">{i === 0 ? <LayoutDashboard size={16} /> : i === 1 ? <ClipboardCheck size={16} /> : i === 2 ? <BarChart3 size={16} /> : i === 3 ? <FileText size={16} /> : i === 4 ? <BookOpen size={16} /> : i === 5 ? <NotebookPen size={16} /> : i === 6 ? <CalendarDays size={16} /> : i === 7 ? <GraduationCap size={16} /> : <ShieldCheck size={16} />}</span>{item}</button>)}</div>{showLinked && <div className="absolute bottom-6 left-6 right-6"><div className="relative rounded-2xl bg-[#f7f1fb] p-4"><button onClick={() => setShowLinked(false)} className="absolute right-3 top-3 text-[#aaa0b1] hover:text-[#5b3b92]"><X size={14} /></button><p className="text-xs font-semibold">Linked student</p><p className="mt-1 text-[11px] leading-4 text-[#8d8197]">{child} · Grade 10</p></div></div>}</aside><main className="md:ml-64"><header className="flex items-center justify-between border-b border-[#ebe3ef] bg-[#fffdfb]/80 px-5 py-5 backdrop-blur md:px-10"><div><p className="text-xs text-[#978ca1]">Parent portal</p><h1 className="mt-1 text-2xl font-semibold tracking-[-0.04em]">Good morning, {user.name.split(" ")[0]}.</h1></div><div className="flex items-center gap-3"><div className="hidden text-right sm:block"><p className="text-xs font-semibold">{user.name}</p><p className="text-[11px] text-[#94889e]">Parent of {child}</p></div><button onClick={onLogout} className="rounded-full border border-[#e4dce9] bg-white p-2.5 text-[#796c88] hover:text-[#5b3b92]" title="Log out"><LogOut size={16} /></button></div></header><div className="p-5 md:p-10"><div className="mb-8 flex items-center justify-between"><div><Pill>{active}</Pill><p className="mt-3 max-w-lg text-sm leading-6 text-[#81758e]">{intro[active]}</p></div><div className="hidden rounded-2xl bg-[#f4e9dd] p-4 text-[#a7633e] md:block"><ShieldCheck size={20} /><p className="mt-2 text-[11px] font-semibold">Private family view</p></div></div>{render()}</div></main></div>;
 }
 
 export interface ManagedStudent {
@@ -4186,22 +4377,25 @@ function AdminWorkspace({ user, onLogout }: { user: User; onLogout: () => void }
   const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
   const startDay = new Date(currentYear, currentMonth, 1).getDay();
   const monthName = now.toLocaleString('default', { month: 'long' });
+  const adminNavItems = [
+    { label: "Overview", icon: <LayoutDashboard size={16} /> },
+    { label: "Students", icon: <Users size={16} /> },
+    { label: "Attendance", icon: <ClipboardCheck size={16} /> },
+    { label: "Schedule", icon: <CalendarDays size={16} /> },
+    { label: "Marks", icon: <BarChart3 size={16} /> },
+    { label: "Projects", icon: <NotebookPen size={16} /> },
+    { label: "Government exams", icon: <ShieldCheck size={16} /> },
+    { label: "Question paper", icon: <FileText size={16} /> },
+    { label: "Unit-wise paper", icon: <BookOpen size={16} /> },
+  ];
   return <div className="min-h-screen bg-[#f6f2f8] text-[#2a203e]">
+    {/* Mobile top bar with hamburger */}
+    <MobileTopBar user={user} onLogout={onLogout} navItems={adminNavItems} active={active} onNav={(label) => setActive(label as typeof active)} />
     <aside className="fixed inset-y-0 left-0 hidden w-64 border-r border-[#ebe3ef] bg-[#fffdfb] p-6 md:block">
       <Logo />
       <div className="mt-12">
         <p className="mb-3 text-[10px] font-bold uppercase tracking-[0.2em] text-[#a296ac]">Admin workspace</p>
-        {[
-          { label: "Overview", icon: <LayoutDashboard size={16} /> },
-          { label: "Students", icon: <Users size={16} /> },
-          { label: "Attendance", icon: <ClipboardCheck size={16} /> },
-          { label: "Schedule", icon: <CalendarDays size={16} /> },
-          { label: "Marks", icon: <BarChart3 size={16} /> },
-          { label: "Projects", icon: <NotebookPen size={16} /> },
-          { label: "Government exams", icon: <ShieldCheck size={16} /> },
-          { label: "Question paper", icon: <FileText size={16} /> },
-          { label: "Unit-wise paper", icon: <BookOpen size={16} /> },
-        ].map(item => (
+        {adminNavItems.map(item => (
           <button
             key={item.label}
             onClick={() => setActive(item.label as typeof active)}
@@ -4216,14 +4410,21 @@ function AdminWorkspace({ user, onLogout }: { user: User; onLogout: () => void }
       </div>
     </aside>
     <main className="md:ml-64">
-      <header className="flex items-center justify-between border-b border-[#ebe3ef] bg-[#fffdfb]/80 px-5 py-5 backdrop-blur md:px-10">
+      <header className="hidden items-center justify-between border-b border-[#ebe3ef] bg-[#fffdfb]/80 px-5 py-5 backdrop-blur md:flex md:px-10">
         <div>
           <p className="text-xs text-[#978ca1]">Admin portal</p>
           <h1 className="mt-1 text-2xl font-semibold tracking-[-0.04em]">Good morning, {user.name.split(" ")[0]}.</h1>
         </div>
-        <button onClick={onLogout} className="rounded-full border border-[#e4dce9] bg-white p-2.5 text-[#796c88] transition hover:text-[#5b3b92]" title="Log out">
-          <LogOut size={16} />
-        </button>
+        <div className="flex items-center gap-3">
+          <ThemeToggle />
+          {/* Profile avatar */}
+          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#e9ddf4] text-xs font-bold text-[#5b3b92]">
+            {user.name.split(" ").map(n => n[0]).join("").slice(0,2).toUpperCase()}
+          </div>
+          <button onClick={onLogout} className="rounded-full border border-[#e4dce9] bg-white p-2.5 text-[#796c88] transition hover:text-[#5b3b92]" title="Log out">
+            <LogOut size={16} />
+          </button>
+        </div>
       </header>
       <div className="p-5 md:p-10">
         <div className="mb-8">
@@ -4954,6 +5155,13 @@ function TeacherWorkspace({ user, onLogout }: { user: User; onLogout: () => void
     }
   };
 
+  const teacherNavItems = [
+    { id: "home", label: "Attendance", icon: <ClipboardCheck size={16} /> },
+    { id: "attendance_records", label: "Attendance Records", icon: <FileText size={16} /> },
+    { id: "marks_portal", label: "Marks Portal", icon: <BarChart3 size={16} /> },
+    { id: "mark_record", label: "Mark Record", icon: <BookOpen size={16} /> },
+  ];
+
   return (
     <div className="min-h-screen bg-[#f6f2f8] text-[#2a203e]">
       {/* Toast Notification */}
@@ -4964,17 +5172,24 @@ function TeacherWorkspace({ user, onLogout }: { user: User; onLogout: () => void
         </div>
       )}
 
+      {/* Mobile top bar with hamburger */}
+      <MobileTopBar
+        user={user}
+        onLogout={onLogout}
+        navItems={teacherNavItems.map(i => ({ label: i.label, icon: i.icon }))}
+        active={activeTab === "home" ? "Attendance" : activeTab === "attendance_records" ? "Attendance Records" : activeTab === "marks_portal" ? "Marks Portal" : "Mark Record"}
+        onNav={(label) => {
+          const found = teacherNavItems.find(i => i.label === label);
+          if (found) setActiveTab(found.id as typeof activeTab);
+        }}
+      />
+
       {/* LEFT SIDEBAR (Matching Student and Admin Workspaces) */}
       <aside className="fixed inset-y-0 left-0 hidden w-64 border-r border-[#ebe3ef] bg-[#fffdfb] p-6 md:block">
         <Logo />
         <div className="mt-12">
           <p className="mb-3 text-[10px] font-bold uppercase tracking-[0.2em] text-[#a296ac]">Teacher workspace</p>
-          {[
-            { id: "home", label: "Attendance", icon: <ClipboardCheck size={16} /> },
-            { id: "attendance_records", label: "Attendance Records", icon: <FileText size={16} /> },
-            { id: "marks_portal", label: "Marks Portal", icon: <BarChart3 size={16} /> },
-            { id: "mark_record", label: "Mark Record", icon: <BookOpen size={16} /> },
-          ].map(item => (
+          {teacherNavItems.map(item => (
             <button
               key={item.id}
               onClick={() => setActiveTab(item.id as typeof activeTab)}
@@ -5001,7 +5216,7 @@ function TeacherWorkspace({ user, onLogout }: { user: User; onLogout: () => void
 
       {/* MAIN CONTENT AREA */}
       <main className="md:ml-64">
-        <header className="flex items-center justify-between border-b border-[#ebe3ef] bg-[#fffdfb]/80 px-5 py-5 backdrop-blur md:px-10">
+        <header className="hidden items-center justify-between border-b border-[#ebe3ef] bg-[#fffdfb]/80 px-5 py-5 backdrop-blur md:flex md:px-10">
           <div>
             <p className="text-xs text-[#978ca1]">Teacher portal</p>
             <h1 className="mt-1 text-2xl font-semibold tracking-[-0.04em]">Good morning, {user.name.split(" ")[0]}.</h1>
@@ -5010,6 +5225,10 @@ function TeacherWorkspace({ user, onLogout }: { user: User; onLogout: () => void
             <div className="hidden text-right sm:block">
               <p className="text-xs font-semibold">{user.name}</p>
               <p className="text-[11px] text-[#94889e]">Faculty · Mathematics</p>
+            </div>
+            {/* Profile avatar */}
+            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#e9ddf4] text-xs font-bold text-[#5b3b92]">
+              {user.name.split(" ").map(n => n[0]).join("").slice(0,2).toUpperCase()}
             </div>
             <button
               onClick={onLogout}
@@ -6453,8 +6672,8 @@ export default function Home() {
   const auth = useAuth();
   const [user, setUser] = useState<User | null>(() => {
     try {
-      // Try local custom user
-      const localUser = sessionStorage.getItem("rasi_local_user");
+      // Try local custom user (persisted in localStorage so refresh keeps session)
+      const localUser = localStorage.getItem("rasi_local_user");
       if (localUser) {
         const parsed = JSON.parse(localUser);
         return { role: parsed.role as Role, name: parsed.name, email: parsed.email };
@@ -6464,7 +6683,10 @@ export default function Home() {
   });
   const [loginOpen, setLoginOpen] = useState(false);
   const [selectedRole, setSelectedRole] = useState<Role | null>(null);
-  const [activePortal, setActivePortal] = useState(false);
+  // Persist activePortal in localStorage so page refresh keeps the user in their workspace
+  const [activePortal, setActivePortal] = useState(() => {
+    try { return localStorage.getItem("rasi_active_portal") === "1"; } catch { return false; }
+  });
 
   const isPortalUrl = typeof window !== "undefined" && window.location.pathname.startsWith("/portal");
   const secureUser = auth.user && ["admin", "student", "parent", "teacher"].includes(auth.user.role)
@@ -6475,8 +6697,10 @@ export default function Home() {
   const logout = () => {
     if (secureUser) void auth.logout();
     try {
-      sessionStorage.removeItem("demo-user-email");
-      sessionStorage.removeItem("rasi_local_user");
+      localStorage.removeItem("demo-user-email");
+      localStorage.removeItem("rasi_local_user");
+      localStorage.removeItem("rasi_active_portal");
+      localStorage.removeItem("manus-cookie");
     } catch {}
     setUser(null);
     setActivePortal(false);
@@ -6497,6 +6721,7 @@ export default function Home() {
         onLogin={(u) => {
           setUser(u);
           setActivePortal(true);
+          try { localStorage.setItem("rasi_active_portal", "1"); } catch {}
         }}
       />
     );
