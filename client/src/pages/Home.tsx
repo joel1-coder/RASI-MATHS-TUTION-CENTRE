@@ -95,33 +95,44 @@ function RoleChooser({ onChoose, onClose }: { onChoose: (role: Role) => void; on
     { role: "admin", title: "Admin login", description: "Manage students, marks, attendance and centre updates.", icon: <ShieldCheck size={22} /> },
   ];
   return (
-    <div className="role-chooser fixed inset-0 z-50 grid place-items-center bg-[#21193a]/50 p-4 backdrop-blur-sm dark:bg-[#05080f]/75">
-      <div className="relative w-full max-w-4xl rounded-[28px] bg-[#fffdfb] p-7 shadow-2xl dark:bg-[#0F1B3D]">
-        <ThemeToggle className="absolute right-14 top-5" />
-        <button onClick={onClose} className="absolute right-5 top-5 rounded-full p-2 text-[#897c99] hover:bg-[#f2edf7]">
+    <div
+      className="role-chooser fixed inset-0 z-50 overflow-y-auto overscroll-contain bg-[#21193a]/60 p-3 sm:p-6 backdrop-blur-sm dark:bg-[#05080f]/85 flex min-h-[100dvh] items-center justify-center"
+      style={{ WebkitOverflowScrolling: "touch" }}
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+    >
+      <div className="relative my-auto w-full max-w-4xl rounded-[28px] bg-[#fffdfb] p-5 sm:p-7 shadow-2xl dark:bg-[#0F1B3D] max-h-[calc(100dvh-1.5rem)] sm:max-h-none overflow-y-auto sm:overflow-visible">
+        <ThemeToggle className="absolute right-12 sm:right-14 top-4 sm:top-5" />
+        <button
+          onClick={onClose}
+          aria-label="Close login options"
+          className="absolute right-3.5 sm:right-5 top-3.5 sm:top-5 rounded-full p-2 text-[#897c99] hover:bg-[#f2edf7] dark:hover:bg-white/10"
+        >
           <X size={18} />
         </button>
-        <div className="mb-7">
+        <div className="mb-5 sm:mb-7 pr-16 sm:pr-0">
           <Pill>Rasi Maths portal</Pill>
-          <h2 className="mt-4 text-3xl font-semibold text-[#241b3d]">Choose your login.</h2>
-          <p className="mt-2 text-sm text-[#81758e]">Each view keeps the right information in the right hands.</p>
+          <h2 className="mt-3 sm:mt-4 text-2xl sm:text-3xl font-semibold text-[#241b3d]">Choose your login.</h2>
+          <p className="mt-1.5 sm:mt-2 text-xs sm:text-sm text-[#81758e]">Each view keeps the right information in the right hands.</p>
         </div>
-        <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-4">
+        <div className="grid gap-2.5 sm:gap-3 grid-cols-1 sm:grid-cols-2 md:grid-cols-4">
           {roles.map(item => (
             <button
               key={item.role}
               onClick={() => onChoose(item.role)}
-              className="group flex flex-col justify-between rounded-2xl border border-[#e8deeb] bg-[#faf7fc] p-5 text-left transition hover:-translate-y-1 hover:border-[#b99cda] hover:bg-[#f4edf9]"
+              className="group flex items-center justify-between gap-3.5 rounded-2xl border border-[#e8deeb] bg-[#faf7fc] p-3.5 sm:p-5 text-left transition hover:-translate-y-0.5 sm:hover:-translate-y-1 hover:border-[#b99cda] hover:bg-[#f4edf9] dark:hover:border-[#7455b2] sm:flex-col sm:items-start"
             >
-              <div>
-                <span className="grid h-11 w-11 place-items-center rounded-2xl bg-[#e9ddf4] text-[#6d4b9f]">
+              <div className="flex items-center gap-3 sm:block sm:w-full">
+                <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl sm:rounded-2xl bg-[#e9ddf4] text-[#6d4b9f] sm:h-11 sm:w-11">
                   {item.icon}
                 </span>
-                <h3 className="mt-5 font-semibold text-[#34244d]">{item.title}</h3>
-                <p className="mt-2 text-xs leading-5 text-[#82758e]">{item.description}</p>
+                <div>
+                  <h3 className="font-semibold text-[#34244d] text-sm sm:text-base sm:mt-5">{item.title}</h3>
+                  <p className="text-[11px] sm:text-xs leading-4 text-[#82758e] sm:mt-2 sm:leading-5">{item.description}</p>
+                </div>
               </div>
-              <span className="mt-5 block text-xs font-semibold text-[#6d4b9f]">
-                Continue <ArrowRight className="ml-1 inline transition group-hover:translate-x-1" size={13} />
+              <span className="shrink-0 text-xs font-semibold text-[#6d4b9f] sm:mt-5 sm:block">
+                <span className="hidden sm:inline">Continue </span>
+                <ArrowRight className="inline transition group-hover:translate-x-1" size={13} />
               </span>
             </button>
           ))}
