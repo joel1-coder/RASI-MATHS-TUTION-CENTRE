@@ -24,8 +24,14 @@ export async function createContext(
 
   // Fallback for demo portal mode: if no auth session cookie but x-demo-user / x-demo-role header is sent
   if (!user) {
-    const demoEmail = opts.req.headers["x-demo-user"] as string | undefined;
-    const demoRole = opts.req.headers["x-demo-role"] as string | undefined;
+    const rawDemoEmail = opts.req.headers["x-demo-user"];
+    const rawDemoRole = opts.req.headers["x-demo-role"];
+    const rawLinkedStudent = opts.req.headers["x-linked-student"];
+
+    const demoEmail = (Array.isArray(rawDemoEmail) ? rawDemoEmail[0] : rawDemoEmail)?.trim();
+    const demoRole = (Array.isArray(rawDemoRole) ? rawDemoRole[0] : rawDemoRole)?.trim();
+    const linkedStudent = (Array.isArray(rawLinkedStudent) ? rawLinkedStudent[0] : rawLinkedStudent)?.trim();
+
     if (demoEmail || demoRole) {
       try {
         const db = await getDb();
@@ -35,6 +41,7 @@ export async function createContext(
             user = {
               ...found[0],
               role: (demoRole as any) || found[0].role,
+              linkedStudentEmail: linkedStudent || found[0].linkedStudentEmail || (found[0].role === "parent" ? "student@portal.com" : null),
             };
           }
         }
@@ -43,9 +50,9 @@ export async function createContext(
           user = {
             id: 1,
             email: demoEmail || (role === "admin" ? "admin@portal.com" : `${role}@portal.com`),
-            name: role === "admin" ? "Centre Admin" : role === "parent" ? "Ramesh Sharma" : "Portal User",
+            name: role === "admin" ? "Centre Admin" : role === "parent" ? "Ramesh Sharma" : role === "teacher" ? "Faculty" : "Portal User",
             role: role as any,
-            linkedStudentEmail: role === "parent" ? "student@portal.com" : null,
+            linkedStudentEmail: linkedStudent || (role === "parent" ? "student@portal.com" : null),
             createdAt: new Date(),
             updatedAt: new Date(),
           } as any;

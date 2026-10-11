@@ -158,15 +158,21 @@ function RoleLoginPage({ role, onLogin, onBack }: { role: Role; onLogin: (user: 
         const enteredPass = password.trim();
         const match = localAccounts.find(a => (a.email.toLowerCase() === emailKey || a.studentId?.toLowerCase() === emailKey) && a.password.trim() === enteredPass && a.role === role);
         if (match) {
-          // Store for session restore (localStorage so refresh keeps session)
-          try { localStorage.setItem("demo-user-email", match.email); } catch {}
-          try { localStorage.setItem("rasi_local_user", JSON.stringify(match)); } catch {}
-          try { localStorage.setItem("rasi_active_portal", "1"); } catch {}
+          // Store for session restore (localStorage + sessionStorage mirror)
+          try {
+            localStorage.setItem("demo-user-email", match.email);
+            sessionStorage.setItem("demo-user-email", match.email);
+            localStorage.setItem("rasi_local_user", JSON.stringify(match));
+            sessionStorage.setItem("rasi_local_user", JSON.stringify(match));
+            localStorage.setItem("rasi_active_portal", "1");
+            sessionStorage.setItem("rasi_active_portal", "1");
+          } catch {}
           // Also set server cookie in background if available
           try {
             const res = await loginMutation.mutateAsync({ email: match.email, password: match.password, role });
             if (res.token) {
               localStorage.setItem("manus-cookie", `${COOKIE_NAME}=${res.token}`);
+              sessionStorage.setItem("manus-cookie", `${COOKIE_NAME}=${res.token}`);
             }
           } catch {}
           onLogin({ role: match.role as Role, name: match.name, email: match.email });
@@ -179,11 +185,17 @@ function RoleLoginPage({ role, onLogin, onBack }: { role: Role; onLogin: (user: 
       if (res.token) {
         try {
           localStorage.setItem("manus-cookie", `${COOKIE_NAME}=${res.token}`);
+          sessionStorage.setItem("manus-cookie", `${COOKIE_NAME}=${res.token}`);
         } catch {}
       }
       try {
         localStorage.setItem("demo-user-email", res.user.email!);
+        sessionStorage.setItem("demo-user-email", res.user.email!);
+        const userObj = { role: res.user.role as Role, name: res.user.name, email: res.user.email!, linkedStudentEmail: res.user.linkedStudentEmail };
+        localStorage.setItem("rasi_local_user", JSON.stringify(userObj));
+        sessionStorage.setItem("rasi_local_user", JSON.stringify(userObj));
         localStorage.setItem("rasi_active_portal", "1");
+        sessionStorage.setItem("rasi_active_portal", "1");
       } catch {}
       await utils.auth.me.invalidate();
       onLogin({
@@ -6698,9 +6710,13 @@ export default function Home() {
     if (secureUser) void auth.logout();
     try {
       localStorage.removeItem("demo-user-email");
+      sessionStorage.removeItem("demo-user-email");
       localStorage.removeItem("rasi_local_user");
+      sessionStorage.removeItem("rasi_local_user");
       localStorage.removeItem("rasi_active_portal");
+      sessionStorage.removeItem("rasi_active_portal");
       localStorage.removeItem("manus-cookie");
+      sessionStorage.removeItem("manus-cookie");
     } catch {}
     setUser(null);
     setActivePortal(false);

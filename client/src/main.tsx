@@ -19,7 +19,20 @@ const redirectToLoginIfUnauthorized = (error: unknown) => {
 
   if (!isUnauthorized) return;
 
-  startLogin();
+  // If the user is currently in a local portal session (Student/Parent/Admin/Teacher),
+  // suppress the external OAuth portal redirect so they are not kicked out on refresh or transient 401.
+  try {
+    const hasLocal = localStorage.getItem("rasi_local_user") || localStorage.getItem("rasi_active_portal") || localStorage.getItem("demo-user-email");
+    if (hasLocal) {
+      console.warn("[Auth] 401 received while portal session is active; keeping user in workspace");
+      return;
+    }
+  } catch {}
+
+  const oauthPortalUrl = import.meta.env.VITE_OAUTH_PORTAL_URL;
+  if (oauthPortalUrl && oauthPortalUrl !== "undefined") {
+    startLogin();
+  }
 };
 
 queryClient.getQueryCache().subscribe(event => {
@@ -44,35 +57,38 @@ const trpcClient = trpc.createClient({
       url: "/api/trpc",
       transformer: superjson,
       headers() {
-        // Preview auto-login fallback: when the browser blocks iframe cookies
-        // (Safari ITP / private browsing / WebView), the runtime mirrors the
-        // session into sessionStorage so we can forward it as a Bearer token.
-        // The regular OAuth cookie flow keeps working and takes priority server-side.
+        // Forward auth token and portal identity from localStorage (with sessionStorage fallback)
         const headersMap: Record<string, string> = {};
         try {
-          const raw = sessionStorage.getItem("manus-cookie");
+          const raw = localStorage.getItem("manus-cookie") || sessionStorage.getItem("manus-cookie");
           if (raw) {
-            const prefix = `${COOKIE_NAME}=`;
-            const pair = raw.split(";").find(s => s.trim().startsWith(prefix));
-            const token = pair?.trim().slice(prefix.length);
+            let token = "";
+            if (raw.includes("=")) {
+              const prefix = `${COOKIE_NAME}=`;
+              const pair = raw.split(";").find(s => s.trim().startsWith(prefix));
+              token = pair ? pair.trim().slice(prefix.length) : (raw.split("=")[1] || "");
+            } else {
+              token = raw;
+            }
             if (token) {
               headersMap["Authorization"] = `Bearer ${token}`;
             }
           }
-          const demoUser = sessionStorage.getItem("demo-user-email");
+          const demoUser = localStorage.getItem("demo-user-email") || sessionStorage.getItem("demo-user-email");
           if (demoUser) {
             headersMap["x-demo-user"] = demoUser;
           }
-          const localUserRaw = sessionStorage.getItem("rasi_local_user");
+          const localUserRaw = localStorage.getItem("rasi_local_user") || sessionStorage.getItem("rasi_local_user");
           if (localUserRaw) {
             try {
               const parsed = JSON.parse(localUserRaw);
               if (parsed.role) headersMap["x-demo-role"] = parsed.role;
-              if (parsed.email && !demoUser) headersMap["x-demo-user"] = parsed.email;
+              if (parsed.email) headersMap["x-demo-user"] = parsed.email;
+              if (parsed.linkedStudentEmail) headersMap["x-linked-student"] = parsed.linkedStudentEmail;
             } catch {}
           }
         } catch {
-          // sessionStorage unavailable
+          // storage unavailable
         }
         return headersMap;
       },
