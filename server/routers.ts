@@ -82,7 +82,7 @@ export const appRouter = router({
         }
 
         // ── 2. DB lookup ──────────────────────────────────────────────────────
-        const dbUser = await getUserByEmail(emailKey);
+        const dbUser = await getUserByEmail(emailKey, input.role);
 
         if (!dbUser || !dbUser.portalPassword || dbUser.portalPassword !== input.password) {
           throw new TRPCError({

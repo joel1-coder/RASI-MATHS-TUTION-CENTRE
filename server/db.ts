@@ -69,23 +69,33 @@ export async function getUserByOpenId(openId: string) {
 }
 
 /** Look up a portal user by email or student ID (used for password-based login) */
-export async function getUserByEmail(emailOrId: string) {
+export async function getUserByEmail(emailOrId: string, role?: string) {
   const db = await getDb();
   if (!db) return undefined;
   const key = emailOrId.trim().toLowerCase();
-  const openIdKey = `portal_user_${key.replace(/[^a-z0-9]/g, "_")}`;
-  const result = await db.select().from(users).where(
-    or(
-      eq(users.email, key),
-      eq(users.openId, openIdKey)
-    )
-  ).limit(1);
+  const openIdWithRole = role ? `portal_user_${role}_${key.replace(/[^a-z0-9]/g, "_")}` : null;
+  const legacyOpenId = `portal_user_${key.replace(/[^a-z0-9]/g, "_")}`;
+  
+  const idOrEmailMatches = [
+    eq(users.email, key),
+    eq(users.openId, legacyOpenId)
+  ];
+  if (openIdWithRole) {
+    idOrEmailMatches.push(eq(users.openId, openIdWithRole));
+  }
+  
+  const conditions = [or(...idOrEmailMatches)];
+  if (role) {
+    conditions.push(eq(users.role, role as any));
+  }
+  
+  const result = await db.select().from(users).where(and(...conditions)).limit(1);
   return result.length > 0 ? result[0] : undefined;
 }
 
 /**
  * Create or fully update a portal user (admin-managed account with password).
- * openId is derived from email so it is stable and predictable.
+ * openId includes role so parent and student sharing the same email never collide.
  */
 export async function upsertPortalUser(input: {
   email: string;
@@ -97,7 +107,7 @@ export async function upsertPortalUser(input: {
   const db = await getDb();
   if (!db) throw new Error("Database is not available");
   const emailKey = input.email.trim().toLowerCase();
-  const openId = `portal_user_${emailKey.replace(/[^a-z0-9]/g, "_")}`;
+  const openId = `portal_user_${input.role}_${emailKey.replace(/[^a-z0-9]/g, "_")}`;
   const values = {
     openId,
     email: emailKey,
