@@ -3,7 +3,7 @@ import { toast } from "sonner";
 import Portfolio from "./Portfolio";
 import { startLogin } from "@/const";
 import { useAuth } from "@/_core/hooks/useAuth";
-import { AlertCircle, ArrowRight, ArrowUpRight, BarChart3, BookOpen, Building2, CalendarDays, Check, CheckCircle2, ChevronRight, ClipboardCheck, Clock3, Copy, Download, Edit3, ExternalLink, FileCheck, FileSpreadsheet, FileText, FileUp, Filter, FolderPlus, GraduationCap, LayoutDashboard, Loader2, LogOut, Menu, MessageCircle, NotebookPen, Phone, Plus, Search, Send, ShieldCheck, Sparkles, Trash2, Upload, UploadCloud, User as UserIcon, UserCheck, UserPlus, Users, X } from "lucide-react";
+import { AlertCircle, ArrowRight, ArrowUpRight, BarChart3, BookOpen, Building2, CalendarDays, Check, CheckCircle2, ChevronRight, ClipboardCheck, Clock3, Copy, Download, Edit3, FileCheck, FileSpreadsheet, FileText, FileUp, Filter, FolderPlus, GraduationCap, LayoutDashboard, Loader2, LogOut, Menu, MessageCircle, NotebookPen, Phone, Plus, Search, Send, ShieldCheck, Sparkles, Trash2, Upload, UploadCloud, User as UserIcon, UserCheck, UserPlus, Users, X } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { parseAttendanceCsv, summarizeAttendance } from "@shared/portalData";
 import { COOKIE_NAME } from "@shared/const";
@@ -139,44 +139,16 @@ function RoleChooser({ onChoose, onClose }: { onChoose: (role: Role) => void; on
                   <p className="text-[11px] sm:text-xs leading-4 text-[#82758e] sm:mt-2 sm:leading-5">{item.description}</p>
                 </div>
               </button>
-              <div className="mt-4 flex items-center justify-between border-t border-[#ede6f2] pt-3 text-xs">
+              <div className="mt-4 border-t border-[#ede6f2] pt-3">
                 <button
                   onClick={() => onChoose(item.role)}
-                  className="font-semibold text-[#6d4b9f] hover:underline"
+                  className="font-semibold text-[#6d4b9f] hover:underline text-xs"
                 >
                   Continue here <ArrowRight className="inline transition group-hover:translate-x-1" size={13} />
                 </button>
-                <a
-                  href={`/portal/${item.role}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1 rounded-lg bg-white px-2 py-1 text-[11px] font-medium text-[#7a6496] shadow-sm border border-[#e4dbe8] hover:bg-[#ede5f5] hover:text-[#5b3b92] transition"
-                  title="Open this portal in a separate tab to use simultaneously"
-                >
-                  New tab <ExternalLink size={11} />
-                </a>
               </div>
             </div>
           ))}
-        </div>
-        <div className="mt-5 sm:mt-6 rounded-2xl bg-[#f0eaf7] p-3 sm:p-4 text-xs text-[#523d70] border border-[#dcd0e8] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div className="flex items-center gap-2">
-            <span className="inline-block h-2 w-2 rounded-full bg-[#34a853] animate-pulse shrink-0" />
-            <span><strong>Simultaneous Logins Enabled:</strong> You can log into all 4 roles (Student, Teacher, Parent, Admin) simultaneously in separate tabs or windows.</span>
-          </div>
-          <div className="flex flex-wrap gap-1.5 shrink-0">
-            {roles.map(r => (
-              <a
-                key={r.role}
-                href={`/portal/${r.role}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-1 rounded-full bg-white px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-[#6d4b9f] border border-[#d6c7e3] hover:bg-[#6d4b9f] hover:text-white transition"
-              >
-                {r.role} ↗
-              </a>
-            ))}
-          </div>
         </div>
       </div>
     </div>
@@ -1123,25 +1095,61 @@ export interface SectionItem {
 export const INITIAL_DEPARTMENTS = ["Grade 6", "Grade 7", "Grade 8", "Grade 9", "Grade 10", "Grade 11", "Grade 12"];
 
 export const INITIAL_SECTIONS: SectionItem[] = [
+  // Grade 6
   { id: "sec-g6-a",  name: "A",            department: "Grade 6"  },
   { id: "sec-g6-b",  name: "B",            department: "Grade 6"  },
+  { id: "sec-g6-c",  name: "C",            department: "Grade 6"  },
+  // Grade 7
   { id: "sec-g7-a",  name: "A",            department: "Grade 7"  },
   { id: "sec-g7-b",  name: "B",            department: "Grade 7"  },
+  { id: "sec-g7-c",  name: "C",            department: "Grade 7"  },
+  // Grade 8
   { id: "sec-g8-a",  name: "A",            department: "Grade 8"  },
   { id: "sec-g8-b",  name: "B",            department: "Grade 8"  },
+  { id: "sec-g8-c",  name: "C",            department: "Grade 8"  },
+  // Grade 9
   { id: "sec-g9-a",  name: "A",            department: "Grade 9"  },
   { id: "sec-g9-b",  name: "B",            department: "Grade 9"  },
+  { id: "sec-g9-c",  name: "C",            department: "Grade 9"  },
+  // Grade 10
   { id: "sec-g10-a", name: "A",            department: "Grade 10" },
   { id: "sec-g10-b", name: "B",            department: "Grade 10" },
-  { id: "sec-g11-a", name: "Morning Batch",department: "Grade 11" },
-  { id: "sec-g11-b", name: "Evening Batch",department: "Grade 11" },
-  { id: "sec-g12-a", name: "Morning Batch",department: "Grade 12" },
-  { id: "sec-g12-b", name: "Evening Batch",department: "Grade 12" },
+  { id: "sec-g10-c", name: "C",            department: "Grade 10" },
+  // Grade 11
+  { id: "sec-g11-a", name: "A",            department: "Grade 11" },
+  { id: "sec-g11-b", name: "B",            department: "Grade 11" },
+  { id: "sec-g11-c", name: "C",            department: "Grade 11" },
+  { id: "sec-g11-mb", name: "Morning Batch",department: "Grade 11" },
+  { id: "sec-g11-eb", name: "Evening Batch",department: "Grade 11" },
+  // Grade 12
+  { id: "sec-g12-a", name: "A",            department: "Grade 12" },
+  { id: "sec-g12-b", name: "B",            department: "Grade 12" },
+  { id: "sec-g12-c", name: "C",            department: "Grade 12" },
+  { id: "sec-g12-mb", name: "Morning Batch",department: "Grade 12" },
+  { id: "sec-g12-eb", name: "Evening Batch",department: "Grade 12" },
 ];
+
+export const loadStoredSections = (): SectionItem[] => {
+  try {
+    const saved = localStorage.getItem("rasi_v2_admin_sections");
+    let parsed: SectionItem[] = saved ? JSON.parse(saved) : [...INITIAL_SECTIONS];
+    // Guarantee all INITIAL_SECTIONS exist in parsed array
+    for (const init of INITIAL_SECTIONS) {
+      if (!parsed.some(s => s.name.toLowerCase() === init.name.toLowerCase() && s.department.toLowerCase() === init.department.toLowerCase())) {
+        parsed.push(init);
+      }
+    }
+    return parsed;
+  } catch {
+    return INITIAL_SECTIONS;
+  }
+};
 
 export const INITIAL_STUDENTS: ManagedStudent[] = [
   // Grade 6 Section A
   { id: "stu-joel", studentId: "24UCS1118", name: "JOEL A", parentName: "Arputha Philomin Raj J", parentPhone: "9361143212", email: "codejoe68333@gmail.com", parentEmail: "codejoe68333@gmail.com", department: "Grade 6", section: "A", status: "active", joinedDate: "2026-06-01" },
+  // Grade 6 Section C
+  { id: "stu-g6-c", studentId: "6C001", name: "Siddharth R.", parentName: "Raghavan M.", parentPhone: "+91 98401 23457", email: "siddharth.r@portal.com", parentEmail: "raghavan.m@portal.com", department: "Grade 6", section: "C", status: "active", joinedDate: "2026-06-01" },
   // Grade 10 Section A
   { id: "stu-1",  studentId: "10A001", name: "Ananya Sharma",   parentName: "Ramesh Sharma",     parentPhone: "+91 98765 43210", email: "student@portal.com", parentEmail: "ramesh.sharma@portal.com", department: "Grade 10", section: "A",            status: "active",   joinedDate: "2026-01-15" },
   { id: "stu-2",  studentId: "10A002", name: "Rohit Verma",      parentName: "Sunil Verma",       parentPhone: "+91 98765 43211", email: "rohit.verma@portal.com",   department: "Grade 10", section: "A",            status: "active",   joinedDate: "2026-01-20" },
@@ -1151,6 +1159,8 @@ export const INITIAL_STUDENTS: ManagedStudent[] = [
   // Grade 10 Section B
   { id: "stu-6",  studentId: "10B001", name: "Priya Natarajan",  parentName: "Natarajan S.",      parentPhone: "+91 98765 43215", email: "priya.n@portal.com",      department: "Grade 10", section: "B",            status: "active",   joinedDate: "2026-02-01" },
   { id: "stu-7",  studentId: "10B002", name: "Deepak Kumar",     parentName: "Kumar P.",          parentPhone: "+91 98765 43216", email: "deepak.k@portal.com",    department: "Grade 10", section: "B",            status: "active",   joinedDate: "2026-02-05" },
+  // Grade 10 Section C
+  { id: "stu-16", studentId: "10C001", name: "Meera Krishnan", parentName: "Krishnan S.", parentPhone: "+91 98765 43225", email: "meera.k@portal.com", parentEmail: "krishnan.s@portal.com", department: "Grade 10", section: "C", status: "active", joinedDate: "2026-02-15" },
   // Grade 11 Morning Batch
   { id: "stu-8",  studentId: "11M001", name: "Sanjay Murugan",   parentName: "Murugan V.",        parentPhone: "+91 98765 43217", email: "sanjay.m@portal.com",    department: "Grade 11", section: "Morning Batch", status: "active",   joinedDate: "2026-01-10" },
   { id: "stu-9",  studentId: "11M002", name: "Lakshmi Devi",     parentName: "Devi S.",           parentPhone: "+91 98765 43218", email: "lakshmi.d@portal.com",   department: "Grade 11", section: "Morning Batch", status: "active",   joinedDate: "2026-01-12" },
@@ -1204,14 +1214,7 @@ function AdminMarksManager() {
     }
   });
 
-  const [sections] = useState<SectionItem[]>(() => {
-    try {
-      const saved = localStorage.getItem("rasi_v2_admin_sections");
-      return saved ? JSON.parse(saved) : INITIAL_SECTIONS;
-    } catch {
-      return INITIAL_SECTIONS;
-    }
-  });
+  const [sections] = useState<SectionItem[]>(loadStoredSections);
 
   const [students] = useState<ManagedStudent[]>(loadStoredStudents);
 
@@ -1543,14 +1546,7 @@ function AdminProjectsManager() {
     }
   });
 
-  const [sections] = useState<SectionItem[]>(() => {
-    try {
-      const saved = localStorage.getItem("rasi_v2_admin_sections");
-      return saved ? JSON.parse(saved) : INITIAL_SECTIONS;
-    } catch {
-      return INITIAL_SECTIONS;
-    }
-  });
+  const [sections] = useState<SectionItem[]>(loadStoredSections);
 
   const [students] = useState<ManagedStudent[]>(() => {
     try {
@@ -2255,14 +2251,7 @@ function AdminStudentManager() {
     }
   });
 
-  const [sections, setSections] = useState<SectionItem[]>(() => {
-    try {
-      const saved = localStorage.getItem("rasi_v2_admin_sections");
-      return saved ? JSON.parse(saved) : INITIAL_SECTIONS;
-    } catch {
-      return INITIAL_SECTIONS;
-    }
-  });
+  const [sections, setSections] = useState<SectionItem[]>(loadStoredSections);
 
   const [students, setStudents] = useState<ManagedStudent[]>(loadStoredStudents);
   const bulkCreateLoginsMutation = trpc.admin.bulkCreateStudentLogins.useMutation();
@@ -3385,14 +3374,7 @@ function AdminAttendanceManager() {
     }
   });
 
-  const [sections] = useState<SectionItem[]>(() => {
-    try {
-      const saved = localStorage.getItem("rasi_v2_admin_sections");
-      return saved ? JSON.parse(saved) : INITIAL_SECTIONS;
-    } catch {
-      return INITIAL_SECTIONS;
-    }
-  });
+  const [sections] = useState<SectionItem[]>(loadStoredSections);
 
   const [students] = useState<ManagedStudent[]>(() => {
     try {
@@ -5114,14 +5096,7 @@ function TeacherWorkspace({ user, onLogout }: { user: User; onLogout: () => void
     }
   });
 
-  const [sections] = useState<SectionItem[]>(() => {
-    try {
-      const saved = localStorage.getItem("rasi_v2_admin_sections");
-      return saved ? JSON.parse(saved) : INITIAL_SECTIONS;
-    } catch {
-      return INITIAL_SECTIONS;
-    }
-  });
+  const [sections] = useState<SectionItem[]>(loadStoredSections);
 
   const [students] = useState<ManagedStudent[]>(loadStoredStudents);
 
@@ -7084,7 +7059,7 @@ export default function Home() {
         }
       }
 
-      // 2. If path requests a specific role, check role-scoped storage
+      // 2. If path requests a specific role, check role-scoped storage first
       if (pathRole) {
         const roleUser = sessionStorage.getItem(`rasi_user_${pathRole}`) || localStorage.getItem(`rasi_user_${pathRole}`);
         if (roleUser) {
@@ -7093,14 +7068,8 @@ export default function Home() {
         }
       }
 
-      // 3. Fall back to localStorage (only if matching the tab's role if pathRole is specified)
-      const localUser = localStorage.getItem("rasi_local_user");
-      if (localUser) {
-        const parsed = JSON.parse(localUser);
-        if (!pathRole || parsed.role === pathRole) {
-          return { ...parsed, role: parsed.role as Role };
-        }
-      }
+      // 3. For general (no path role), only use sessionStorage — never localStorage
+      // This ensures new tabs always start fresh so multiple roles can be open simultaneously
     } catch {}
     return null;
   });
@@ -7112,7 +7081,8 @@ export default function Home() {
   const [activePortal, setActivePortal] = useState(() => {
     try {
       if (pathRole) return true;
-      return sessionStorage.getItem("rasi_active_portal") === "1" || localStorage.getItem("rasi_active_portal") === "1";
+      // Only use sessionStorage for activePortal — keeps new tabs fresh
+      return sessionStorage.getItem("rasi_active_portal") === "1";
     } catch {
       return false;
     }

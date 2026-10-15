@@ -393,12 +393,73 @@ export default function Portfolio({ onLogin, user, onGoToPortal, onLogout }: Por
               <p className="contact-intro">Drop by for a conversation, a cup of chai, and a look around. No pressure, ever.</p>
             </div>
             <div className="contact-details">
-              <a href="https://maps.google.com/?q=12th+Main+Indiranagar+Bengaluru" target="_blank" rel="noreferrer"><MapPin size={18} /><span>{siteData.contact.address.split("\n").map((line) => <span key={line}>{line}<br /></span>)}</span></a>
+              <a href="https://www.google.com/maps/search/Rasi+Maths+Tuition+Centre,+Indiranagar,+Bengaluru" target="_blank" rel="noreferrer"><MapPin size={18} /><span>{siteData.contact.address.split("\n").map((line) => <span key={line}>{line}<br /></span>)}</span></a>
               <a href={`tel:${siteData.contact.phone.replace(/\s/g, "")}`}><Phone size={18} /><span>{siteData.contact.phone}</span></a>
               <a href={`mailto:${siteData.contact.email}`}><Mail size={18} /><span>{siteData.contact.email}</span></a>
               <p><Clock3 size={18} /><span>{siteData.contact.hours}</span></p>
             </div>
             <a className="button button-ochre" href="mailto:hello@thestudyroom.in?subject=Book%20a%20demo">Book a demo <ArrowUpRight size={17} /></a>
+          </div>
+
+          {/* Google Maps Embed — click anywhere to open in Google Maps */}
+          <div className="page-width" style={{ marginTop: "2.5rem" }}>
+            <div
+              style={{
+                position: "relative",
+                borderRadius: "20px",
+                overflow: "hidden",
+                height: "300px",
+                boxShadow: "0 8px 32px rgba(0,0,0,0.14)",
+              }}
+            >
+              <iframe
+                src="https://maps.google.com/maps?q=Rasi+Maths+Tuition+Centre,+Indiranagar,+Bengaluru&output=embed"
+                width="100%"
+                height="100%"
+                style={{ border: 0, display: "block", pointerEvents: "none" }}
+                allowFullScreen
+                loading="lazy"
+                referrerPolicy="no-referrer-when-downgrade"
+                title="Rasi Maths Tuition Centre location on Google Maps"
+              />
+              {/* Transparent overlay — makes entire map clickable */}
+              <a
+                href="https://www.google.com/maps/search/Rasi+Maths+Tuition+Centre,+Indiranagar,+Bengaluru"
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="Open Rasi Maths Tuition Centre in Google Maps"
+                style={{
+                  position: "absolute",
+                  inset: 0,
+                  zIndex: 2,
+                  display: "flex",
+                  alignItems: "flex-end",
+                  justifyContent: "flex-end",
+                  padding: "14px",
+                  textDecoration: "none",
+                  cursor: "pointer",
+                }}
+              >
+                <span
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: "6px",
+                    background: "white",
+                    color: "#1a73e8",
+                    borderRadius: "10px",
+                    padding: "7px 13px",
+                    fontSize: "12px",
+                    fontWeight: 700,
+                    boxShadow: "0 2px 10px rgba(0,0,0,0.18)",
+                    transition: "transform 0.15s",
+                  }}
+                >
+                  <MapPin size={13} />
+                  View on Google Maps ↗
+                </span>
+              </a>
+            </div>
           </div>
         </section>
       </main>
