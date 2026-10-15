@@ -123,12 +123,14 @@ function RoleChooser({ onChoose, onClose }: { onChoose: (role: Role) => void; on
         </div>
         <div className="grid gap-2.5 sm:gap-3 grid-cols-1 sm:grid-cols-2 md:grid-cols-4">
           {roles.map(item => (
-            <button
+            <div
               key={item.role}
-              onClick={() => onChoose(item.role)}
-              className="group flex items-center justify-between gap-3.5 rounded-2xl border border-[#e8deeb] bg-[#faf7fc] p-3.5 sm:p-5 text-left transition hover:-translate-y-0.5 sm:hover:-translate-y-1 hover:border-[#b99cda] hover:bg-[#f4edf9] dark:hover:border-[#7455b2] sm:flex-col sm:items-start"
+              className="group relative flex flex-col justify-between rounded-2xl border border-[#e8deeb] bg-[#faf7fc] p-3.5 sm:p-5 text-left transition hover:-translate-y-0.5 sm:hover:-translate-y-1 hover:border-[#b99cda] hover:bg-[#f4edf9] dark:hover:border-[#7455b2]"
             >
-              <div className="flex items-center gap-3 sm:block sm:w-full">
+              <button
+                onClick={() => onChoose(item.role)}
+                className="flex items-center gap-3 sm:block sm:w-full text-left"
+              >
                 <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl sm:rounded-2xl bg-[#e9ddf4] text-[#6d4b9f] sm:h-11 sm:w-11">
                   {item.icon}
                 </span>
@@ -136,13 +138,45 @@ function RoleChooser({ onChoose, onClose }: { onChoose: (role: Role) => void; on
                   <h3 className="font-semibold text-[#34244d] text-sm sm:text-base sm:mt-5">{item.title}</h3>
                   <p className="text-[11px] sm:text-xs leading-4 text-[#82758e] sm:mt-2 sm:leading-5">{item.description}</p>
                 </div>
+              </button>
+              <div className="mt-4 flex items-center justify-between border-t border-[#ede6f2] pt-3 text-xs">
+                <button
+                  onClick={() => onChoose(item.role)}
+                  className="font-semibold text-[#6d4b9f] hover:underline"
+                >
+                  Continue here <ArrowRight className="inline transition group-hover:translate-x-1" size={13} />
+                </button>
+                <a
+                  href={`/portal/${item.role}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 rounded-lg bg-white px-2 py-1 text-[11px] font-medium text-[#7a6496] shadow-sm border border-[#e4dbe8] hover:bg-[#ede5f5] hover:text-[#5b3b92] transition"
+                  title="Open this portal in a separate tab to use simultaneously"
+                >
+                  New tab <ExternalLink size={11} />
+                </a>
               </div>
-              <span className="shrink-0 text-xs font-semibold text-[#6d4b9f] sm:mt-5 sm:block">
-                <span className="hidden sm:inline">Continue </span>
-                <ArrowRight className="inline transition group-hover:translate-x-1" size={13} />
-              </span>
-            </button>
+            </div>
           ))}
+        </div>
+        <div className="mt-5 sm:mt-6 rounded-2xl bg-[#f0eaf7] p-3 sm:p-4 text-xs text-[#523d70] border border-[#dcd0e8] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <span className="inline-block h-2 w-2 rounded-full bg-[#34a853] animate-pulse shrink-0" />
+            <span><strong>Simultaneous Logins Enabled:</strong> You can log into all 4 roles (Student, Teacher, Parent, Admin) simultaneously in separate tabs or windows.</span>
+          </div>
+          <div className="flex flex-wrap gap-1.5 shrink-0">
+            {roles.map(r => (
+              <a
+                key={r.role}
+                href={`/portal/${r.role}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 rounded-full bg-white px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-[#6d4b9f] border border-[#d6c7e3] hover:bg-[#6d4b9f] hover:text-white transition"
+              >
+                {r.role} ↗
+              </a>
+            ))}
+          </div>
         </div>
       </div>
     </div>
@@ -243,19 +277,30 @@ function RoleLoginPage({ role, onLogin, onBack }: { role: Role; onLogin: (user: 
         };
 
         try {
-          localStorage.setItem("demo-user-email", match.email);
+          // Tab-isolated storage (strictly isolated per browser tab)
           sessionStorage.setItem("demo-user-email", match.email);
-          localStorage.setItem("rasi_local_user", JSON.stringify(enrichedUser));
           sessionStorage.setItem("rasi_local_user", JSON.stringify(enrichedUser));
-          localStorage.setItem("rasi_active_portal", "1");
           sessionStorage.setItem("rasi_active_portal", "1");
+          sessionStorage.setItem(`rasi_user_${role}`, JSON.stringify(enrichedUser));
+
+          // Role-scoped storage (so /portal/student always keeps student, /portal/admin keeps admin)
+          localStorage.setItem(`rasi_user_${role}`, JSON.stringify(enrichedUser));
+          localStorage.setItem(`rasi_portal_${role}`, "1");
+          localStorage.setItem(`demo-user-email_${role}`, match.email);
+
+          // General localStorage fallback
+          localStorage.setItem("demo-user-email", match.email);
+          localStorage.setItem("rasi_local_user", JSON.stringify(enrichedUser));
+          localStorage.setItem("rasi_active_portal", "1");
         } catch {}
 
         try {
           const res = await loginMutation.mutateAsync({ email: match.email, password: match.password, role });
           if (res.token) {
-            localStorage.setItem("manus-cookie", `${COOKIE_NAME}=${res.token}`);
             sessionStorage.setItem("manus-cookie", `${COOKIE_NAME}=${res.token}`);
+            sessionStorage.setItem(`manus-cookie_${role}`, `${COOKIE_NAME}=${res.token}`);
+            localStorage.setItem(`manus-cookie_${role}`, `${COOKIE_NAME}=${res.token}`);
+            localStorage.setItem("manus-cookie", `${COOKIE_NAME}=${res.token}`);
           }
         } catch {}
 
@@ -267,8 +312,10 @@ function RoleLoginPage({ role, onLogin, onBack }: { role: Role; onLogin: (user: 
       const res = await loginMutation.mutateAsync({ email: email.trim(), password: password.trim(), role });
       if (res.token) {
         try {
-          localStorage.setItem("manus-cookie", `${COOKIE_NAME}=${res.token}`);
           sessionStorage.setItem("manus-cookie", `${COOKIE_NAME}=${res.token}`);
+          sessionStorage.setItem(`manus-cookie_${role}`, `${COOKIE_NAME}=${res.token}`);
+          localStorage.setItem(`manus-cookie_${role}`, `${COOKIE_NAME}=${res.token}`);
+          localStorage.setItem("manus-cookie", `${COOKIE_NAME}=${res.token}`);
         } catch {}
       }
 
@@ -293,12 +340,21 @@ function RoleLoginPage({ role, onLogin, onBack }: { role: Role; onLogin: (user: 
       };
 
       try {
-        localStorage.setItem("demo-user-email", res.user.email!);
+        // Tab-isolated storage
         sessionStorage.setItem("demo-user-email", res.user.email!);
-        localStorage.setItem("rasi_local_user", JSON.stringify(userObj));
         sessionStorage.setItem("rasi_local_user", JSON.stringify(userObj));
-        localStorage.setItem("rasi_active_portal", "1");
         sessionStorage.setItem("rasi_active_portal", "1");
+        sessionStorage.setItem(`rasi_user_${role}`, JSON.stringify(userObj));
+
+        // Role-scoped storage
+        localStorage.setItem(`rasi_user_${role}`, JSON.stringify(userObj));
+        localStorage.setItem(`rasi_portal_${role}`, "1");
+        localStorage.setItem(`demo-user-email_${role}`, res.user.email!);
+
+        // General localStorage fallback
+        localStorage.setItem("demo-user-email", res.user.email!);
+        localStorage.setItem("rasi_local_user", JSON.stringify(userObj));
+        localStorage.setItem("rasi_active_portal", "1");
       } catch {}
 
       await utils.auth.me.invalidate();
@@ -7006,41 +7062,88 @@ function Dashboard({ user, onLogout }: { user: User; onLogout: () => void }) {
 
 export default function Home() {
   const auth = useAuth();
+
+  // Detect path-scoped role if URL is e.g. /portal/student, /portal/parent, /portal/teacher, /portal/admin, /student, /parent, /teacher, /portal-admin
+  const pathname = typeof window !== "undefined" ? window.location.pathname.toLowerCase() : "";
+  const isPortalUrl = pathname.startsWith("/portal") || pathname === "/student" || pathname === "/parent" || pathname === "/teacher" || pathname === "/portal-admin";
+  const pathRole: Role | null =
+    pathname.includes("/student") ? "student"
+    : pathname.includes("/teacher") ? "teacher"
+    : pathname.includes("/parent") ? "parent"
+    : (pathname.includes("/admin") || pathname.includes("/portal-admin")) ? "admin"
+    : null;
+
   const [user, setUser] = useState<User | null>(() => {
     try {
-      // Try local custom user (persisted in localStorage so refresh keeps session)
+      // 1. Check tab-isolated sessionStorage first (strictly private to this browser tab)
+      const sessionUser = sessionStorage.getItem("rasi_local_user");
+      if (sessionUser) {
+        const parsed = JSON.parse(sessionUser);
+        if (!pathRole || parsed.role === pathRole) {
+          return { ...parsed, role: parsed.role as Role };
+        }
+      }
+
+      // 2. If path requests a specific role, check role-scoped storage
+      if (pathRole) {
+        const roleUser = sessionStorage.getItem(`rasi_user_${pathRole}`) || localStorage.getItem(`rasi_user_${pathRole}`);
+        if (roleUser) {
+          const parsed = JSON.parse(roleUser);
+          return { ...parsed, role: parsed.role as Role };
+        }
+      }
+
+      // 3. Fall back to localStorage (only if matching the tab's role if pathRole is specified)
       const localUser = localStorage.getItem("rasi_local_user");
       if (localUser) {
         const parsed = JSON.parse(localUser);
-        return { ...parsed, role: parsed.role as Role };
+        if (!pathRole || parsed.role === pathRole) {
+          return { ...parsed, role: parsed.role as Role };
+        }
       }
     } catch {}
     return null;
   });
+
   const [loginOpen, setLoginOpen] = useState(false);
   const [selectedRole, setSelectedRole] = useState<Role | null>(null);
-  // Persist activePortal in localStorage so page refresh keeps the user in their workspace
+
+  // Persist activePortal: always true if role path is visited, or if set in sessionStorage/localStorage
   const [activePortal, setActivePortal] = useState(() => {
-    try { return localStorage.getItem("rasi_active_portal") === "1"; } catch { return false; }
+    try {
+      if (pathRole) return true;
+      return sessionStorage.getItem("rasi_active_portal") === "1" || localStorage.getItem("rasi_active_portal") === "1";
+    } catch {
+      return false;
+    }
   });
 
-  const isPortalUrl = typeof window !== "undefined" && window.location.pathname.startsWith("/portal");
   const secureUser = auth.user && ["admin", "student", "parent", "teacher"].includes(auth.user.role)
     ? { role: auth.user.role as Role, name: auth.user.name ?? auth.user.email ?? "Portal user", email: auth.user.email ?? "" }
     : null;
-  const currentUser = secureUser || user;
+  // If pathRole is specified and secureUser does not match, ignore secureUser from cross-tab cookie
+  const currentUser = (secureUser && (!pathRole || secureUser.role === pathRole)) ? secureUser : user;
 
   const logout = () => {
     if (secureUser) void auth.logout();
+    const currentRole = currentUser?.role;
     try {
-      localStorage.removeItem("demo-user-email");
       sessionStorage.removeItem("demo-user-email");
-      localStorage.removeItem("rasi_local_user");
       sessionStorage.removeItem("rasi_local_user");
-      localStorage.removeItem("rasi_active_portal");
       sessionStorage.removeItem("rasi_active_portal");
-      localStorage.removeItem("manus-cookie");
       sessionStorage.removeItem("manus-cookie");
+      if (currentRole) {
+        sessionStorage.removeItem(`rasi_user_${currentRole}`);
+        sessionStorage.removeItem(`manus-cookie_${currentRole}`);
+        localStorage.removeItem(`rasi_user_${currentRole}`);
+        localStorage.removeItem(`rasi_portal_${currentRole}`);
+        localStorage.removeItem(`manus-cookie_${currentRole}`);
+        localStorage.removeItem(`demo-user-email_${currentRole}`);
+      }
+      localStorage.removeItem("demo-user-email");
+      localStorage.removeItem("rasi_local_user");
+      localStorage.removeItem("rasi_active_portal");
+      localStorage.removeItem("manus-cookie");
     } catch {}
     setUser(null);
     setActivePortal(false);
@@ -7053,15 +7156,25 @@ export default function Home() {
     if (currentUser.role === "admin") return <div className="portal-shell"><AdminWorkspace user={currentUser} onLogout={logout} /></div>;
   }
 
-  if (selectedRole) {
+  // If visiting /portal/student, /portal/teacher, etc. directly without an active session for that role, show login for that role
+  const effectiveRoleToLogin = selectedRole || (pathRole && !currentUser ? pathRole : null);
+  if (effectiveRoleToLogin) {
     return (
       <RoleLoginPage
-        role={selectedRole}
-        onBack={() => setSelectedRole(null)}
+        role={effectiveRoleToLogin}
+        onBack={() => {
+          setSelectedRole(null);
+          if (pathRole && typeof window !== "undefined") {
+            window.location.href = "/";
+          }
+        }}
         onLogin={(u) => {
           setUser(u);
           setActivePortal(true);
-          try { localStorage.setItem("rasi_active_portal", "1"); } catch {}
+          try {
+            sessionStorage.setItem("rasi_active_portal", "1");
+            localStorage.setItem("rasi_active_portal", "1");
+          } catch {}
         }}
       />
     );

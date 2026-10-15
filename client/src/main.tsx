@@ -57,28 +57,49 @@ const trpcClient = trpc.createClient({
       url: "/api/trpc",
       transformer: superjson,
       headers() {
-        // Forward auth token and portal identity from localStorage (with sessionStorage fallback)
+        // Forward auth token and portal identity from tab-isolated sessionStorage first (then role-scoped or localStorage)
         const headersMap: Record<string, string> = {};
         try {
-          const raw = localStorage.getItem("manus-cookie") || sessionStorage.getItem("manus-cookie");
-          if (raw) {
+          const path = typeof window !== "undefined" ? window.location.pathname.toLowerCase() : "";
+          let pathRole: string | null = null;
+          if (path.includes("/student")) pathRole = "student";
+          else if (path.includes("/teacher")) pathRole = "teacher";
+          else if (path.includes("/parent")) pathRole = "parent";
+          else if (path.includes("/admin")) pathRole = "admin";
+
+          // Priority 1: sessionStorage (unique to this current browser tab)
+          // Priority 2: pathRole-scoped user (e.g. rasi_user_student in sessionStorage or localStorage)
+          // Priority 3: general localStorage
+          let localUserRaw = sessionStorage.getItem("rasi_local_user");
+          if (!localUserRaw && pathRole) {
+            localUserRaw = sessionStorage.getItem(`rasi_user_${pathRole}`) || localStorage.getItem(`rasi_user_${pathRole}`);
+          }
+          if (!localUserRaw) {
+            localUserRaw = localStorage.getItem("rasi_local_user");
+          }
+
+          let tokenRaw = sessionStorage.getItem("manus-cookie");
+          if (!tokenRaw && pathRole) {
+            tokenRaw = sessionStorage.getItem(`manus-cookie_${pathRole}`) || localStorage.getItem(`manus-cookie_${pathRole}`);
+          }
+          if (!tokenRaw) {
+            tokenRaw = localStorage.getItem("manus-cookie");
+          }
+
+          if (tokenRaw) {
             let token = "";
-            if (raw.includes("=")) {
+            if (tokenRaw.includes("=")) {
               const prefix = `${COOKIE_NAME}=`;
-              const pair = raw.split(";").find(s => s.trim().startsWith(prefix));
-              token = pair ? pair.trim().slice(prefix.length) : (raw.split("=")[1] || "");
+              const pair = tokenRaw.split(";").find(s => s.trim().startsWith(prefix));
+              token = pair ? pair.trim().slice(prefix.length) : (tokenRaw.split("=")[1] || "");
             } else {
-              token = raw;
+              token = tokenRaw;
             }
             if (token) {
               headersMap["Authorization"] = `Bearer ${token}`;
             }
           }
-          const demoUser = localStorage.getItem("demo-user-email") || sessionStorage.getItem("demo-user-email");
-          if (demoUser) {
-            headersMap["x-demo-user"] = demoUser;
-          }
-          const localUserRaw = localStorage.getItem("rasi_local_user") || sessionStorage.getItem("rasi_local_user");
+
           if (localUserRaw) {
             try {
               const parsed = JSON.parse(localUserRaw);
@@ -86,6 +107,8 @@ const trpcClient = trpc.createClient({
               if (parsed.email) headersMap["x-demo-user"] = parsed.email;
               if (parsed.linkedStudentEmail) headersMap["x-linked-student"] = parsed.linkedStudentEmail;
             } catch {}
+          } else if (pathRole) {
+            headersMap["x-demo-role"] = pathRole;
           }
         } catch {
           // storage unavailable

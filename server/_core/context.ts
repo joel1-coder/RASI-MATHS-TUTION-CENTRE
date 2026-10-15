@@ -22,15 +22,22 @@ export async function createContext(
     user = null;
   }
 
+  const rawDemoEmail = opts.req.headers["x-demo-user"];
+  const rawDemoRole = opts.req.headers["x-demo-role"];
+  const rawLinkedStudent = opts.req.headers["x-linked-student"];
+
+  const demoEmail = (Array.isArray(rawDemoEmail) ? rawDemoEmail[0] : rawDemoEmail)?.trim();
+  const demoRole = (Array.isArray(rawDemoRole) ? rawDemoRole[0] : rawDemoRole)?.trim();
+  const linkedStudent = (Array.isArray(rawLinkedStudent) ? rawLinkedStudent[0] : rawLinkedStudent)?.trim();
+
+  // If a tab explicitly sent x-demo-role or x-demo-user, but the cookie returned a different user/role (cross-tab cookie bleed),
+  // override the cookie session with the tab's explicit role/user identity.
+  if (user && ((demoRole && user.role !== demoRole) || (demoEmail && user.email?.toLowerCase() !== demoEmail.toLowerCase()))) {
+    user = null;
+  }
+
   // Fallback for demo portal mode: if no auth session cookie but x-demo-user / x-demo-role header is sent
   if (!user) {
-    const rawDemoEmail = opts.req.headers["x-demo-user"];
-    const rawDemoRole = opts.req.headers["x-demo-role"];
-    const rawLinkedStudent = opts.req.headers["x-linked-student"];
-
-    const demoEmail = (Array.isArray(rawDemoEmail) ? rawDemoEmail[0] : rawDemoEmail)?.trim();
-    const demoRole = (Array.isArray(rawDemoRole) ? rawDemoRole[0] : rawDemoRole)?.trim();
-    const linkedStudent = (Array.isArray(rawLinkedStudent) ? rawLinkedStudent[0] : rawLinkedStudent)?.trim();
 
     if (demoEmail || demoRole) {
       try {

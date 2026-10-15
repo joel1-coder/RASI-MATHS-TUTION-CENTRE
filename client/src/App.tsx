@@ -13,6 +13,14 @@ function Router() {
     <Switch>
       <Route path="/" component={Home} />
       <Route path="/portal" component={Home} />
+      <Route path="/portal/student" component={Home} />
+      <Route path="/portal/parent" component={Home} />
+      <Route path="/portal/teacher" component={Home} />
+      <Route path="/portal/admin" component={Home} />
+      <Route path="/student" component={Home} />
+      <Route path="/parent" component={Home} />
+      <Route path="/teacher" component={Home} />
+      <Route path="/portal-admin" component={Home} />
       <Route path="/colleges" component={CollegesPage} />
       <Route path="/admin" component={SiteAdmin} />
       <Route path="/site-admin" component={SiteAdmin} />
