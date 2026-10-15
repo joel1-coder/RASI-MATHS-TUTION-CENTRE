@@ -7088,7 +7088,18 @@ export default function Home() {
     }
   });
 
-  const secureUser = auth.user && ["admin", "student", "parent", "teacher"].includes(auth.user.role)
+  // Gate: this tab only has a session if sessionStorage says so (not inherited from other tabs via cookies/localStorage)
+  const tabHasSession = (() => {
+    try {
+      return (
+        sessionStorage.getItem("rasi_active_portal") === "1" ||
+        Boolean(sessionStorage.getItem("rasi_local_user")) ||
+        (pathRole ? Boolean(sessionStorage.getItem(`rasi_user_${pathRole}`)) : false)
+      );
+    } catch { return false; }
+  })();
+
+  const secureUser = tabHasSession && auth.user && ["admin", "student", "parent", "teacher"].includes(auth.user.role)
     ? { role: auth.user.role as Role, name: auth.user.name ?? auth.user.email ?? "Portal user", email: auth.user.email ?? "" }
     : null;
   // If pathRole is specified and secureUser does not match, ignore secureUser from cross-tab cookie
@@ -7126,8 +7137,8 @@ export default function Home() {
     if (currentUser.role === "admin") return <div className="portal-shell"><AdminWorkspace user={currentUser} onLogout={logout} /></div>;
   }
 
-  // If visiting /portal/student, /portal/teacher, etc. directly without an active session for that role, show login for that role
-  const effectiveRoleToLogin = selectedRole || (pathRole && !currentUser ? pathRole : null);
+  // If visiting /portal/student etc. without an active session for that role, show login for that role
+  const effectiveRoleToLogin = selectedRole || (pathRole && !tabHasSession ? pathRole : null);
   if (effectiveRoleToLogin) {
     return (
       <RoleLoginPage
@@ -7154,11 +7165,11 @@ export default function Home() {
     <>
       <Portfolio
         onLogin={() => setLoginOpen(true)}
-        user={currentUser}
+        user={tabHasSession ? currentUser : null}
         onGoToPortal={() => setActivePortal(true)}
         onLogout={logout}
       />
-      {(loginOpen || (isPortalUrl && !currentUser)) && (
+      {(loginOpen || (isPortalUrl && !tabHasSession)) && (
         <RoleChooser
           onClose={() => setLoginOpen(false)}
           onChoose={(role) => {
