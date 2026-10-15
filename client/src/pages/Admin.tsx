@@ -165,6 +165,7 @@ export default function Admin() {
   });
   const [unitTitle, setUnitTitle] = useState("");
   const [unitSubject, setUnitSubject] = useState("Mathematics");
+  const [unitSection, setUnitSection] = useState("All Sections");
   const [unitLink, setUnitLink] = useState("");
   const [unitClass, setUnitClass] = useState("Grade 10");
 
@@ -242,6 +243,7 @@ export default function Admin() {
     createUnitMutation.mutate({
       title: unitTitle.trim(),
       subject: unitSubject.trim(),
+      section: unitSection,
       link: unitLink.trim() || "#",
       targetClass: unitClass,
     });
@@ -591,9 +593,23 @@ export default function Admin() {
             {/* Upload Form */}
             <form onSubmit={handleSendUnit} className="rounded-2xl border border-[#e2d8cc] bg-[#fffdfa] p-6 shadow-sm space-y-5">
               <h2 className="text-lg font-bold text-[#2f315d]">Upload / Create Unit Question</h2>
-              <div className="grid gap-4 sm:grid-cols-2">
+              <div className="grid gap-4 sm:grid-cols-3">
                 <Field label="Unit Question Title" value={unitTitle} onChange={setUnitTitle} placeholder="e.g. Unit 3 Trigonometry Important Questions" />
                 <Field label="Subject" value={unitSubject} onChange={setUnitSubject} placeholder="e.g. Mathematics" />
+                <label className="block text-xs font-bold uppercase tracking-[0.14em] text-[#756a7a]">
+                  Section
+                  <select
+                    value={unitSection}
+                    onChange={(e) => setUnitSection(e.target.value)}
+                    className="mt-2 w-full rounded-xl border border-[#ded4c8] bg-[#fffdfa] px-3 py-2.5 text-sm font-normal text-[#322743] outline-none transition focus:border-[#5968a9]"
+                  >
+                    {["All Sections", "Section A", "Section B", "Section C", "Section D"].map((sec) => (
+                      <option key={sec} value={sec}>
+                        {sec}
+                      </option>
+                    ))}
+                  </select>
+                </label>
               </div>
               <div className="grid gap-4 sm:grid-cols-2">
                 <label className="block text-xs font-bold uppercase tracking-[0.14em] text-[#756a7a]">

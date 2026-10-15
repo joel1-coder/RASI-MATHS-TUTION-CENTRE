@@ -12,6 +12,8 @@ export async function getDb() {
     try {
       _client = postgres(process.env.DATABASE_URL);
       _db = drizzle(_client);
+      // Ensure unit_questions has section column
+      _client.unsafe(`ALTER TABLE "unit_questions" ADD COLUMN IF NOT EXISTS "section" varchar(50) DEFAULT 'All Sections';`).catch(() => {});
     } catch (error) {
       console.warn("[Database] Failed to connect:", error);
       _db = null;
@@ -361,11 +363,18 @@ export async function deleteQuestionPaper(id: number) {
   await db.delete(questionPapers).where(eq(questionPapers.id, id));
 }
 
-export async function listUnitQuestions(targetClass?: string) {
+export async function listUnitQuestions(targetClass?: string, section?: string) {
   const db = await getDb();
   if (!db) return [];
-  if (targetClass) {
-    return db.select().from(unitQuestions).where(eq(unitQuestions.targetClass, targetClass)).orderBy(desc(unitQuestions.createdAt));
+  const conditions = [];
+  if (targetClass && targetClass !== "All classes" && targetClass !== "All") {
+    conditions.push(eq(unitQuestions.targetClass, targetClass));
+  }
+  if (section && section !== "All Sections" && section !== "All") {
+    conditions.push(or(eq(unitQuestions.section, section), eq(unitQuestions.section, "All Sections")));
+  }
+  if (conditions.length > 0) {
+    return db.select().from(unitQuestions).where(and(...conditions)).orderBy(desc(unitQuestions.createdAt));
   }
   return db.select().from(unitQuestions).orderBy(desc(unitQuestions.createdAt));
 }

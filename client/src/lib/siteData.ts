@@ -10,6 +10,7 @@ export type StudyMaterial = {
   id: string;
   title: string;
   subject: string;
+  section?: string;
   link: string;
   type: "paper" | "unit";
   targetClass?: string;

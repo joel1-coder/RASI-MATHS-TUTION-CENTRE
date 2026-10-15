@@ -127,6 +127,7 @@ export const unitQuestions = pgTable("unit_questions", {
   subject: varchar("subject", { length: 120 }).notNull(),
   link: text("link").notNull().default(""),
   targetClass: varchar("targetClass", { length: 120 }).notNull(),
+  section: varchar("section", { length: 50 }).default("All Sections"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().notNull(),
 });

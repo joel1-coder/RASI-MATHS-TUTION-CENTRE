@@ -472,6 +472,7 @@ function MaterialsView({ type, targetClass }: { type: "paper" | "unit"; targetCl
             id: String(item.id),
             title: item.title,
             subject: item.subject,
+            section: ("section" in item && item.section ? String(item.section) : undefined),
             link: item.link || "#",
             type,
             targetClass: item.targetClass || "Grade 10",
@@ -556,6 +557,11 @@ function MaterialsView({ type, targetClass }: { type: "paper" | "unit"; targetCl
                       <span className="rounded-md bg-[#e9f5ed] px-2 py-0.5 text-[10px] font-bold text-[#2e7d52]">
                         {item.targetClass || targetClass}
                       </span>
+                      {item.section && item.section !== "All Sections" && (
+                        <span className="rounded-md bg-[#fbf0ea] px-2 py-0.5 text-[10px] font-bold text-[#b25e29]">
+                          {item.section}
+                        </span>
+                      )}
                       {item.term && (
                         <span className="rounded-md bg-[#fdf2e9] px-2 py-0.5 text-[10px] font-semibold text-[#c25b28]">
                           {item.term}
@@ -2142,6 +2148,8 @@ Tamil Nadu Government,TN TRB PG Teacher,Post Graduation + B.Ed,150,110 / 150`;
                     <option value="All Sections">All Sections</option>
                     <option value="A">Section A</option>
                     <option value="B">Section B</option>
+                    <option value="C">Section C</option>
+                    <option value="D">Section D</option>
                   </select>
                 </label>
               </div>
@@ -4294,6 +4302,8 @@ function AdminUnitPaperManager() {
   const [customClass, setCustomClass] = useState("");
   const [subject, setSubject] = useState("Mathematics");
   const [customSubject, setCustomSubject] = useState("");
+  const [section, setSection] = useState("All Sections");
+  const [customSection, setCustomSection] = useState("");
   const [unitNumber, setUnitNumber] = useState("Unit 1");
   const [unitTitle, setUnitTitle] = useState("");
   const [weightage, setWeightage] = useState("20 Questions · 50 Marks");
@@ -4333,6 +4343,7 @@ function AdminUnitPaperManager() {
     e.preventDefault();
     const finalClass = targetClass === "Custom" ? customClass.trim() : targetClass;
     const finalSubject = subject === "Custom" ? customSubject.trim() : subject;
+    const finalSection = section === "Custom" ? customSection.trim() : section;
 
     if (!unitTitle.trim()) {
       showLocalToast("Please enter the unit title / questions topic.");
@@ -4354,6 +4365,7 @@ function AdminUnitPaperManager() {
       id: `uq-${Date.now()}`,
       title: `${unitNumber ? `${unitNumber}: ` : ""}${unitTitle.trim()}`,
       subject: finalSubject,
+      section: finalSection,
       link: finalLink,
       type: "unit",
       targetClass: finalClass,
@@ -4368,6 +4380,7 @@ function AdminUnitPaperManager() {
       await createMutation.mutateAsync({
         title: newUnit.title,
         subject: newUnit.subject,
+        section: newUnit.section || "All Sections",
         link: newUnit.link,
         targetClass: newUnit.targetClass || "All classes",
       });
@@ -4393,11 +4406,13 @@ function AdminUnitPaperManager() {
   const filteredUnits = unitPapers.filter(p =>
     p.title.toLowerCase().includes(searchFilter.toLowerCase()) ||
     p.subject.toLowerCase().includes(searchFilter.toLowerCase()) ||
-    (p.targetClass && p.targetClass.toLowerCase().includes(searchFilter.toLowerCase()))
+    (p.targetClass && p.targetClass.toLowerCase().includes(searchFilter.toLowerCase())) ||
+    (p.section && p.section.toLowerCase().includes(searchFilter.toLowerCase()))
   );
 
   const classOptions = ["Grade 10", "Grade 9", "Grade 11", "Grade 12", "All classes", ...departments.map(d => `${d}`), "Custom"];
   const subjectOptions = ["Mathematics", "Physics", "Chemistry", "Computer Science", "English", "Biology", "Custom"];
+  const sectionOptions = ["All Sections", "Section A", "Section B", "Section C", "Section D", "Custom"];
 
   return (
     <div className="space-y-8">
@@ -4431,7 +4446,7 @@ function AdminUnitPaperManager() {
         </div>
 
         <form onSubmit={handleDispatch} className="mt-6 space-y-6">
-          <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
             {/* Target Class */}
             <div>
               <label className="block text-xs font-bold uppercase tracking-[0.14em] text-[#4a3e5c]">
@@ -4479,6 +4494,32 @@ function AdminUnitPaperManager() {
                   value={customSubject}
                   onChange={e => setCustomSubject(e.target.value)}
                   placeholder="Enter custom subject"
+                  className="mt-2 w-full rounded-2xl border border-[#e4dce9] bg-white px-4 py-2.5 text-sm"
+                />
+              )}
+            </div>
+
+            {/* Section */}
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-[0.14em] text-[#4a3e5c]">
+                Section
+              </label>
+              <select
+                value={section}
+                onChange={e => setSection(e.target.value)}
+                className="mt-2 w-full rounded-2xl border border-[#e4dce9] bg-white px-4 py-3 text-sm text-[#2a203e] shadow-xs focus:border-[#6d4b9f] focus:outline-none"
+              >
+                {sectionOptions.map(sec => (
+                  <option key={sec} value={sec}>{sec}</option>
+                ))}
+              </select>
+              {section === "Custom" && (
+                <input
+                  type="text"
+                  required
+                  value={customSection}
+                  onChange={e => setCustomSection(e.target.value)}
+                  placeholder="Enter custom section"
                   className="mt-2 w-full rounded-2xl border border-[#e4dce9] bg-white px-4 py-2.5 text-sm"
                 />
               )}
@@ -4637,6 +4678,7 @@ function AdminUnitPaperManager() {
                   <th className="py-3 pl-2 pr-4">#</th>
                   <th className="py-3 px-4">Unit Title & Topic</th>
                   <th className="py-3 px-4">Subject</th>
+                  <th className="py-3 px-4">Section</th>
                   <th className="py-3 px-4">Target Class</th>
                   <th className="py-3 px-4">Weightage / Marks</th>
                   <th className="py-3 px-4">Status</th>
@@ -4663,6 +4705,11 @@ function AdminUnitPaperManager() {
                     <td className="py-3.5 px-4">
                       <span className="rounded-lg bg-[#f0eaf7] px-2.5 py-1 text-xs font-semibold text-[#5b3b92]">
                         {paper.subject}
+                      </span>
+                    </td>
+                    <td className="py-3.5 px-4">
+                      <span className="rounded-lg bg-[#fbf0ea] px-2.5 py-1 text-xs font-semibold text-[#b25e29]">
+                        {paper.section || "All Sections"}
                       </span>
                     </td>
                     <td className="py-3.5 px-4">

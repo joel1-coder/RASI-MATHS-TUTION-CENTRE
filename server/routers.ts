@@ -195,7 +195,13 @@ export const appRouter = router({
     createQuestionPaper: adminProcedure.input(z.object({ title: z.string().min(1), subject: z.string().min(1), link: z.string().min(1), targetClass: z.string().min(1) })).mutation(({ input }) => createQuestionPaper(input)),
     deleteQuestionPaper: adminProcedure.input(z.object({ id: z.number().int().positive() })).mutation(({ input }) => deleteQuestionPaper(input.id)),
     listQuestionPapers: adminProcedure.query(() => listQuestionPapers()),
-    createUnitQuestion: adminProcedure.input(z.object({ title: z.string().min(1), subject: z.string().min(1), link: z.string().min(1), targetClass: z.string().min(1) })).mutation(({ input }) => createUnitQuestion(input)),
+    createUnitQuestion: adminProcedure.input(z.object({
+      title: z.string().min(1),
+      subject: z.string().min(1),
+      link: z.string().min(1),
+      targetClass: z.string().min(1),
+      section: z.string().optional(),
+    })).mutation(({ input }) => createUnitQuestion(input)),
     deleteUnitQuestion: adminProcedure.input(z.object({ id: z.number().int().positive() })).mutation(({ input }) => deleteUnitQuestion(input.id)),
     listUnitQuestions: adminProcedure.query(() => listUnitQuestions()),
 
@@ -303,7 +309,7 @@ export const appRouter = router({
 
   materials: router({
     questionPapers: protectedProcedure.input(z.object({ targetClass: z.string().optional() })).query(({ input }) => listQuestionPapers(input.targetClass)),
-    unitQuestions: protectedProcedure.input(z.object({ targetClass: z.string().optional() })).query(({ input }) => listUnitQuestions(input.targetClass)),
+    unitQuestions: protectedProcedure.input(z.object({ targetClass: z.string().optional(), section: z.string().optional() })).query(({ input }) => listUnitQuestions(input.targetClass, input.section)),
   }),
 
   guidance: router({
