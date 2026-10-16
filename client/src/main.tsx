@@ -105,6 +105,7 @@ const trpcClient = trpc.createClient({
               const parsed = JSON.parse(localUserRaw);
               if (parsed.role) headersMap["x-demo-role"] = parsed.role;
               if (parsed.email) headersMap["x-demo-user"] = parsed.email;
+              if (parsed.name) headersMap["x-demo-name"] = encodeURIComponent(parsed.name);
               if (parsed.linkedStudentEmail) headersMap["x-linked-student"] = parsed.linkedStudentEmail;
             } catch {}
           } else if (pathRole) {

@@ -187,7 +187,7 @@ function RoleLoginPage({ role, onLogin, onBack }: { role: Role; onLogin: (user: 
         } catch {}
       }
 
-      // 1.5️⃣ Fallback check against stored students (supports immediate login for JOEL A & Arputha Philomin Raj)
+      // 1.5️⃣ Fallback check against stored students (supports immediate login for Aarav Patel, Kishore Patel, Meera Krishnan, JOEL A, etc.)
       if (!match) {
         const allStudents = loadStoredStudents();
         const found = allStudents.find(s =>
@@ -196,7 +196,10 @@ function RoleLoginPage({ role, onLogin, onBack }: { role: Role; onLogin: (user: 
           (s.parentEmail && s.parentEmail.toLowerCase() === emailKey)
         );
         if (found) {
-          if (role === "student" && (enteredPass === "stu@123" || enteredPass === "123456" || (found.email.toLowerCase() === emailKey && enteredPass === "stu@123"))) {
+          if (role === "student" && (
+            enteredPass === "stu@123" || enteredPass === "123456" || enteredPass === "aarav123" || enteredPass === "meera123" ||
+            (found.email.toLowerCase() === emailKey && enteredPass === "stu@123")
+          )) {
             match = {
               id: `local-stu-${found.studentId}`,
               name: found.name,
@@ -210,7 +213,10 @@ function RoleLoginPage({ role, onLogin, onBack }: { role: Role; onLogin: (user: 
               parentPhone: found.parentPhone,
               parentEmail: found.parentEmail,
             };
-          } else if (role === "parent" && (enteredPass === "parent@123" || enteredPass === "123456" || ((found.parentEmail?.toLowerCase() === emailKey || found.email.toLowerCase() === emailKey) && enteredPass === "parent@123"))) {
+          } else if (role === "parent" && (
+            enteredPass === "parent@123" || enteredPass === "123456" || enteredPass === "parent100" || enteredPass === "parent107" ||
+            ((found.parentEmail?.toLowerCase() === emailKey || found.email.toLowerCase() === emailKey) && (enteredPass === "parent@123" || enteredPass === "parent100" || enteredPass === "parent107"))
+          )) {
             match = {
               id: `local-par-${found.studentId}`,
               name: found.parentName || "Parent",
@@ -232,17 +238,20 @@ function RoleLoginPage({ role, onLogin, onBack }: { role: Role; onLogin: (user: 
         const studentRecord = allStudents.find(s =>
           s.email.toLowerCase() === match.email?.toLowerCase() ||
           (match.studentId && s.studentId.toLowerCase() === match.studentId.toLowerCase()) ||
-          (match.linkedStudentEmail && s.email.toLowerCase() === match.linkedStudentEmail.toLowerCase())
+          (match.linkedStudentEmail && s.email.toLowerCase() === match.linkedStudentEmail.toLowerCase()) ||
+          (match.role === "parent" && s.parentEmail && s.parentEmail.toLowerCase() === match.email?.toLowerCase())
         );
 
         const enrichedUser: User = {
           role: match.role as Role,
-          name: studentRecord && match.role === "student" ? studentRecord.name : match.name,
+          name: studentRecord && match.role === "student"
+            ? studentRecord.name
+            : (studentRecord && match.role === "parent" ? studentRecord.parentName : match.name),
           email: match.email,
           studentId: studentRecord?.studentId || match.studentId,
-          department: studentRecord?.department || match.department || "Grade 6",
+          department: studentRecord?.department || match.department || "Grade 10",
           section: studentRecord?.section || match.section || "A",
-          linkedStudentEmail: match.linkedStudentEmail || (match.role === "parent" ? (studentRecord?.email || "codejoe68333@gmail.com") : null),
+          linkedStudentEmail: match.linkedStudentEmail || (match.role === "parent" ? (studentRecord?.email || null) : null),
           parentName: studentRecord?.parentName || match.parentName,
           parentPhone: studentRecord?.parentPhone || match.parentPhone,
           parentEmail: studentRecord?.parentEmail || match.parentEmail,
@@ -298,13 +307,19 @@ function RoleLoginPage({ role, onLogin, onBack }: { role: Role; onLogin: (user: 
         (res.user.name && s.name.toLowerCase() === res.user.name.toLowerCase())
       );
 
+      if (res.user.role !== role) {
+        throw new Error(`This account has role "${res.user.role}", not "${role}". Please log in through the ${res.user.role} portal.`);
+      }
+
       const userObj: User = {
         role: res.user.role as Role,
-        name: (res.user.name && res.user.name !== "Portal User") ? res.user.name : (studentRecord && res.user.role === "student" ? studentRecord.name : res.user.name),
+        name: (res.user.name && res.user.name !== "Portal User")
+          ? res.user.name
+          : (studentRecord && res.user.role === "student" ? studentRecord.name : (studentRecord && res.user.role === "parent" && studentRecord.parentName ? studentRecord.parentName : (res.user.name || "Portal User"))),
         email: res.user.email!,
-        linkedStudentEmail: res.user.linkedStudentEmail || (res.user.role === "parent" ? (studentRecord?.email || "codejoe68333@gmail.com") : null),
+        linkedStudentEmail: res.user.linkedStudentEmail || (res.user.role === "parent" ? (studentRecord?.email || null) : null),
         studentId: studentRecord?.studentId,
-        department: studentRecord?.department || "Grade 6",
+        department: studentRecord?.department || "Grade 10",
         section: studentRecord?.section || "A",
         parentName: studentRecord?.parentName,
         parentPhone: studentRecord?.parentPhone,
@@ -959,16 +974,19 @@ const parentNav = ["Overview", "Attendance", "Mark statements", "Question paper"
 function ParentWorkspace({ user, onLogout }: { user: User; onLogout: () => void }) {
   const [active, setActive] = useState("Overview");
   const [showLinked, setShowLinked] = useState(true);
-  // Dynamically resolve linked student — use linkedStudentEmail, then parentEmail match, then student email match
+  // Dynamically resolve linked student — use linkedStudentEmail, then studentId, then parentEmail match, then student email match
   const allParentStudents = loadStoredStudents();
-  const linkedStudentEmail = user.linkedStudentEmail || user.email;
+  const linkedKey = (user.linkedStudentEmail || "").trim().toLowerCase();
+  const userEmailKey = (user.email || "").trim().toLowerCase();
   const linkedStudent = allParentStudents.find(s =>
-    s.email.toLowerCase() === linkedStudentEmail.toLowerCase() ||
-    (s.parentEmail && s.parentEmail.toLowerCase() === user.email.toLowerCase())
+    (linkedKey && s.email.toLowerCase() === linkedKey) ||
+    (linkedKey && s.studentId.toLowerCase() === linkedKey) ||
+    (userEmailKey && s.parentEmail && s.parentEmail.toLowerCase() === userEmailKey) ||
+    (userEmailKey && s.email.toLowerCase() === userEmailKey)
   ) || null;
-  const child = linkedStudent?.name || user.name;
-  const childEmail = linkedStudent?.email || linkedStudentEmail;
-  const childDept = linkedStudent?.department || user.department || "Grade 6";
+  const child = linkedStudent?.name || (user.linkedStudentEmail && user.linkedStudentEmail !== user.email ? user.linkedStudentEmail : "Your Child");
+  const childEmail = linkedStudent?.email || (user.linkedStudentEmail && user.linkedStudentEmail.includes("@") ? user.linkedStudentEmail : user.email);
+  const childDept = linkedStudent?.department || user.department || "Grade 10";
   const childSection = linkedStudent?.section || user.section || "A";
   const attendanceQuery = trpc.student.attendance.useQuery({ studentEmail: childEmail });
   const liveAttendance = attendanceQuery.data ?? [];
@@ -1157,7 +1175,8 @@ export const INITIAL_STUDENTS: ManagedStudent[] = [
   // Grade 6 Section C
   { id: "stu-g6-c", studentId: "6C001", name: "Siddharth R.", parentName: "Raghavan M.", parentPhone: "+91 98401 23457", email: "siddharth.r@portal.com", parentEmail: "raghavan.m@portal.com", department: "Grade 6", section: "C", status: "active", joinedDate: "2026-06-01" },
   // Grade 10 Section A
-  { id: "stu-1",  studentId: "10A001", name: "Ananya Sharma",   parentName: "Ramesh Sharma",     parentPhone: "+91 98765 43210", email: "student@portal.com", parentEmail: "ramesh.sharma@portal.com", department: "Grade 10", section: "A",            status: "active",   joinedDate: "2026-01-15" },
+  { id: "stu-23cs201", studentId: "23CS201", name: "Aarav Patel", parentName: "Kishore Patel", parentPhone: "+91 98401 12301", email: "aarav.p@portal.com", parentEmail: "kishore.patel@gmail.com", department: "Grade 10", section: "A", status: "active", joinedDate: "2026-01-10" },
+  { id: "stu-23cs202", studentId: "23CS202", name: "Meera Krishnan", parentName: "Krishnan S.", parentPhone: "+91 98401 12302", email: "meera.k@portal.com", parentEmail: "krishnan.s@gmail.com", department: "Grade 10", section: "A", status: "active", joinedDate: "2026-01-10" },
   { id: "stu-2",  studentId: "10A002", name: "Rohit Verma",      parentName: "Sunil Verma",       parentPhone: "+91 98765 43211", email: "rohit.verma@portal.com",   department: "Grade 10", section: "A",            status: "active",   joinedDate: "2026-01-20" },
   { id: "stu-3",  studentId: "10A003", name: "Kavitha Rajan",    parentName: "Rajan S.",          parentPhone: "+91 98765 43212", email: "kavitha.r@portal.com",    department: "Grade 10", section: "A",            status: "active",   joinedDate: "2026-01-22" },
   { id: "stu-4",  studentId: "10A004", name: "Arun Selvam",      parentName: "Selvam K.",         parentPhone: "+91 98765 43213", email: "arun.s@portal.com",       department: "Grade 10", section: "A",            status: "active",   joinedDate: "2026-01-25" },
@@ -7149,8 +7168,11 @@ export default function Home() {
   const secureUser = tabHasSession && auth.user && ["admin", "student", "parent", "teacher"].includes(auth.user.role)
     ? { role: auth.user.role as Role, name: auth.user.name ?? auth.user.email ?? "Portal user", email: auth.user.email ?? "" }
     : null;
-  // If pathRole is specified and secureUser does not match, ignore secureUser from cross-tab cookie
-  const currentUser = (secureUser && (!pathRole || secureUser.role === pathRole)) ? secureUser : user;
+
+  // Active user priority:
+  // 1. Explicit user state in this tab (from recent login or tab-scoped sessionStorage)
+  // 2. Cookie session (ONLY if pathRole matches or no explicit tab user was set)
+  const currentUser = user || (tabHasSession && secureUser && (!pathRole || secureUser.role === pathRole) ? secureUser : null);
 
   const logout = () => {
     if (secureUser) void auth.logout();
