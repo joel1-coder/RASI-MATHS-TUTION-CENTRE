@@ -3,7 +3,7 @@ import { toast } from "sonner";
 import Portfolio from "./Portfolio";
 import { startLogin } from "@/const";
 import { useAuth } from "@/_core/hooks/useAuth";
-import { AlertCircle, ArrowRight, ArrowUpRight, BarChart3, BookOpen, Building2, CalendarDays, Check, CheckCircle2, ChevronRight, ClipboardCheck, Clock3, Copy, Download, Edit3, FileCheck, FileSpreadsheet, FileText, FileUp, Filter, FolderPlus, GraduationCap, LayoutDashboard, Loader2, LogOut, Menu, MessageCircle, NotebookPen, Phone, Plus, Search, Send, ShieldCheck, Sparkles, Trash2, Upload, UploadCloud, User as UserIcon, UserCheck, UserPlus, Users, X } from "lucide-react";
+import { AlertCircle, ArrowRight, ArrowUpRight, BarChart3, BookOpen, Building2, CalendarDays, Check, CheckCircle2, ChevronRight, ClipboardCheck, Clock3, Copy, Download, Edit3, Eye, EyeOff, FileCheck, FileSpreadsheet, FileText, FileUp, Filter, FolderPlus, GraduationCap, LayoutDashboard, Loader2, LogOut, Menu, MessageCircle, NotebookPen, Phone, Plus, Search, Send, ShieldCheck, Sparkles, Trash2, Upload, UploadCloud, User as UserIcon, UserCheck, UserPlus, Users, X } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { parseAttendanceCsv, summarizeAttendance } from "@shared/portalData";
 import { COOKIE_NAME } from "@shared/const";
@@ -1108,6 +1108,8 @@ export interface ManagedStudent {
   section: string;
   status: "active" | "inactive";
   joinedDate: string;
+  studentPassword?: string;
+  parentPassword?: string;
 }
 
 export interface SectionItem {
@@ -1203,22 +1205,28 @@ export const loadStoredStudents = (): ManagedStudent[] => {
   try {
     const saved = localStorage.getItem("rasi_v2_admin_students");
     let parsed: ManagedStudent[] = saved ? JSON.parse(saved) : [...INITIAL_STUDENTS];
-    // Always guarantee pre-seeded students like JOEL A exist if not already present
-    for (const init of INITIAL_STUDENTS) {
-      if (!parsed.some(s => s.studentId.toLowerCase() === init.studentId.toLowerCase() || (s.email.toLowerCase() === init.email.toLowerCase() && s.department === init.department))) {
-        parsed.unshift(init);
-      }
+    // Read deleted IDs so deleted students never resurrect
+    let deletedIds: string[] = [];
+    try {
+      deletedIds = JSON.parse(localStorage.getItem("rasi_deleted_student_ids") || "[]");
+    } catch {}
+    parsed = parsed.filter(s => !deletedIds.includes(s.studentId.toLowerCase()));
+
+    // Ensure default account JOEL A is preserved if not intentionally deleted
+    const joel = INITIAL_STUDENTS.find(s => s.studentId === "24UCS1118");
+    if (joel && !deletedIds.includes("24ucs1118") && !parsed.some(s => s.studentId.toLowerCase() === "24ucs1118")) {
+      parsed.unshift(joel);
     }
     return parsed.map(s => {
       const initial = INITIAL_STUDENTS.find(init => init.studentId.toLowerCase() === s.studentId.toLowerCase());
-      if (initial && initial.studentId.toLowerCase() === "24ucs1118") {
-        return {
-          ...s,
-          ...initial,
-        };
+      let resolvedName = s.name;
+      // Clean up cases where name was accidentally saved as studentId (e.g. 23CS201)
+      if (initial && (s.name === s.studentId || s.name.startsWith("23CS") || s.name.startsWith("10A") || s.name.startsWith("6C"))) {
+        resolvedName = initial.name;
       }
       return {
         ...s,
+        name: resolvedName,
         parentName: s.parentName || initial?.parentName || "Parent",
         parentPhone: s.parentPhone || initial?.parentPhone || "+91 98401 23450",
         parentEmail: s.parentEmail || initial?.parentEmail || "",
@@ -2282,6 +2290,9 @@ function AdminStudentManager() {
 
   const [students, setStudents] = useState<ManagedStudent[]>(loadStoredStudents);
   const bulkCreateLoginsMutation = trpc.admin.bulkCreateStudentLogins.useMutation();
+  const { data: dbPortalUsers = [] } = trpc.admin.listPortalUsers.useQuery({});
+  const deletePortalUserMutation = trpc.admin.deletePortalUser.useMutation();
+  const deletePortalUsersBatchMutation = trpc.admin.deletePortalUsersBatch.useMutation();
 
   // Save changes to localStorage
   useEffect(() => {
@@ -2325,7 +2336,12 @@ function AdminStudentManager() {
   // Search & Filter state
   const [searchQuery, setSearchQuery] = useState("");
   const [deptFilter, setDeptFilter] = useState("All");
+  const [sectionFilter, setSectionFilter] = useState("All");
   const [statusFilter, setStatusFilter] = useState("All");
+  const [showPasswords, setShowPasswords] = useState(false);
+  const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>([]);
+  const [studentToDelete, setStudentToDelete] = useState<ManagedStudent | null>(null);
+  const [isBulkDeleting, setIsBulkDeleting] = useState(false);
 
   // Edit Student Modal state
   const [editingStudent, setEditingStudent] = useState<ManagedStudent | null>(null);
@@ -2404,6 +2420,8 @@ function AdminStudentManager() {
       section: singleStudent.section.trim() || "A",
       status: "active",
       joinedDate: new Date().toISOString().slice(0, 10),
+      studentPassword: enteredStudentPassword,
+      parentPassword: enteredParentPassword || undefined,
     };
     setStudents([newStudent, ...students]);
 
@@ -2569,6 +2587,8 @@ function AdminStudentManager() {
           section: ssec,
           status: "active",
           joinedDate: new Date().toISOString().slice(0, 10),
+          studentPassword: parsedStudentPassword,
+          parentPassword: parsedParentPassword || undefined,
         });
         bulkLoginPayload.push({
           studentId: sid,
@@ -2640,11 +2660,181 @@ function AdminStudentManager() {
     }
   };
 
-  // Delete Student
-  const handleDeleteStudent = (id: string, name: string) => {
-    if (confirm(`Are you sure you want to delete student "${name}"?`)) {
-      setStudents(students.filter(s => s.id !== id));
-      showToast(`Student "${name}" deleted.`);
+  // Helper to extract student password for display
+  const getStudentPassword = (s: ManagedStudent): string => {
+    if (s.studentPassword) return s.studentPassword;
+    const match = (dbPortalUsers as any[]).find(u => 
+      u.email?.toLowerCase() === s.email.toLowerCase() || 
+      (s.studentId && u.email?.toLowerCase() === s.studentId.toLowerCase())
+    );
+    if (match?.portalPassword) return match.portalPassword;
+    try {
+      const raw = localStorage.getItem("rasi_user_accounts") || "[]";
+      const arr = JSON.parse(raw);
+      const acc = arr.find((a: any) => 
+        a.email?.toLowerCase() === s.email.toLowerCase() || 
+        (s.studentId && (a.email?.toLowerCase() === s.studentId.toLowerCase() || a.studentId?.toLowerCase() === s.studentId.toLowerCase()))
+      );
+      if (acc?.password) return acc.password;
+    } catch {}
+    return "123456";
+  };
+
+  // Helper to extract parent password for display
+  const getParentPassword = (s: ManagedStudent): string => {
+    if (s.parentPassword) return s.parentPassword;
+    if (s.parentEmail) {
+      const match = (dbPortalUsers as any[]).find(u => 
+        u.email?.toLowerCase() === s.parentEmail?.toLowerCase() ||
+        (u.role === "parent" && u.linkedStudentEmail?.toLowerCase() === s.email.toLowerCase())
+      );
+      if (match?.portalPassword) return match.portalPassword;
+      try {
+        const raw = localStorage.getItem("rasi_user_accounts") || "[]";
+        const arr = JSON.parse(raw);
+        const acc = arr.find((a: any) => a.email?.toLowerCase() === s.parentEmail?.toLowerCase());
+        if (acc?.password) return acc.password;
+      } catch {}
+    }
+    return s.parentEmail ? "123456" : "—";
+  };
+
+  // Available sections dynamically derived from configured sections and student records
+  const availableSections = useMemo(() => {
+    const secSet = new Set<string>();
+    if (deptFilter === "All") {
+      sections.forEach(s => secSet.add(s.name));
+      students.forEach(s => s.section && secSet.add(s.section));
+    } else {
+      sections.filter(s => s.department === deptFilter).forEach(s => secSet.add(s.name));
+      students.filter(s => s.department === deptFilter).forEach(s => s.section && secSet.add(s.section));
+    }
+    if (secSet.size === 0) {
+      ["A", "B", "C"].forEach(s => secSet.add(s));
+    }
+    return Array.from(secSet).sort();
+  }, [deptFilter, sections, students]);
+
+  // Comprehensive Student Filtering
+  const filteredStudents = useMemo(() => {
+    return students.filter(s => {
+      const q = searchQuery.toLowerCase().trim();
+      const matchesSearch = !q ||
+        s.name.toLowerCase().includes(q) ||
+        s.studentId.toLowerCase().includes(q) ||
+        s.email.toLowerCase().includes(q) ||
+        s.department.toLowerCase().includes(q) ||
+        (s.section && s.section.toLowerCase().includes(q)) ||
+        (s.parentName && s.parentName.toLowerCase().includes(q)) ||
+        (s.parentPhone && s.parentPhone.toLowerCase().includes(q)) ||
+        (s.parentEmail && s.parentEmail.toLowerCase().includes(q));
+      const matchesDept = deptFilter === "All" || s.department === deptFilter;
+      const matchesSection = sectionFilter === "All" || s.section.toLowerCase() === sectionFilter.toLowerCase();
+      const matchesStatus = statusFilter === "All" || s.status === statusFilter;
+      return matchesSearch && matchesDept && matchesSection && matchesStatus;
+    });
+  }, [students, searchQuery, deptFilter, sectionFilter, statusFilter]);
+
+  // Execute Deletion of students from state, localStorage, and Supabase DB
+  const executeDeleteStudents = async (targetStudents: ManagedStudent[]) => {
+    if (targetStudents.length === 0) return;
+    setIsBulkDeleting(true);
+    const targetIds = new Set(targetStudents.map(s => s.id));
+    const targetEmailsToDelete: string[] = [];
+    
+    targetStudents.forEach(s => {
+      if (s.email) targetEmailsToDelete.push(s.email);
+      if (s.studentId && s.studentId.toLowerCase() !== s.email.toLowerCase()) {
+        targetEmailsToDelete.push(s.studentId);
+      }
+      if (s.parentEmail) targetEmailsToDelete.push(s.parentEmail);
+    });
+
+    // 1. Update React state
+    setStudents(prev => prev.filter(s => !targetIds.has(s.id)));
+    setSelectedStudentIds(prev => prev.filter(id => !targetIds.has(id)));
+
+    // 2. Track deleted student IDs in localStorage so they never reappear
+    try {
+      const deleted: string[] = JSON.parse(localStorage.getItem("rasi_deleted_student_ids") || "[]");
+      targetStudents.forEach(s => {
+        if (!deleted.includes(s.studentId.toLowerCase())) {
+          deleted.push(s.studentId.toLowerCase());
+        }
+      });
+      localStorage.setItem("rasi_deleted_student_ids", JSON.stringify(deleted));
+    } catch {}
+
+    // 3. Remove from localStorage rasi_user_accounts cache
+    try {
+      const raw = localStorage.getItem("rasi_user_accounts") || "[]";
+      const accounts: any[] = JSON.parse(raw);
+      const deleteEmailSet = new Set(targetEmailsToDelete.map(e => e.toLowerCase()));
+      const remaining = accounts.filter((a: any) => {
+        const email = a.email?.toLowerCase();
+        const stuId = a.studentId?.toLowerCase();
+        const linked = a.linkedStudentEmail?.toLowerCase();
+        if (email && deleteEmailSet.has(email)) return false;
+        if (stuId && deleteEmailSet.has(stuId)) return false;
+        if (linked && deleteEmailSet.has(linked)) return false;
+        return true;
+      });
+      localStorage.setItem("rasi_user_accounts", JSON.stringify(remaining));
+    } catch {}
+
+    // 4. Delete from backend DB via TRPC
+    try {
+      if (deletePortalUsersBatchMutation) {
+        await deletePortalUsersBatchMutation.mutateAsync({ emails: targetEmailsToDelete });
+      } else {
+        for (const em of targetEmailsToDelete) {
+          await deletePortalUserMutation.mutateAsync({ email: em });
+        }
+      }
+      showToast(`Successfully deleted ${targetStudents.length} student(s) and their DB portal credentials ✓`);
+    } catch (err: any) {
+      showToast(`Deleted ${targetStudents.length} student(s) locally. DB note: ${err?.message || "Saved"}`);
+    } finally {
+      setIsBulkDeleting(false);
+      setStudentToDelete(null);
+    }
+  };
+
+  // Single Student Delete trigger
+  const handleDeleteStudent = (student: ManagedStudent) => {
+    setStudentToDelete(student);
+  };
+
+  // Toggle selection for bulk deletion
+  const handleToggleSelectAll = () => {
+    if (selectedStudentIds.length === filteredStudents.length && filteredStudents.length > 0) {
+      setSelectedStudentIds([]);
+    } else {
+      setSelectedStudentIds(filteredStudents.map(s => s.id));
+    }
+  };
+
+  const handleToggleSelectStudent = (id: string) => {
+    setSelectedStudentIds(prev => 
+      prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id]
+    );
+  };
+
+  // Bulk Delete Selected
+  const handleDeleteSelected = () => {
+    const selected = students.filter(s => selectedStudentIds.includes(s.id));
+    if (selected.length === 0) return;
+    if (confirm(`Are you sure you want to permanently delete ${selected.length} selected student(s) from the registry and DB?`)) {
+      executeDeleteStudents(selected);
+    }
+  };
+
+  // Bulk Delete All in Filtered Department & Section
+  const handleDeleteAllFiltered = () => {
+    if (filteredStudents.length === 0) return;
+    const desc = `${deptFilter !== "All" ? deptFilter : "All Departments"} ${sectionFilter !== "All" ? `(Section ${sectionFilter})` : ""}`;
+    if (confirm(`DANGER: Are you sure you want to delete ALL ${filteredStudents.length} students in ${desc} from the database? This action cannot be undone.`)) {
+      executeDeleteStudents(filteredStudents);
     }
   };
 
@@ -2658,22 +2848,42 @@ function AdminStudentManager() {
     e.preventDefault();
     if (!editingStudent) return;
     setStudents(students.map(s => s.id === editingStudent.id ? editingStudent : s));
+    
+    // Also sync updated credentials to localStorage rasi_user_accounts
+    try {
+      const raw = localStorage.getItem("rasi_user_accounts") || "[]";
+      const accounts: any[] = JSON.parse(raw);
+      const stuPass = editingStudent.studentPassword || getStudentPassword(editingStudent);
+      const parPass = editingStudent.parentPassword || getParentPassword(editingStudent);
+      const filtered = accounts.filter((a: any) => 
+        a.email?.toLowerCase() !== editingStudent.email.toLowerCase() &&
+        a.studentId?.toLowerCase() !== editingStudent.studentId.toLowerCase() &&
+        (!editingStudent.parentEmail || a.email?.toLowerCase() !== editingStudent.parentEmail.toLowerCase())
+      );
+      filtered.push({
+        id: `local-stu-${Date.now()}`,
+        name: editingStudent.name,
+        email: editingStudent.email,
+        studentId: editingStudent.studentId,
+        password: stuPass,
+        role: "student",
+      });
+      if (editingStudent.parentEmail && parPass && parPass !== "—") {
+        filtered.push({
+          id: `local-par-${Date.now()}`,
+          name: editingStudent.parentName || "Parent",
+          email: editingStudent.parentEmail,
+          password: parPass,
+          role: "parent",
+          linkedStudentEmail: editingStudent.email,
+        });
+      }
+      localStorage.setItem("rasi_user_accounts", JSON.stringify(filtered));
+    } catch {}
+
     setEditingStudent(null);
     showToast(`Updated details for "${editingStudent.name}".`);
   };
-
-  // Filtered Students
-  const filteredStudents = useMemo(() => {
-    return students.filter(s => {
-      const matchesSearch = s.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        s.studentId.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        s.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        s.department.toLowerCase().includes(searchQuery.toLowerCase());
-      const matchesDept = deptFilter === "All" || s.department === deptFilter;
-      const matchesStatus = statusFilter === "All" || s.status === statusFilter;
-      return matchesSearch && matchesDept && matchesStatus;
-    });
-  }, [students, searchQuery, deptFilter, statusFilter]);
 
   const activeCount = students.filter(s => s.status === "active").length;
 
@@ -3036,175 +3246,443 @@ function AdminStudentManager() {
         )}
       </div>
 
-      {/* 5. Registered Students Directory (CRUD Table) */}
+      {/* 5. Delete Student & Database Registry (CRUD & Deletion Hub) */}
       <div className="rounded-3xl border border-[#eee6f0] bg-white p-6 shadow-sm">
+        {/* Header with Title, Count, Passwords Toggle & Export */}
         <div className="flex flex-wrap items-center justify-between gap-4 border-b border-[#f0e8f4] pb-4">
           <div>
-            <h2 className="text-lg font-bold text-[#2a203e]">
-              Enrolled Students Registry ({filteredStudents.length})
-            </h2>
-            <p className="mt-0.5 text-xs text-[#81758e]">
-              Search, filter, update details, or remove enrolled students.
+            <div className="flex items-center gap-2">
+              <span className="grid h-8 w-8 place-items-center rounded-xl bg-[#fcedec] text-[#d32f2f] shadow-2xs">
+                <Trash2 size={17} />
+              </span>
+              <h2 className="text-lg font-bold text-[#2a203e]">
+                Delete Student & Database Registry ({filteredStudents.length})
+              </h2>
+            </div>
+            <p className="mt-1 text-xs text-[#81758e]">
+              Filter by Department and Section to view full student database credentials, CSV details, and delete students one-by-one or in batches.
             </p>
           </div>
 
-          {/* Search & Filters & Export */}
           <div className="flex flex-wrap items-center gap-2.5">
+            <button
+              type="button"
+              onClick={() => setShowPasswords(!showPasswords)}
+              className="inline-flex items-center gap-1.5 rounded-xl border border-[#d8cfe0] bg-[#faf7fc] px-3.5 py-1.5 text-xs font-semibold text-[#5b3b92] shadow-2xs transition hover:bg-[#f2eaf7]"
+              title="Toggle DB passwords visibility"
+            >
+              {showPasswords ? <EyeOff size={14} /> : <Eye size={14} />}
+              {showPasswords ? "Hide Passwords" : "Show DB Passwords"}
+            </button>
+
             <button
               type="button"
               onClick={() => {
                 exportToCsv("enrolled_students.csv", [
-                  "Student ID", "Student Name", "Parent Name", "Parent Phone", "Email", "Department", "Section", "Status", "Joined Date"
+                  "Student ID", "Student Name", "Student Password", "Parent Name", "Parent Phone", "Parent Email", "Parent Password", "Email", "Department", "Section", "Status", "Joined Date"
                 ], filteredStudents.map(s => [
-                  s.studentId, s.name, s.parentName || "", s.parentPhone || "", s.email, s.department, s.section, s.status, s.joinedDate
+                  s.studentId, s.name, getStudentPassword(s), s.parentName || "", s.parentPhone || "", s.parentEmail || "", getParentPassword(s), s.email, s.department, s.section, s.status, s.joinedDate
                 ]));
                 showToast("Exported enrolled students to CSV!");
               }}
-              className="inline-flex items-center gap-1.5 rounded-xl border border-[#d8cfe0] bg-[#faf7fc] px-3.5 py-1.5 text-xs font-semibold text-[#5b3b92] shadow-2xs hover:bg-[#f2eaf7]"
+              className="inline-flex items-center gap-1.5 rounded-xl border border-[#d8cfe0] bg-[#faf7fc] px-3.5 py-1.5 text-xs font-semibold text-[#5b3b92] shadow-2xs transition hover:bg-[#f2eaf7]"
               title="Export enrolled students to Excel/CSV"
             >
               <FileSpreadsheet size={14} className="text-[#107c41]" />
               Export CSV
             </button>
-
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[#a397ad]" size={14} />
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={e => setSearchQuery(e.target.value)}
-                placeholder="Search ID, name, email…"
-                className="w-48 rounded-xl border border-[#e4dce9] bg-white py-1.5 pl-8 pr-3 text-xs focus:border-[#5b3b92] focus:outline-none sm:w-60"
-              />
-            </div>
-
-            <select
-              value={deptFilter}
-              onChange={e => setDeptFilter(e.target.value)}
-              className="rounded-xl border border-[#e4dce9] bg-white px-3 py-1.5 text-xs text-[#524466] focus:outline-none"
-            >
-              <option value="All">All Departments</option>
-              {departments.map(d => (
-                <option key={d} value={d}>{d}</option>
-              ))}
-            </select>
-
-            <select
-              value={statusFilter}
-              onChange={e => setStatusFilter(e.target.value)}
-              className="rounded-xl border border-[#e4dce9] bg-white px-3 py-1.5 text-xs text-[#524466] focus:outline-none"
-            >
-              <option value="All">All Status</option>
-              <option value="active">Active</option>
-              <option value="inactive">Inactive</option>
-            </select>
           </div>
         </div>
 
-        {/* Table View */}
+        {/* Department, Section, Status & Search Filters Bar */}
+        <div className="mt-4 rounded-2xl border border-[#efe7f3] bg-[#faf7fc] p-4">
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            {/* 1. Department Filter */}
+            <div>
+              <label className="mb-1 block text-[11px] font-bold uppercase tracking-[0.08em] text-[#6d5d80]">
+                1. Department
+              </label>
+              <select
+                value={deptFilter}
+                onChange={e => {
+                  setDeptFilter(e.target.value);
+                  setSectionFilter("All");
+                }}
+                className="w-full rounded-xl border border-[#e4dce9] bg-white px-3.5 py-2 text-xs font-medium text-[#4a3e5c] shadow-2xs focus:border-[#5b3b92] focus:outline-none"
+              >
+                <option value="All">All Departments</option>
+                {departments.map(d => (
+                  <option key={d} value={d}>{d}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* 2. Section Filter */}
+            <div>
+              <label className="mb-1 block text-[11px] font-bold uppercase tracking-[0.08em] text-[#6d5d80]">
+                2. Section
+              </label>
+              <select
+                value={sectionFilter}
+                onChange={e => setSectionFilter(e.target.value)}
+                className="w-full rounded-xl border border-[#e4dce9] bg-white px-3.5 py-2 text-xs font-medium text-[#4a3e5c] shadow-2xs focus:border-[#5b3b92] focus:outline-none"
+              >
+                <option value="All">All Sections</option>
+                {availableSections.map(sec => (
+                  <option key={sec} value={sec}>Section {sec}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* 3. Status Filter */}
+            <div>
+              <label className="mb-1 block text-[11px] font-bold uppercase tracking-[0.08em] text-[#6d5d80]">
+                3. Status
+              </label>
+              <select
+                value={statusFilter}
+                onChange={e => setStatusFilter(e.target.value)}
+                className="w-full rounded-xl border border-[#e4dce9] bg-white px-3.5 py-2 text-xs font-medium text-[#4a3e5c] shadow-2xs focus:border-[#5b3b92] focus:outline-none"
+              >
+                <option value="All">All Status</option>
+                <option value="active">Active</option>
+                <option value="inactive">Inactive</option>
+              </select>
+            </div>
+
+            {/* 4. Search Filter */}
+            <div>
+              <label className="mb-1 block text-[11px] font-bold uppercase tracking-[0.08em] text-[#6d5d80]">
+                4. Search Details
+              </label>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[#a397ad]" size={14} />
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={e => setSearchQuery(e.target.value)}
+                  placeholder="ID, name, email, parent..."
+                  className="w-full rounded-xl border border-[#e4dce9] bg-white py-2 pl-8 pr-3 text-xs focus:border-[#5b3b92] focus:outline-none"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Active Filter Indicators & Batch Deletion Controls */}
+          <div className="mt-3.5 flex flex-wrap items-center justify-between gap-3 border-t border-[#eee5f3] pt-3 text-xs">
+            <div className="flex flex-wrap items-center gap-2 text-[#71647f]">
+              <span>Matching students: <strong className="text-[#2a203e]">{filteredStudents.length}</strong></span>
+              {deptFilter !== "All" && (
+                <span className="rounded-md bg-[#eee6f4] px-2 py-0.5 text-[11px] font-bold text-[#5b3b92]">
+                  🏛️ {deptFilter}
+                </span>
+              )}
+              {sectionFilter !== "All" && (
+                <span className="rounded-md bg-[#fdf2ea] px-2 py-0.5 text-[11px] font-bold text-[#ef8656]">
+                  📁 Section {sectionFilter}
+                </span>
+              )}
+              {selectedStudentIds.length > 0 && (
+                <span className="ml-1 font-bold text-[#b83232]">
+                  ({selectedStudentIds.length} selected for deletion)
+                </span>
+              )}
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2">
+              {selectedStudentIds.length > 0 && (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedStudentIds([])}
+                    className="rounded-xl border border-[#e4dce9] bg-white px-3 py-1.5 text-xs font-semibold text-[#71647f] hover:bg-[#f6f2f9]"
+                  >
+                    Clear Selection
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleDeleteSelected}
+                    disabled={isBulkDeleting}
+                    className="inline-flex items-center gap-1.5 rounded-xl bg-[#b83232] px-3.5 py-1.5 text-xs font-bold text-white shadow-sm hover:bg-[#992222] disabled:opacity-50"
+                  >
+                    <Trash2 size={13} />
+                    Delete Selected ({selectedStudentIds.length})
+                  </button>
+                </>
+              )}
+
+              {deptFilter !== "All" && sectionFilter !== "All" && filteredStudents.length > 0 && (
+                <button
+                  type="button"
+                  onClick={handleDeleteAllFiltered}
+                  disabled={isBulkDeleting}
+                  className="inline-flex items-center gap-1.5 rounded-xl border border-[#e8b5b5] bg-[#fff5f5] px-3.5 py-1.5 text-xs font-bold text-[#b83232] shadow-2xs hover:bg-[#ffebee] disabled:opacity-50"
+                  title={`Delete all students in ${deptFilter} Section ${sectionFilter}`}
+                >
+                  <Trash2 size={13} />
+                  Delete All in {deptFilter} - Sec {sectionFilter} ({filteredStudents.length})
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Database Format Table View */}
         {filteredStudents.length === 0 ? (
           <div className="py-12 text-center">
             <Users className="mx-auto text-[#c4b8d1]" size={36} />
-            <p className="mt-3 text-sm font-semibold text-[#524466]">No students found</p>
+            <p className="mt-3 text-sm font-semibold text-[#524466]">No students match your filter criteria</p>
             <p className="mt-1 text-xs text-[#9a8ea4]">
-              Try adjusting your search query or add a new student using the form above.
+              {deptFilter !== "All" || sectionFilter !== "All"
+                ? `No students found under ${deptFilter} ${sectionFilter !== "All" ? `(Section ${sectionFilter})` : ""}. Try selecting "All Sections" or adding students above.`
+                : "Try adjusting your search query or department filter."}
             </p>
           </div>
         ) : (
           <div className="mt-4 overflow-x-auto">
-            <table className="w-full text-left text-xs">
+            <table className="w-full text-left text-xs whitespace-nowrap">
               <thead>
-                <tr className="border-b border-[#f0e8f4] text-[11px] font-bold uppercase tracking-[0.1em] text-[#8d8197]">
-                  <th className="py-3 pl-2 pr-4">Student ID</th>
-                  <th className="py-3 px-4">Student Info</th>
-                  <th className="py-3 px-4">Parent Info</th>
-                  <th className="py-3 px-4">Department</th>
-                  <th className="py-3 px-4">Section</th>
-                  <th className="py-3 px-4">Status</th>
-                  <th className="py-3 px-4">Joined</th>
-                  <th className="py-3 pr-2 pl-4 text-right">Actions</th>
+                <tr className="border-b border-[#f0e8f4] text-[11px] font-bold uppercase tracking-[0.08em] text-[#8d8197] bg-[#fdfbfc]">
+                  <th className="py-3 pl-3 pr-2 w-8">
+                    <input
+                      type="checkbox"
+                      checked={selectedStudentIds.length === filteredStudents.length && filteredStudents.length > 0}
+                      onChange={handleToggleSelectAll}
+                      className="rounded border-[#d8cfe0] text-[#5b3b92] focus:ring-[#5b3b92]"
+                      title="Select all matching students"
+                    />
+                  </th>
+                  <th className="py-3 px-3">Student ID</th>
+                  <th className="py-3 px-3">Student Name</th>
+                  <th className="py-3 px-3">Student Email (Login)</th>
+                  <th className="py-3 px-3">Student Password</th>
+                  <th className="py-3 px-3">Parent Name</th>
+                  <th className="py-3 px-3">Parent Phone</th>
+                  <th className="py-3 px-3">Parent Email</th>
+                  <th className="py-3 px-3">Parent Password</th>
+                  <th className="py-3 px-3">Department</th>
+                  <th className="py-3 px-3">Section</th>
+                  <th className="py-3 px-3">Status</th>
+                  <th className="py-3 px-3">Joined</th>
+                  <th className="py-3 pr-3 pl-2 text-right">Delete / Action</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#f7f2f9]">
-                {filteredStudents.map(student => (
-                  <tr key={student.id} className="transition hover:bg-[#fbf9fd]">
-                    <td className="py-3.5 pl-2 pr-4 font-mono font-semibold text-[#5b3b92]">
-                      <span className="rounded-lg bg-[#f4ecf9] px-2 py-1 text-[11px]">
-                        {student.studentId}
-                      </span>
-                    </td>
-                    <td className="py-3.5 px-4">
-                      <div className="flex items-center gap-2.5">
-                        <span className="grid h-7 w-7 place-items-center rounded-full bg-[#5b3b92] text-[11px] font-bold text-white">
-                          {student.name.charAt(0)}
+                {filteredStudents.map(student => {
+                  const stuPass = getStudentPassword(student);
+                  const parPass = getParentPassword(student);
+                  const isSelected = selectedStudentIds.includes(student.id);
+
+                  return (
+                    <tr
+                      key={student.id}
+                      className={`transition ${isSelected ? "bg-[#fcf3f3]" : "hover:bg-[#fbf9fd]"}`}
+                    >
+                      <td className="py-3 pl-3 pr-2">
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          onChange={() => handleToggleSelectStudent(student.id)}
+                          className="rounded border-[#d8cfe0] text-[#5b3b92] focus:ring-[#5b3b92]"
+                        />
+                      </td>
+
+                      {/* Student ID */}
+                      <td className="py-3 px-3 font-mono font-bold text-[#5b3b92]">
+                        <span className="rounded-lg bg-[#f4ecf9] px-2.5 py-1 text-[11px] shadow-2xs">
+                          {student.studentId}
                         </span>
-                        <div>
-                          <p className="font-semibold text-[#2a203e]">{student.name}</p>
-                          <p className="text-[11px] text-[#8d8197]">{student.email}</p>
+                      </td>
+
+                      {/* Student Name */}
+                      <td className="py-3 px-3 font-semibold text-[#2a203e]">
+                        <div className="flex items-center gap-2">
+                          <span className="grid h-6 w-6 place-items-center rounded-full bg-[#5b3b92] text-[10px] font-bold text-white uppercase">
+                            {student.name.charAt(0)}
+                          </span>
+                          <span>{student.name}</span>
                         </div>
-                      </div>
-                    </td>
-                    <td className="py-3.5 px-4">
-                      <div>
-                        <p className="font-semibold text-[#2a203e]">{student.parentName || "—"}</p>
-                        <p className="text-[11px] text-[#8d8197]">{student.parentPhone || "—"}</p>
-                      </div>
-                    </td>
-                    <td className="py-3.5 px-4">
-                      <span className="rounded-full bg-[#f0eaf7] px-2.5 py-0.5 text-[11px] font-medium text-[#5b3b92]">
-                        {student.department}
-                      </span>
-                    </td>
-                    <td className="py-3.5 px-4">
-                      <span className="rounded-md bg-[#fdf5ed] px-2 py-0.5 text-[11px] font-bold text-[#ef8656]">
-                        {student.section}
-                      </span>
-                    </td>
-                    <td className="py-3.5 px-4">
-                      <button
-                        type="button"
-                        onClick={() => handleToggleStatus(student.id)}
-                        className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-[0.05em] transition ${
-                          student.status === "active"
-                            ? "bg-[#e8f6ed] text-[#1c7e47] hover:bg-[#d8eedd]"
-                            : "bg-[#f5e9e9] text-[#b83232] hover:bg-[#edd3d3]"
-                        }`}
-                        title="Click to toggle status"
-                      >
-                        <span className="h-1.5 w-1.5 rounded-full bg-current"></span>
-                        {student.status}
-                      </button>
-                    </td>
-                    <td className="py-3.5 px-4 text-[11px] text-[#8d8197]">
-                      {student.joinedDate}
-                    </td>
-                    <td className="py-3.5 pr-2 pl-4 text-right">
-                      <div className="flex items-center justify-end gap-1.5">
+                      </td>
+
+                      {/* Student Email */}
+                      <td className="py-3 px-3 font-mono text-[11px] text-[#524466]">
+                        {student.email}
+                      </td>
+
+                      {/* Student Password */}
+                      <td className="py-3 px-3 font-mono text-[11px]">
+                        {showPasswords ? (
+                          <span className="rounded bg-[#e8f6ed] px-2 py-0.5 font-bold text-[#1b7e47]">
+                            {stuPass}
+                          </span>
+                        ) : (
+                          <span className="text-[#a397ad] tracking-widest">••••••</span>
+                        )}
+                      </td>
+
+                      {/* Parent Name */}
+                      <td className="py-3 px-3 text-[#2a203e] font-medium">
+                        {student.parentName || "—"}
+                      </td>
+
+                      {/* Parent Phone */}
+                      <td className="py-3 px-3 font-mono text-[11px] text-[#524466]">
+                        {student.parentPhone || "—"}
+                      </td>
+
+                      {/* Parent Email */}
+                      <td className="py-3 px-3 font-mono text-[11px] text-[#524466]">
+                        {student.parentEmail || "—"}
+                      </td>
+
+                      {/* Parent Password */}
+                      <td className="py-3 px-3 font-mono text-[11px]">
+                        {student.parentEmail ? (
+                          showPasswords ? (
+                            <span className="rounded bg-[#e8f6ed] px-2 py-0.5 font-bold text-[#1b7e47]">
+                              {parPass}
+                            </span>
+                          ) : (
+                            <span className="text-[#a397ad] tracking-widest">••••••</span>
+                          )
+                        ) : (
+                          <span className="text-[#c4b8d1]">—</span>
+                        )}
+                      </td>
+
+                      {/* Department */}
+                      <td className="py-3 px-3">
+                        <span className="rounded-full bg-[#f0eaf7] px-2.5 py-0.5 text-[11px] font-medium text-[#5b3b92]">
+                          {student.department}
+                        </span>
+                      </td>
+
+                      {/* Section */}
+                      <td className="py-3 px-3">
+                        <span className="rounded-md bg-[#fdf5ed] px-2.5 py-0.5 text-[11px] font-bold text-[#ef8656]">
+                          {student.section}
+                        </span>
+                      </td>
+
+                      {/* Status Toggle */}
+                      <td className="py-3 px-3">
                         <button
                           type="button"
-                          onClick={() => setEditingStudent(student)}
-                          className="rounded-lg p-1.5 text-[#5b3b92] transition hover:bg-[#f0e8f7]"
-                          title="Edit Student"
+                          onClick={() => handleToggleStatus(student.id)}
+                          className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-[0.05em] transition ${
+                            student.status === "active"
+                              ? "bg-[#e8f6ed] text-[#1c7e47] hover:bg-[#d8eedd]"
+                              : "bg-[#f5e9e9] text-[#b83232] hover:bg-[#edd3d3]"
+                          }`}
+                          title="Click to toggle active/inactive status"
                         >
-                          <Edit3 size={15} />
+                          <span className="h-1.5 w-1.5 rounded-full bg-current"></span>
+                          {student.status}
                         </button>
-                        <button
-                          type="button"
-                          onClick={() => handleDeleteStudent(student.id, student.name)}
-                          className="rounded-lg p-1.5 text-[#b83232] transition hover:bg-[#fcedec]"
-                          title="Delete Student"
-                        >
-                          <Trash2 size={15} />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                      </td>
+
+                      {/* Joined Date */}
+                      <td className="py-3 px-3 text-[11px] text-[#8d8197]">
+                        {student.joinedDate}
+                      </td>
+
+                      {/* Delete Action button */}
+                      <td className="py-3 pr-3 pl-2 text-right">
+                        <div className="flex items-center justify-end gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteStudent(student)}
+                            className="inline-flex items-center gap-1 rounded-xl border border-[#f5c6c6] bg-[#fff2f2] px-2.5 py-1 text-xs font-bold text-[#b83232] shadow-2xs transition hover:bg-[#b83232] hover:text-white"
+                            title={`Delete ${student.name} from Database`}
+                          >
+                            <Trash2 size={13} />
+                            Delete
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setEditingStudent(student)}
+                            className="rounded-lg p-1.5 text-[#5b3b92] transition hover:bg-[#f0e8f7]"
+                            title="Edit Student Details"
+                          >
+                            <Edit3 size={15} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
         )}
       </div>
+
+      {/* Delete Confirmation Modal */}
+      {studentToDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-md rounded-3xl border border-[#eee6f0] bg-white p-6 shadow-2xl">
+            <div className="flex items-center gap-3 border-b border-[#f0e8f4] pb-4">
+              <div className="grid h-11 w-11 place-items-center rounded-2xl bg-[#fcedec] text-[#d32f2f] shadow-2xs">
+                <Trash2 size={22} />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-[#2a203e]">Delete Student From Database</h3>
+                <p className="text-xs text-[#8d8197]">Confirm student record removal</p>
+              </div>
+            </div>
+
+            <div className="mt-4 space-y-2 rounded-2xl border border-[#efe7f3] bg-[#faf7fc] p-4 text-xs">
+              <div className="flex justify-between py-0.5">
+                <span className="text-[#81758e]">Student ID:</span>
+                <span className="font-mono font-bold text-[#5b3b92]">{studentToDelete.studentId}</span>
+              </div>
+              <div className="flex justify-between py-0.5">
+                <span className="text-[#81758e]">Student Name:</span>
+                <span className="font-bold text-[#2a203e]">{studentToDelete.name}</span>
+              </div>
+              <div className="flex justify-between py-0.5">
+                <span className="text-[#81758e]">Department & Section:</span>
+                <span className="font-semibold text-[#5b3b92]">
+                  {studentToDelete.department} — Sec {studentToDelete.section}
+                </span>
+              </div>
+              <div className="flex justify-between py-0.5">
+                <span className="text-[#81758e]">Student Email:</span>
+                <span className="font-mono text-[#524466]">{studentToDelete.email}</span>
+              </div>
+              {studentToDelete.parentEmail && (
+                <div className="flex justify-between py-0.5">
+                  <span className="text-[#81758e]">Parent Email:</span>
+                  <span className="font-mono text-[#524466]">{studentToDelete.parentEmail}</span>
+                </div>
+              )}
+            </div>
+
+            <p className="mt-4 rounded-xl border border-[#fed7d7] bg-[#fff5f5] p-3 text-xs leading-relaxed text-[#b83232]">
+              ⚠️ <strong>Warning:</strong> Deleting this student will permanently erase their details from the academy registry and remove all linked Student and Parent login credentials from the database.
+            </p>
+
+            <div className="mt-6 flex items-center justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => setStudentToDelete(null)}
+                className="rounded-xl border border-[#e4dce9] px-4 py-2.5 text-xs font-semibold text-[#71647f] hover:bg-[#faf7fc]"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => executeDeleteStudents([studentToDelete])}
+                disabled={isBulkDeleting}
+                className="inline-flex items-center gap-1.5 rounded-xl bg-[#b83232] px-5 py-2.5 text-xs font-bold text-white shadow-md transition hover:bg-[#992222] disabled:opacity-50"
+              >
+                <Trash2 size={14} />
+                {isBulkDeleting ? "Deleting..." : "Confirm & Delete Student"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Edit Student Modal */}
       {editingStudent && (
@@ -3312,6 +3790,29 @@ function AdminStudentManager() {
                     value={editingStudent.section}
                     onChange={e => setEditingStudent({ ...editingStudent, section: e.target.value })}
                     className="w-full rounded-2xl border border-[#e4dce9] px-3.5 py-2.5 focus:border-[#5b3b92] focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div>
+                  <label className="mb-1 block font-semibold uppercase tracking-[0.08em] text-[#71647f]">Student Password</label>
+                  <input
+                    type="text"
+                    value={editingStudent.studentPassword ?? getStudentPassword(editingStudent)}
+                    onChange={e => setEditingStudent({ ...editingStudent, studentPassword: e.target.value })}
+                    placeholder="e.g. 123456"
+                    className="w-full rounded-2xl border border-[#e4dce9] px-3.5 py-2.5 font-mono focus:border-[#5b3b92] focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="mb-1 block font-semibold uppercase tracking-[0.08em] text-[#71647f]">Parent Password</label>
+                  <input
+                    type="text"
+                    value={editingStudent.parentPassword ?? (editingStudent.parentEmail ? getParentPassword(editingStudent) : "")}
+                    onChange={e => setEditingStudent({ ...editingStudent, parentPassword: e.target.value })}
+                    placeholder="e.g. parent123"
+                    className="w-full rounded-2xl border border-[#e4dce9] px-3.5 py-2.5 font-mono focus:border-[#5b3b92] focus:outline-none"
                   />
                 </div>
               </div>

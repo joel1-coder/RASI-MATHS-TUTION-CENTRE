@@ -139,11 +139,17 @@ export async function upsertPortalUser(input: {
   return result[0];
 }
 
-/** Delete a portal user by email */
+/** Delete a portal user by email or studentId, including linked accounts */
 export async function deletePortalUser(email: string) {
   const db = await getDb();
   if (!db) return;
-  await db.delete(users).where(eq(users.email, email.trim().toLowerCase()));
+  const target = email.trim().toLowerCase();
+  await db.delete(users).where(
+    or(
+      eq(users.email, target),
+      eq(users.linkedStudentEmail, target)
+    )
+  );
 }
 
 /** List all portal users (with password) - admin only */

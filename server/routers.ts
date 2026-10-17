@@ -239,8 +239,17 @@ export const appRouter = router({
       })),
 
     deletePortalUser: adminProcedure
-      .input(z.object({ email: z.string().email() }))
+      .input(z.object({ email: z.string().min(1) }))
       .mutation(({ input }) => deletePortalUser(input.email)),
+
+    deletePortalUsersBatch: adminProcedure
+      .input(z.object({ emails: z.array(z.string().min(1)) }))
+      .mutation(async ({ input }) => {
+        for (const email of input.emails) {
+          await deletePortalUser(email);
+        }
+        return { success: true, count: input.emails.length };
+      }),
 
     listPortalUsers: adminProcedure
       .input(z.object({ role: z.enum(["student", "parent", "teacher"]).optional() }))
