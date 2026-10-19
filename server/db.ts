@@ -232,19 +232,19 @@ export async function deleteSubject(id: number) {
 
 export async function listStudentAttendance(studentEmail: string) {
   const db = await getDb();
-  if (!db) return [];
+  if (!db) throw new Error("Database is not available while loading attendance");
   return db.select().from(studentAttendance).where(eq(studentAttendance.studentEmail, studentEmail)).orderBy(desc(studentAttendance.attendanceDate));
 }
 
 export async function listAllStudentAttendance() {
   const db = await getDb();
-  if (!db) return [];
+  if (!db) throw new Error("Database is not available while loading attendance");
   return db.select().from(studentAttendance).orderBy(desc(studentAttendance.attendanceDate));
 }
 
 export async function upsertStudentAttendance(record: InsertStudentAttendance) {
   const db = await getDb();
-  if (!db) return undefined;
+  if (!db) throw new Error("Database is not available while saving attendance");
   const existing = await db.select().from(studentAttendance).where(and(eq(studentAttendance.studentEmail, record.studentEmail), eq(studentAttendance.attendanceDate, record.attendanceDate))).limit(1);
   if (existing[0]) {
     await db.update(studentAttendance).set({ status: record.status, description: record.description ?? "" }).where(eq(studentAttendance.id, existing[0].id));
