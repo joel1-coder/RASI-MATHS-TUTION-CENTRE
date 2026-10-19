@@ -11,7 +11,8 @@ import {
   User as UserIcon,
 } from "lucide-react";
 import { toast } from "sonner";
-import { readSiteData, type SiteData } from "@/lib/siteData";
+import { readSiteData, saveSiteData, type SiteData } from "@/lib/siteData";
+import { trpc } from "@/lib/trpc";
 import ThemeToggle from "@/components/ThemeToggle";
 
 const imageBase = "https://images.unsplash.com";
@@ -50,6 +51,20 @@ export default function Portfolio({ onLogin, user, onGoToPortal, onLogout }: Por
   const [selectedSubject, setSelectedSubject] = useState<SiteData["subjects"][number] | null>(null);
   const [bookingName, setBookingName] = useState("");
   const [bookingEmail, setBookingEmail] = useState("");
+
+  const siteQuery = trpc.site.getSiteData.useQuery(undefined, {
+    staleTime: 60000,
+    refetchOnWindowFocus: true,
+  });
+
+  useEffect(() => {
+    if (siteQuery.data) {
+      setSiteData(siteQuery.data);
+      try {
+        saveSiteData(siteQuery.data);
+      } catch {}
+    }
+  }, [siteQuery.data]);
 
   useEffect(() => {
     const sync = () => setSiteData(readSiteData());

@@ -144,3 +144,13 @@ export type QuestionPaper = typeof questionPapers.$inferSelect;
 export type InsertQuestionPaper = typeof questionPapers.$inferInsert;
 export type UnitQuestion = typeof unitQuestions.$inferSelect;
 export type InsertUnitQuestion = typeof unitQuestions.$inferInsert;
+
+export const siteSettings = pgTable("site_settings", {
+  id: serial("id").primaryKey(),
+  key: varchar("key", { length: 80 }).notNull().unique(),
+  value: text("value").notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().notNull(),
+});
+
+export type SiteSetting = typeof siteSettings.$inferSelect;
+export type InsertSiteSetting = typeof siteSettings.$inferInsert;

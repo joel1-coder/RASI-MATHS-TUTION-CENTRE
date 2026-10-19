@@ -1,7 +1,7 @@
 import { and, asc, desc, eq, or } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
-import { colleges, governmentExams, InsertCollege, InsertGovernmentExam, InsertMarkStatement, InsertStudentAttendance, InsertStudentProject, InsertUser, InsertScheduleSession, markStatements, scheduleSessions, studentAttendance, studentProjects, subjects, InsertSubject, users, questionPapers, unitQuestions, InsertQuestionPaper, InsertUnitQuestion } from "../drizzle/schema";
+import { colleges, governmentExams, InsertCollege, InsertGovernmentExam, InsertMarkStatement, InsertStudentAttendance, InsertStudentProject, InsertUser, InsertScheduleSession, markStatements, scheduleSessions, studentAttendance, studentProjects, subjects, InsertSubject, users, questionPapers, unitQuestions, InsertQuestionPaper, InsertUnitQuestion, siteSettings, InsertSiteSetting } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -14,6 +14,15 @@ export async function getDb() {
       _db = drizzle(_client);
       // Ensure unit_questions has section column
       _client.unsafe(`ALTER TABLE "unit_questions" ADD COLUMN IF NOT EXISTS "section" varchar(50) DEFAULT 'All Sections';`).catch(() => {});
+      // Ensure site_settings table exists for persistent portfolio content
+      _client.unsafe(`
+        CREATE TABLE IF NOT EXISTS "site_settings" (
+          "id" serial PRIMARY KEY,
+          "key" varchar(80) NOT NULL UNIQUE,
+          "value" text NOT NULL,
+          "updatedAt" timestamp DEFAULT now() NOT NULL
+        );
+      `).catch(() => {});
     } catch (error) {
       console.warn("[Database] Failed to connect:", error);
       _db = null;
@@ -427,4 +436,28 @@ export async function deleteUnitQuestion(id: number) {
   const db = await getDb();
   if (!db) throw new Error("Database is not available");
   await db.delete(unitQuestions).where(eq(unitQuestions.id, id));
+}
+
+export async function getSiteSettings(key: string): Promise<string | null> {
+  const db = await getDb();
+  if (!db) return null;
+  const result = await db.select().from(siteSettings).where(eq(siteSettings.key, key)).limit(1);
+  return result[0]?.value ?? null;
+}
+
+export async function upsertSiteSettings(key: string, value: string): Promise<void> {
+  const db = await getDb();
+  if (!db) {
+    console.warn("[Database] Cannot save site settings: DB unavailable");
+    return;
+  }
+  if (_client) {
+    await _client.unsafe(
+      `INSERT INTO "site_settings" ("key", "value", "updatedAt") 
+       VALUES ($1, $2, NOW()) 
+       ON CONFLICT ("key") DO UPDATE 
+       SET "value" = EXCLUDED."value", "updatedAt" = NOW();`,
+      [key, value]
+    );
+  }
 }

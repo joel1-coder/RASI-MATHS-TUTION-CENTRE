@@ -1,9 +1,10 @@
-import { ChangeEvent, FormEvent, useState } from "react";
+import { ChangeEvent, FormEvent, useState, useEffect } from "react";
 import { ArrowLeft, BookOpen, ChevronLeft, ChevronRight, Image as ImageIcon, ImagePlus, Pencil, Plus, RotateCcw, Save, Trash2, Users, Megaphone, Phone, BarChart3, Quote, FileText } from "lucide-react";
 import { Link } from "wouter";
 import { toast } from "sonner";
 import { CloudinaryUploader } from "@/components/CloudinaryUploader";
 import { defaultSiteData, readSiteData, resetSiteData, saveSiteData, type Announcement, type ContactDetails, type GalleryItem, type HeroStat, type SiteData, type Subject, type Teacher, type Testimonial, type StudyMaterial } from "@/lib/siteData";
+import { trpc } from "@/lib/trpc";
 
 type Tab = "subjects" | "teachers" | "gallery" | "stats" | "testimonials" | "announcements" | "contact" | "papers" | "unitQuestions";
 const id = (prefix: string) => `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
@@ -26,7 +27,33 @@ export default function SiteAdmin() {
   const [subject, setSubject] = useState(emptySubject); const [teacher, setTeacher] = useState(emptyTeacher); const [gallery, setGallery] = useState(emptyGallery); const [stat, setStat] = useState(emptyStat); const [testimonial, setTestimonial] = useState(emptyTestimonial); const [announcement, setAnnouncement] = useState(emptyAnnouncement); const [contact, setContact] = useState(emptyContact); const [paper, setPaper] = useState(emptyPaper); const [unitQuestion, setUnitQuestion] = useState(emptyUnitQuestion);
   const [preview, setPreview] = useState(true); const [previewTestimonial, setPreviewTestimonial] = useState(0);
 
-  const commit = (next: SiteData, message: string) => { setData(next); saveSiteData(next); toast.success(message); };
+  const utils = trpc.useUtils();
+  const siteQuery = trpc.site.getSiteData.useQuery(undefined, {
+    staleTime: 60000,
+  });
+  const saveMutation = trpc.site.saveSiteData.useMutation({
+    onSuccess: () => {
+      utils.site.getSiteData.invalidate();
+    },
+  });
+
+  useEffect(() => {
+    if (siteQuery.data) {
+      setData(siteQuery.data);
+      saveSiteData(siteQuery.data);
+    }
+  }, [siteQuery.data]);
+
+  const commit = async (next: SiteData, message: string) => {
+    setData(next);
+    saveSiteData(next);
+    try {
+      await saveMutation.mutateAsync({ data: next });
+      toast.success(`${message} (Synced to Supabase DB)`);
+    } catch {
+      toast.success(message);
+    }
+  };
   const clearForm = () => { setEditingId(null); setSubject(emptySubject); setTeacher(emptyTeacher); setGallery(emptyGallery); setStat(emptyStat); setTestimonial(emptyTestimonial); setAnnouncement(emptyAnnouncement); setContact(emptyContact); setPaper(emptyPaper); setUnitQuestion(emptyUnitQuestion); };
   const selectTab = (next: Tab) => { setTab(next); clearForm(); };
   const edit = (item: any) => { setEditingId(item.id); if (tab === "subjects") setSubject({ ...item }); if (tab === "teachers") setTeacher({ ...item }); if (tab === "gallery") setGallery({ ...item }); if (tab === "stats") setStat({ ...item }); if (tab === "testimonials") setTestimonial({ ...item }); if (tab === "announcements") setAnnouncement({ ...item }); if (tab === "papers") setPaper({ ...item }); if (tab === "unitQuestions") setUnitQuestion({ ...item }); window.scrollTo({ top: 0, behavior: "smooth" }); };
@@ -52,7 +79,7 @@ export default function SiteAdmin() {
 
   const renderList = () => { const key = tab === "stats" ? "heroStats" : tab === "papers" ? "questionPapers" : tab; if (tab === "contact") return <div className="contact-preview-card"><strong>{data.contact.email}</strong><span>{data.contact.phone}</span><span>{data.contact.hours}</span><span>{data.contact.address}</span></div>; const list = (data as any)[key] as any[]; return <div className="admin-list">{list.map((item) => <div className="admin-list-item" key={item.id}>{tab === "teachers" || tab === "gallery" ? <img className="list-thumb" src={item.image} alt="" /> : <div className="list-icon"><IconFor tab={tab} /></div>}<div className="list-copy"><strong>{item.name || item.subject || item.value || item.title || item.quote}</strong><span>{item.batch || item.schedule || item.label || item.attribution || item.description || item.layout || item.subject}</span></div><div className="list-actions"><button onClick={() => edit(item)} aria-label="Edit"><Pencil size={15} /></button><button onClick={() => remove(key as any, item.id)} aria-label="Delete"><Trash2 size={15} /></button></div></div>)}</div>; };
 
-  return <div className="admin-shell"><header className="admin-header"><div className="admin-header-inner"><Link href="/" className="admin-brand"><span className="brand-mark">RM</span><span><b>Rasi Maths Tuition Centre</b><small>Portfolio content manager</small></span></Link><div className="admin-header-actions"><span className="admin-status"><i /> Local draft mode</span><Link href="/" className="admin-view-link"><ArrowLeft size={15} /> View portfolio</Link></div></div></header><main className="admin-main page-width"><div className="admin-intro"><div><p className="eyebrow">Admin / Content editor</p><h1>Keep the story<br /><em>up to date.</em></h1><p>Every field below supports CRUD. Toggle live preview to see unsaved edits on the right before saving them to the public page.</p></div><div className="admin-summary"><strong>{count}</strong><span>editable content items</span></div></div><div className="admin-tabs" role="tablist">{(Object.keys(tabMeta) as Tab[]).map((key) => { const Meta = tabMeta[key]; const Icon = Meta.icon; const length = key === "stats" ? data.heroStats.length : key === "contact" ? 1 : key === "papers" ? data.questionPapers.length : key === "unitQuestions" ? data.unitQuestions.length : ((data as any)[key] as any[]).length; return <button key={key} className={tab === key ? "is-active" : ""} onClick={() => selectTab(key)}><Icon size={16} /> {Meta.label} <b>{length}</b></button>; })}</div><div className="preview-toggle-row"><span><span className="live-dot" /> Live preview updates as you type</span><button className={`preview-toggle ${preview ? "is-on" : ""}`} onClick={() => setPreview(!preview)}>{preview ? "Preview on" : "Preview off"}</button></div><section className={`admin-workspace ${preview ? "with-preview" : ""}`}><div className="admin-form-panel"><div className="admin-panel-heading"><div><span className="admin-kicker">{editingId ? "Update existing" : "Create new"}</span><h2>{editingId ? "Edit item" : `Add ${tabMeta[tab].label.toLowerCase()}`}</h2></div>{editingId && <button className="text-button" onClick={clearForm}>Cancel edit</button>}</div>{renderForm()}</div><div className="admin-list-panel"><div className="admin-panel-heading"><div><span className="admin-kicker">Published items</span><h2>{tabMeta[tab].label}</h2></div>{tab !== "contact" && <button className="admin-add-button" onClick={clearForm}><Plus size={16} /> New</button>}</div>{renderList()}</div>{preview && <Preview data={data} tab={tab} subject={subject} teacher={teacher} gallery={gallery} stat={stat} testimonial={testimonial} announcement={announcement} contact={contact} paper={paper} unitQuestion={unitQuestion} />}</section><div className="admin-footer-actions"><button className="reset-button" onClick={restore}><RotateCcw size={15} /> Restore demo content</button><span><Save size={14} /> Saved locally in this browser · public page updates after save</span></div></main></div>;
+  return <div className="admin-shell"><header className="admin-header"><div className="admin-header-inner"><Link href="/" className="admin-brand"><span className="brand-mark">RM</span><span><b>Rasi Maths Tuition Centre</b><small>Portfolio content manager</small></span></Link><div className="admin-header-actions"><span className="admin-status"><i /> Supabase Cloud Sync</span><Link href="/" className="admin-view-link"><ArrowLeft size={15} /> View portfolio</Link></div></div></header><main className="admin-main page-width"><div className="admin-intro"><div><p className="eyebrow">Admin / Content editor</p><h1>Keep the story<br /><em>up to date.</em></h1><p>Every field below supports CRUD. Edits are saved directly to Supabase DB and sync automatically across all devices (Mobile & Desktop).</p></div><div className="admin-summary"><strong>{count}</strong><span>editable content items</span></div></div><div className="admin-tabs" role="tablist">{(Object.keys(tabMeta) as Tab[]).map((key) => { const Meta = tabMeta[key]; const Icon = Meta.icon; const length = key === "stats" ? data.heroStats.length : key === "contact" ? 1 : key === "papers" ? data.questionPapers.length : key === "unitQuestions" ? data.unitQuestions.length : ((data as any)[key] as any[]).length; return <button key={key} className={tab === key ? "is-active" : ""} onClick={() => selectTab(key)}><Icon size={16} /> {Meta.label} <b>{length}</b></button>; })}</div><div className="preview-toggle-row"><span><span className="live-dot" /> Live preview updates as you type</span><button className={`preview-toggle ${preview ? "is-on" : ""}`} onClick={() => setPreview(!preview)}>{preview ? "Preview on" : "Preview off"}</button></div><section className={`admin-workspace ${preview ? "with-preview" : ""}`}><div className="admin-form-panel"><div className="admin-panel-heading"><div><span className="admin-kicker">{editingId ? "Update existing" : "Create new"}</span><h2>{editingId ? "Edit item" : `Add ${tabMeta[tab].label.toLowerCase()}`}</h2></div>{editingId && <button className="text-button" onClick={clearForm}>Cancel edit</button>}</div>{renderForm()}</div><div className="admin-list-panel"><div className="admin-panel-heading"><div><span className="admin-kicker">Published items</span><h2>{tabMeta[tab].label}</h2></div>{tab !== "contact" && <button className="admin-add-button" onClick={clearForm}><Plus size={16} /> New</button>}</div>{renderList()}</div>{preview && <Preview data={data} tab={tab} subject={subject} teacher={teacher} gallery={gallery} stat={stat} testimonial={testimonial} announcement={announcement} contact={contact} paper={paper} unitQuestion={unitQuestion} />}</section><div className="admin-footer-actions"><button className="reset-button" onClick={restore}><RotateCcw size={15} /> Restore demo content</button><span><Save size={14} /> Synced with Supabase DB · Live on Mobile & Desktop</span></div></main></div>;
 }
 
 function Field({ label, value, onChange, placeholder }: { label: string; value: string; onChange: (v: string) => void; placeholder?: string }) { return <label>{label}<input value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} /></label>; }

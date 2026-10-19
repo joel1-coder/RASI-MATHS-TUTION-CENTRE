@@ -3,7 +3,7 @@ import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { adminProcedure, protectedProcedure, publicProcedure, router } from "./_core/trpc";
 import { TRPCError } from "@trpc/server";
-import { createSubject, deleteSubject, getDb, listFeaturedSubjects, listScheduleSessions, listStudentAttendance, listAllStudentAttendance, deleteStudentAttendanceById, deleteStudentAttendanceBatch, updateStudentAttendanceById, listSubjects, updateSubject, upsertScheduleSession, upsertStudentAttendance, listColleges, listGovernmentExams, listMarkStatements, listStudentProjects, setUserRoleByEmail, upsertCollege, upsertGovernmentExam, upsertMarkStatement, upsertStudentProject, upsertUser, createQuestionPaper, deleteQuestionPaper, listQuestionPapers, createUnitQuestion, deleteUnitQuestion, listUnitQuestions, upsertBulkMarks, upsertBulkProjects, upsertBulkGovernmentExams, getUserByEmail, upsertPortalUser, deletePortalUser, listPortalUsers } from "./db";
+import { createSubject, deleteSubject, getDb, listFeaturedSubjects, listScheduleSessions, listStudentAttendance, listAllStudentAttendance, deleteStudentAttendanceById, deleteStudentAttendanceBatch, updateStudentAttendanceById, listSubjects, updateSubject, upsertScheduleSession, upsertStudentAttendance, listColleges, listGovernmentExams, listMarkStatements, listStudentProjects, setUserRoleByEmail, upsertCollege, upsertGovernmentExam, upsertMarkStatement, upsertStudentProject, upsertUser, createQuestionPaper, deleteQuestionPaper, listQuestionPapers, createUnitQuestion, deleteUnitQuestion, listUnitQuestions, upsertBulkMarks, upsertBulkProjects, upsertBulkGovernmentExams, getUserByEmail, upsertPortalUser, deletePortalUser, listPortalUsers, getSiteSettings, upsertSiteSettings } from "./db";
 import { subjects } from "../drizzle/schema";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
@@ -328,6 +328,24 @@ export const appRouter = router({
   guidance: router({
     colleges: publicProcedure.query(() => listColleges()),
     exams: publicProcedure.query(() => listGovernmentExams()),
+  }),
+
+  site: router({
+    getSiteData: publicProcedure.query(async () => {
+      const raw = await getSiteSettings("portfolio_data");
+      if (!raw) return null;
+      try {
+        return JSON.parse(raw);
+      } catch {
+        return null;
+      }
+    }),
+    saveSiteData: publicProcedure
+      .input(z.object({ data: z.any() }))
+      .mutation(async ({ input }) => {
+        await upsertSiteSettings("portfolio_data", JSON.stringify(input.data));
+        return { success: true };
+      }),
   }),
 });
 
