@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import Portfolio from "./Portfolio";
 import { startLogin } from "@/const";
@@ -4021,6 +4021,8 @@ function AdminAttendanceManager() {
       return INITIAL_ATTENDANCE_SESSIONS;
     }
   });
+  const shouldMigrateLocalAttendance = useRef(Boolean(localStorage.getItem("rasi_attendance_sessions")));
+  const localAttendanceMigrationDone = useRef(false);
 
   useEffect(() => {
     try {
@@ -4073,6 +4075,28 @@ function AdminAttendanceManager() {
            s.section.toLowerCase() === newSection.toLowerCase()
     );
   }, [students, newDept, newSection]);
+
+  useEffect(() => {
+    if (!shouldMigrateLocalAttendance.current || localAttendanceMigrationDone.current || !students.length || !sessionLogs.length) return;
+    localAttendanceMigrationDone.current = true;
+    const records = sessionLogs.flatMap(session => students
+      .filter(student => student.department.toLowerCase() === session.department.toLowerCase() && student.section.toLowerCase() === session.section.toLowerCase())
+      .map(student => ({
+        studentEmail: student.email,
+        attendanceDate: session.date,
+        description: session.description || "Daily attendance",
+        status: session.absentStudentIds.includes(student.studentId) ? "absent" as const : "present" as const,
+      }))
+    );
+    if (!records.length) return;
+    bulkAttendanceMutation.mutateAsync({ records })
+      .then(() => allDbAttendanceQuery.refetch())
+      .catch(error => {
+        localAttendanceMigrationDone.current = false;
+        console.error("Local attendance migration failed:", error);
+        showToast("⚠️ Existing attendance could not be synced to Supabase. Please sign in again as Admin.");
+      });
+  }, [students, sessionLogs, bulkAttendanceMutation, allDbAttendanceQuery]);
 
   useEffect(() => {
     const initialMap: Record<string, "present" | "absent"> = {};
