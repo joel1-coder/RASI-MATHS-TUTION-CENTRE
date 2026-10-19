@@ -8586,6 +8586,21 @@ export default function Home() {
     : (pathname.includes("/admin") || pathname.includes("/portal-admin")) ? "admin"
     : null;
 
+  const shouldShowPortfolioIntro = pathname === "/" && (() => {
+    try {
+      return sessionStorage.getItem("rasi_active_portal") !== "1";
+    } catch {
+      return true;
+    }
+  })();
+  const [portfolioIntroReady, setPortfolioIntroReady] = useState(!shouldShowPortfolioIntro);
+
+  useEffect(() => {
+    if (!shouldShowPortfolioIntro) return;
+    const timer = window.setTimeout(() => setPortfolioIntroReady(true), 3000);
+    return () => window.clearTimeout(timer);
+  }, [shouldShowPortfolioIntro]);
+
   const [user, setUser] = useState<User | null>(() => {
     try {
       // 1. Check tab-isolated sessionStorage first (strictly private to this browser tab)
@@ -8645,6 +8660,10 @@ export default function Home() {
   // 1. Explicit user state in this tab (from recent login or tab-scoped sessionStorage)
   // 2. Cookie session (ONLY if pathRole matches or no explicit tab user was set)
   const currentUser = user || (tabHasSession && secureUser && (!pathRole || secureUser.role === pathRole) ? secureUser : null);
+
+  if (shouldShowPortfolioIntro && !portfolioIntroReady && !currentUser) {
+    return <PortfolioLoadingScreen />;
+  }
 
   const logout = () => {
     if (secureUser) void auth.logout();
@@ -8720,6 +8739,20 @@ export default function Home() {
         />
       )}
     </>
+  );
+}
+
+function PortfolioLoadingScreen() {
+  return (
+    <main className="portfolio-loading" aria-label="Loading Rasi Maths Tuition Centre">
+      <div className="portfolio-loading-mark">
+        <img src="/rasi-logo.png" alt="Rasi Maths Tuition Centre" />
+      </div>
+      <p className="portfolio-loading-kicker">Rasi Maths Tuition Centre</p>
+      <h1>Think <span>•</span> Solve <span>•</span> Excel</h1>
+      <div className="portfolio-loading-track" aria-hidden="true"><span /></div>
+      <p className="portfolio-loading-note">Preparing your learning space...</p>
+    </main>
   );
 }
 
