@@ -1255,8 +1255,21 @@ export const INITIAL_STUDENTS: ManagedStudent[] = [
 
 export const loadStoredStudents = (): ManagedStudent[] => {
   try {
+    // The database reset also needs to remove the old demo records cached in this browser.
+    const localResetKey = "rasi_non_admin_data_cleared_v1";
+    if (!localStorage.getItem(localResetKey)) {
+      localStorage.removeItem("rasi_v2_admin_students");
+      localStorage.removeItem("rasi_v2_admin_departments");
+      localStorage.removeItem("rasi_v2_admin_sections");
+      localStorage.removeItem("rasi_dispatched_projects");
+      try {
+        const accounts = JSON.parse(localStorage.getItem("rasi_user_accounts") || "[]");
+        localStorage.setItem("rasi_user_accounts", JSON.stringify(accounts.filter((account: any) => account.role === "admin")));
+      } catch {}
+      localStorage.setItem(localResetKey, "1");
+    }
     const saved = localStorage.getItem("rasi_v2_admin_students");
-    let parsed: ManagedStudent[] = saved ? JSON.parse(saved) : [...INITIAL_STUDENTS];
+    let parsed: ManagedStudent[] = saved ? JSON.parse(saved) : [];
     // Read deleted IDs so deleted students never resurrect
     let deletedIds: string[] = [];
     try {
@@ -1264,11 +1277,6 @@ export const loadStoredStudents = (): ManagedStudent[] => {
     } catch {}
     parsed = parsed.filter(s => !deletedIds.includes(s.studentId.toLowerCase()));
 
-    // Ensure default account JOEL A is preserved if not intentionally deleted
-    const joel = INITIAL_STUDENTS.find(s => s.studentId === "24UCS1118");
-    if (joel && !deletedIds.includes("24ucs1118") && !parsed.some(s => s.studentId.toLowerCase() === "24ucs1118")) {
-      parsed.unshift(joel);
-    }
     return parsed.map(s => {
       const initial = INITIAL_STUDENTS.find(init => init.studentId.toLowerCase() === s.studentId.toLowerCase());
       let resolvedName = s.name;
@@ -1285,7 +1293,7 @@ export const loadStoredStudents = (): ManagedStudent[] => {
       };
     });
   } catch {
-    return INITIAL_STUDENTS;
+    return [];
   }
 };
 
@@ -1633,14 +1641,7 @@ function AdminProjectsManager() {
 
   const [sections] = useState<SectionItem[]>(loadStoredSections);
 
-  const [students] = useState<ManagedStudent[]>(() => {
-    try {
-      const saved = localStorage.getItem("rasi_v2_admin_students");
-      return saved ? JSON.parse(saved) : INITIAL_STUDENTS;
-    } catch {
-      return INITIAL_STUDENTS;
-    }
-  });
+  const [students] = useState<ManagedStudent[]>(loadStoredStudents);
 
   const [selectedDept, setSelectedDept] = useState(departments[0] || "Grade 10");
   const [selectedSection, setSelectedSection] = useState("A");
@@ -3956,14 +3957,7 @@ function AdminAttendanceManager() {
 
   const [sections] = useState<SectionItem[]>(loadStoredSections);
 
-  const [students] = useState<ManagedStudent[]>(() => {
-    try {
-      const saved = localStorage.getItem("rasi_v2_admin_students");
-      return saved ? JSON.parse(saved) : INITIAL_STUDENTS;
-    } catch {
-      return INITIAL_STUDENTS;
-    }
-  });
+  const [students] = useState<ManagedStudent[]>(loadStoredStudents);
 
   // DB queries and mutations for live Supabase sync
   const allDbAttendanceQuery = trpc.admin.listAllAttendance.useQuery(undefined, {
