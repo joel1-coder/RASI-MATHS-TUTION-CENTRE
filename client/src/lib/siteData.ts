@@ -227,7 +227,7 @@ export const defaultSiteData: SiteData = {
     { id: "chemistry", subject: "Chemistry", batch: "Grades 11–12 · Boards", schedule: "Fri · 4:30 PM", seats: "02 seats" },
   ],
   teachers: [
-    { id: "aarav", name: "Aarav Menon", subject: "Mathematics", bio: "Turns difficult concepts into calm, repeatable ways of thinking — one good question at a time.", image: `${imageBase}/photo-1544717305-2782549b5136?auto=format&fit=crop&w=900&q=85` },
+    { id: "ramanan", name: "Mr. RAMANAN P S", subject: "Mathematics", bio: "18+ years of patient, structured teaching. Transforms abstract concepts into clear, repeatable methods that students carry with them long after the exam.", image: `${imageBase}/photo-1544717305-2782549b5136?auto=format&fit=crop&w=900&q=85` },
     { id: "nisha", name: "Nisha Kapoor", subject: "Physics", bio: "A patient problem-solver who connects every formula to the world students can already see around them.", image: `${imageBase}/photo-1551836022-d5d88e9218df?auto=format&fit=crop&w=900&q=85` },
     { id: "kabir", name: "Kabir Shah", subject: "English & Writing", bio: "Helps young writers find a clear voice, a sharper argument, and the confidence to share both.", image: `${imageBase}/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=900&q=85` },
   ],

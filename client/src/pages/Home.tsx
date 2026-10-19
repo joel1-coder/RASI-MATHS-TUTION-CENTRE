@@ -639,28 +639,28 @@ function MobileTopBar({
   return (
     <>
       {/* Mobile top bar */}
-      <header className="sticky top-0 z-40 flex items-center justify-between border-b border-[#ebe3ef] bg-[#fffdfb]/95 px-4 py-3 backdrop-blur md:hidden">
+      <header className="sticky top-0 z-40 flex items-center justify-between border-b border-[#ebe3ef] bg-[#fffdfb]/95 px-5 py-4 backdrop-blur md:hidden">
         <button
           id="mobile-menu-toggle"
           onClick={() => setOpen(true)}
           aria-label="Open navigation menu"
-          className="flex h-9 w-9 items-center justify-center rounded-xl border border-[#e4dce9] bg-white text-[#5b3b92] shadow-sm"
+          className="flex h-11 w-11 items-center justify-center rounded-xl border border-[#e4dce9] bg-white text-[#5b3b92] shadow-sm"
         >
-          <Menu size={20} />
+          <Menu size={24} />
         </button>
         <Logo />
         <div className="flex items-center gap-2">
           <ThemeToggle />
           {/* Profile avatar with initials */}
-          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#e9ddf4] text-xs font-bold text-[#5b3b92]">
+          <div className="flex h-11 w-11 items-center justify-center rounded-full bg-[#e9ddf4] text-sm font-bold text-[#5b3b92]">
             {initials}
           </div>
           <button
             onClick={onLogout}
             aria-label="Log out"
-            className="flex h-9 w-9 items-center justify-center rounded-xl border border-[#e4dce9] bg-white text-[#796c88]"
+            className="flex h-11 w-11 items-center justify-center rounded-xl border border-[#e4dce9] bg-white text-[#796c88]"
           >
-            <LogOut size={16} />
+            <LogOut size={18} />
           </button>
         </div>
       </header>
@@ -675,7 +675,7 @@ function MobileTopBar({
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
           {/* Drawer panel */}
           <div
-            className="relative z-10 flex h-full w-72 flex-col bg-[#fffdfb] p-6 shadow-2xl"
+            className="relative z-10 flex h-full w-80 flex-col bg-[#fffdfb] p-6 shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between">
@@ -684,12 +684,12 @@ function MobileTopBar({
                 onClick={() => setOpen(false)}
                 className="rounded-full p-2 text-[#897c99] hover:bg-[#f2edf7]"
               >
-                <X size={18} />
+                <X size={20} />
               </button>
             </div>
             {/* User profile block */}
             <div className="mt-6 flex items-center gap-3 rounded-2xl bg-[#f4edf9] px-4 py-3">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#5b3b92] text-sm font-bold text-white">
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#5b3b92] text-sm font-bold text-white">
                 {initials}
               </div>
               <div className="min-w-0">
@@ -706,7 +706,7 @@ function MobileTopBar({
                 <button
                   key={item.label}
                   onClick={() => { onNav(item.label); setOpen(false); }}
-                  className={`flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-sm transition ${
+                  className={`flex w-full items-center gap-3 rounded-xl px-3 py-3.5 text-left text-[13px] transition ${
                     active === item.label
                       ? "bg-[#f0e9f7] font-semibold text-[#5b3b92]"
                       : "text-[#81758e] hover:bg-[#faf7fc]"
@@ -980,19 +980,44 @@ const parentNav = ["Overview", "Attendance", "Mark statements", "Question paper"
 function ParentWorkspace({ user, onLogout }: { user: User; onLogout: () => void }) {
   const [active, setActive] = useState("Overview");
   const [showLinked, setShowLinked] = useState(true);
-  // Dynamically resolve linked student — use linkedStudentEmail, then studentId, then parentEmail match, then student email match
+
+  // Step 1: Try local storage students first
   const allParentStudents = loadStoredStudents();
   const linkedKey = (user.linkedStudentEmail || "").trim().toLowerCase();
   const userEmailKey = (user.email || "").trim().toLowerCase();
-  const linkedStudent = allParentStudents.find(s =>
+  const linkedStudentLocal = allParentStudents.find(s =>
     (linkedKey && s.email.toLowerCase() === linkedKey) ||
     (linkedKey && s.studentId.toLowerCase() === linkedKey) ||
     (userEmailKey && s.parentEmail && s.parentEmail.toLowerCase() === userEmailKey) ||
     (userEmailKey && s.email.toLowerCase() === userEmailKey)
   ) || null;
-  const child = linkedStudent?.name || (user.linkedStudentEmail && user.linkedStudentEmail !== user.email ? user.linkedStudentEmail : "Your Child");
-  const childEmail = linkedStudent?.email || (user.linkedStudentEmail && user.linkedStudentEmail.includes("@") ? user.linkedStudentEmail : user.email);
-  const childDept = linkedStudent?.department || user.department || "Grade 10";
+
+  // Step 2: Also query DB portal users to resolve by name when local storage fails
+  const portalStudentsQuery = trpc.admin.listPortalUsers.useQuery(
+    { role: "student" } as any,
+    { enabled: !linkedStudentLocal && !!linkedKey, staleTime: 60000 }
+  );
+  const portalStudents: Array<{ name: string | null; email: string | null; linkedStudentEmail?: string | null }> =
+    (portalStudentsQuery.data as any[] | undefined) ?? [];
+
+  // Resolve from DB portal users: match by email or linkedStudentEmail
+  const linkedStudentFromDB = !linkedStudentLocal && linkedKey
+    ? portalStudents.find(
+        (s) =>
+          (s.email && s.email.toLowerCase() === linkedKey) ||
+          (s.linkedStudentEmail && s.linkedStudentEmail.toLowerCase() === linkedKey)
+      )
+    : null;
+
+  // Final merged linked student object
+  const linkedStudent = linkedStudentLocal || null;
+  // Resolved display name — never show raw email/ID
+  const child =
+    linkedStudentLocal?.name ||
+    (linkedStudentFromDB?.name ?? null) ||
+    "Your Child";
+  const childEmail = linkedStudentLocal?.email || (user.linkedStudentEmail && user.linkedStudentEmail.includes("@") ? user.linkedStudentEmail : user.email);
+  const childDept = linkedStudentLocal?.department || user.department || "Grade 10";
   const childSection = linkedStudent?.section || user.section || "A";
   const attendanceQuery = trpc.student.attendance.useQuery({ studentEmail: childEmail });
   const liveAttendance = attendanceQuery.data ?? [];
