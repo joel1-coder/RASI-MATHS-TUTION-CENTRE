@@ -91,20 +91,25 @@ export default function Portfolio({ onLogin, user, onGoToPortal, onLogout }: Por
         <div className="page-width header-inner">
           <a className="brand" href="#top" aria-label="Rasi Maths Tuition Centre home" onClick={closeMenu}>
             <img className="brand-logo" src="/rasi-logo.png" alt="RASI Maths Tuition Centre logo" />
-            <span className="brand-name">Rasi Maths Tuition Centre</span>
+            <span className="brand-name">
+              <span className="brand-title">Rasi Maths</span>
+              <span className="brand-subtitle">Tuition Centre</span>
+            </span>
           </a>
 
-          <ThemeToggle />
+          <div className="header-right-actions">
+            <ThemeToggle className="header-theme-toggle" />
 
-          <button
-            className="menu-toggle"
-            type="button"
-            aria-label={menuOpen ? "Close navigation" : "Open navigation"}
-            aria-expanded={menuOpen}
-            onClick={() => setMenuOpen((open) => !open)}
-          >
-            {menuOpen ? <X size={22} /> : <Menu size={22} />}
-          </button>
+            <button
+              className="menu-toggle"
+              type="button"
+              aria-label={menuOpen ? "Close navigation" : "Open navigation"}
+              aria-expanded={menuOpen}
+              onClick={() => setMenuOpen((open) => !open)}
+            >
+              {menuOpen ? <X size={20} /> : <Menu size={20} />}
+            </button>
+          </div>
 
           <nav className={`site-nav ${menuOpen ? "is-open" : ""}`} aria-label="Primary navigation">
             <a href="#subjects" onClick={closeMenu}>Subjects</a>
