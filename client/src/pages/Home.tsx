@@ -873,7 +873,7 @@ function StudentWorkspace({ user, onLogout }: { user: User; onLogout: () => void
   const studentFullName = studentInfo?.name || user.name;
   const studentDept = studentInfo?.department || user.department || "Grade 6";
   const studentSection = studentInfo?.section || user.section || "A";
-  const portalQueryOptions = { retry: false, staleTime: 30_000, refetchOnWindowFocus: false } as const;
+  const portalQueryOptions = { retry: false, staleTime: 30_000, refetchOnWindowFocus: false, refetchInterval: 10_000 } as const;
   const attendanceQuery = trpc.student.attendance.useQuery({ studentEmail: user.email }, portalQueryOptions);
   const scheduleQuery = trpc.student.schedule.useQuery({ studentEmail: user.email }, portalQueryOptions);
   const projectsQuery = trpc.student.projects.useQuery({ studentEmail: user.email }, portalQueryOptions);
@@ -1032,7 +1032,7 @@ function ParentWorkspace({ user, onLogout }: { user: User; onLogout: () => void 
   const childEmail = linkedStudentLocal?.email || (user.linkedStudentEmail && user.linkedStudentEmail.includes("@") ? user.linkedStudentEmail : user.email);
   const childDept = linkedStudentLocal?.department || user.department || "Grade 10";
   const childSection = linkedStudent?.section || user.section || "A";
-  const portalQueryOptions = { retry: false, staleTime: 30_000, refetchOnWindowFocus: false } as const;
+  const portalQueryOptions = { retry: false, staleTime: 30_000, refetchOnWindowFocus: false, refetchInterval: 10_000 } as const;
   const attendanceQuery = trpc.student.attendance.useQuery({ studentEmail: childEmail }, portalQueryOptions);
   const liveAttendance = attendanceQuery.data ?? [];
   const projectsQuery = trpc.student.projects.useQuery({ studentEmail: childEmail }, portalQueryOptions);
@@ -4117,13 +4117,14 @@ function AdminAttendanceManager() {
       }));
       await bulkAttendanceMutation.mutateAsync({ records: recordsToSync });
       allDbAttendanceQuery.refetch();
+      showToast(`✅ Attendance synced to student and parent portals: ${newDept} - Sec ${newSection}`);
     } catch (err) {
-      console.warn("DB attendance sync notice:", err);
+      console.error("DB attendance sync failed:", err);
+      showToast("⚠️ Attendance was not synced to the portals. Please check the database session and retry.");
     }
 
     setShowCreateModal(false);
     setNewDescription("");
-    showToast(`✅ Attendance record logged: ${newDept} - Sec ${newSection} (${presentCount} Present, ${absentCount} Absent)`);
   };
 
   // Handle Delete Session (D)
