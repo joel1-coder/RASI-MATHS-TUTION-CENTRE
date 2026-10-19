@@ -285,6 +285,8 @@ function RoleLoginPage({ role, onLogin, onBack }: { role: Role; onLogin: (user: 
           localStorage.setItem("demo-user-email", match.email);
           localStorage.setItem("rasi_local_user", JSON.stringify(enrichedUser));
           localStorage.setItem("rasi_active_portal", "1");
+          sessionStorage.setItem("rasi_active_role", role);
+          localStorage.setItem("rasi_active_role", role);
         } catch {}
 
         try {
@@ -359,6 +361,8 @@ function RoleLoginPage({ role, onLogin, onBack }: { role: Role; onLogin: (user: 
         localStorage.setItem("demo-user-email", res.user.email!);
         localStorage.setItem("rasi_local_user", JSON.stringify(userObj));
         localStorage.setItem("rasi_active_portal", "1");
+          sessionStorage.setItem("rasi_active_role", role);
+          localStorage.setItem("rasi_active_role", role);
       } catch {}
 
       await utils.auth.me.invalidate();
@@ -8755,6 +8759,7 @@ export default function Home() {
       sessionStorage.removeItem("demo-user-email");
       sessionStorage.removeItem("rasi_local_user");
       sessionStorage.removeItem("rasi_active_portal");
+      sessionStorage.removeItem("rasi_active_role");
       sessionStorage.removeItem("manus-cookie");
       if (currentRole) {
         sessionStorage.removeItem(`rasi_user_${currentRole}`);
@@ -8767,6 +8772,7 @@ export default function Home() {
       localStorage.removeItem("demo-user-email");
       localStorage.removeItem("rasi_local_user");
       localStorage.removeItem("rasi_active_portal");
+      localStorage.removeItem("rasi_active_role");
       localStorage.removeItem("manus-cookie");
     } catch {}
     setUser(null);

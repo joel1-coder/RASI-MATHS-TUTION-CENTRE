@@ -83,6 +83,10 @@ const trpcClient = trpc.createClient({
           if (!localUserRaw && pathRole) {
             localUserRaw = sessionStorage.getItem(`rasi_user_${pathRole}`) || localStorage.getItem(`rasi_user_${pathRole}`);
           }
+          const activeRole = sessionStorage.getItem("rasi_active_role") || localStorage.getItem("rasi_active_role");
+          if (!localUserRaw && activeRole) {
+            localUserRaw = sessionStorage.getItem(`rasi_user_${activeRole}`) || localStorage.getItem(`rasi_user_${activeRole}`);
+          }
           if (!localUserRaw) {
             for (const role of ["admin", "teacher", "parent", "student"]) {
               const roleUser = sessionStorage.getItem(`rasi_user_${role}`);
@@ -99,6 +103,9 @@ const trpcClient = trpc.createClient({
           let tokenRaw = sessionStorage.getItem("manus-cookie");
           if (!tokenRaw && pathRole) {
             tokenRaw = sessionStorage.getItem(`manus-cookie_${pathRole}`) || localStorage.getItem(`manus-cookie_${pathRole}`);
+          }
+          if (!tokenRaw && activeRole) {
+            tokenRaw = sessionStorage.getItem(`manus-cookie_${activeRole}`) || localStorage.getItem(`manus-cookie_${activeRole}`);
           }
           if (!tokenRaw) {
             for (const role of ["admin", "teacher", "parent", "student"]) {
