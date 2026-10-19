@@ -22,6 +22,7 @@ export async function getDb() {
         ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "section" varchar(60);
         ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "session" varchar(120);
         ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "joinedDate" varchar(60);
+        ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "portalPassword" text;
       `).catch(() => {});
       await _client.unsafe(`ALTER TABLE "student_attendance" ADD COLUMN IF NOT EXISTS "description" text NOT NULL DEFAULT '';`).catch(() => {});
       // Ensure site_settings table exists for persistent portfolio content
