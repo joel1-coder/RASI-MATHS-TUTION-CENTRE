@@ -217,6 +217,10 @@ export const appRouter = router({
         password: z.string().min(4).max(100),
         role: z.enum(["student", "parent", "teacher", "admin"]),
         linkedStudentEmail: z.string().email().optional().nullable(),
+        department: z.string().optional().nullable(),
+        section: z.string().optional().nullable(),
+        session: z.string().optional().nullable(),
+        joinedDate: z.string().optional().nullable(),
       }))
       .mutation(({ input }) => upsertPortalUser({
         email: input.email,
@@ -224,6 +228,10 @@ export const appRouter = router({
         password: input.password,
         role: input.role,
         linkedStudentEmail: input.linkedStudentEmail ?? null,
+        department: input.department ?? null,
+        section: input.section ?? null,
+        session: input.session ?? null,
+        joinedDate: input.joinedDate ?? null,
       })),
 
     updatePortalUser: adminProcedure
@@ -233,6 +241,10 @@ export const appRouter = router({
         password: z.string().min(4).max(100),
         role: z.enum(["student", "parent", "teacher", "admin"]),
         linkedStudentEmail: z.string().email().optional().nullable(),
+        department: z.string().optional().nullable(),
+        section: z.string().optional().nullable(),
+        session: z.string().optional().nullable(),
+        joinedDate: z.string().optional().nullable(),
       }))
       .mutation(({ input }) => upsertPortalUser({
         email: input.email,
@@ -240,6 +252,10 @@ export const appRouter = router({
         password: input.password,
         role: input.role,
         linkedStudentEmail: input.linkedStudentEmail ?? null,
+        department: input.department ?? null,
+        section: input.section ?? null,
+        session: input.session ?? null,
+        joinedDate: input.joinedDate ?? null,
       })),
 
     deletePortalUser: adminProcedure
@@ -256,7 +272,7 @@ export const appRouter = router({
       }),
 
     listPortalUsers: adminProcedure
-      .input(z.object({ role: z.enum(["student", "parent", "teacher"]).optional() }))
+      .input(z.object({ role: z.enum(["student", "parent", "teacher", "admin"]).optional() }))
       .query(({ input }) => listPortalUsers(input.role)),
 
     // ── Bulk student + parent login creation (called when admin adds students) ──

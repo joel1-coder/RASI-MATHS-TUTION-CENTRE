@@ -10,6 +10,10 @@ export const users = pgTable("users", {
   name: text("name"),
   email: varchar("email", { length: 320 }),
   linkedStudentEmail: varchar("linkedStudentEmail", { length: 320 }),
+  department: varchar("department", { length: 120 }),
+  section: varchar("section", { length: 60 }),
+  session: varchar("session", { length: 120 }),
+  joinedDate: varchar("joinedDate", { length: 60 }),
   loginMethod: varchar("loginMethod", { length: 64 }),
   role: roleEnum("role").default("user").notNull(),
   // Portal password (plain-text for internal use; stored server-side only, never sent to client)

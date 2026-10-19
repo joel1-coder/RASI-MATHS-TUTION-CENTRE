@@ -14,6 +14,13 @@ export async function getDb() {
       _db = drizzle(_client);
       // Ensure unit_questions has section column
       _client.unsafe(`ALTER TABLE "unit_questions" ADD COLUMN IF NOT EXISTS "section" varchar(50) DEFAULT 'All Sections';`).catch(() => {});
+      // Ensure users has academic enrollment fields (department, section, session, joinedDate)
+      _client.unsafe(`
+        ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "department" varchar(120);
+        ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "section" varchar(60);
+        ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "session" varchar(120);
+        ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "joinedDate" varchar(60);
+      `).catch(() => {});
       // Ensure site_settings table exists for persistent portfolio content
       _client.unsafe(`
         CREATE TABLE IF NOT EXISTS "site_settings" (
@@ -114,6 +121,10 @@ export async function upsertPortalUser(input: {
   password: string;
   role: "student" | "parent" | "teacher" | "admin";
   linkedStudentEmail?: string | null;
+  department?: string | null;
+  section?: string | null;
+  session?: string | null;
+  joinedDate?: string | null;
 }) {
   const db = await getDb();
   if (!db) throw new Error("Database is not available");
@@ -126,6 +137,10 @@ export async function upsertPortalUser(input: {
     role: input.role,
     portalPassword: input.password,
     linkedStudentEmail: input.linkedStudentEmail ?? null,
+    department: input.department ?? null,
+    section: input.section ?? null,
+    session: input.session ?? null,
+    joinedDate: input.joinedDate ?? null,
     loginMethod: "password" as const,
     lastSignedIn: new Date(),
   };
@@ -140,6 +155,10 @@ export async function upsertPortalUser(input: {
         role: values.role,
         portalPassword: values.portalPassword,
         linkedStudentEmail: values.linkedStudentEmail,
+        department: values.department,
+        section: values.section,
+        session: values.session,
+        joinedDate: values.joinedDate,
         loginMethod: values.loginMethod,
         updatedAt: new Date(),
       },
@@ -162,7 +181,7 @@ export async function deletePortalUser(email: string) {
 }
 
 /** List all portal users (with password) - admin only */
-export async function listPortalUsers(role?: "student" | "parent" | "teacher") {
+export async function listPortalUsers(role?: "student" | "parent" | "teacher" | "admin") {
   const db = await getDb();
   if (!db) return [];
   if (role) {

@@ -10,6 +10,7 @@ import { COOKIE_NAME } from "@shared/const";
 import { readSiteData, saveSiteData, type StudyMaterial } from "@/lib/siteData";
 import { exportToCsv } from "@/lib/exportCsv";
 import ThemeToggle from "@/components/ThemeToggle";
+import { UserManagement } from "@/components/UserManagement";
 
 export type Role = "student" | "parent" | "admin" | "teacher";
 
@@ -6213,7 +6214,7 @@ function AdminUnitPaperManager() {
 
 function AdminWorkspace({ user, onLogout }: { user: User; onLogout: () => void }) {
   const studentEmail = "student@portal.com";
-  const [active, setActive] = useState<"Overview" | "Students" | "Attendance" | "Schedule" | "Marks" | "Projects" | "Government exams" | "Question paper" | "Unit-wise paper" | "Profile">("Attendance");
+  const [active, setActive] = useState<"Overview" | "User Management" | "Students" | "Attendance" | "Schedule" | "Marks" | "Projects" | "Government exams" | "Question paper" | "Unit-wise paper" | "Profile">("Attendance");
   const [sessionDate, setSessionDate] = useState(new Date().toISOString().slice(0, 10));
   const [subject, setSubject] = useState("Mathematics");
   const [exercise, setExercise] = useState("");
@@ -6234,6 +6235,7 @@ function AdminWorkspace({ user, onLogout }: { user: User; onLogout: () => void }
   const monthName = now.toLocaleString('default', { month: 'long' });
   const adminNavItems = [
     { label: "Overview", icon: <LayoutDashboard size={16} /> },
+    { label: "User Management", icon: <UserCheck size={16} /> },
     { label: "Students", icon: <Users size={16} /> },
     { label: "Attendance", icon: <ClipboardCheck size={16} /> },
     { label: "Schedule", icon: <CalendarDays size={16} /> },
@@ -6284,9 +6286,11 @@ function AdminWorkspace({ user, onLogout }: { user: User; onLogout: () => void }
       </header>
       <div className="p-5 md:p-10">
         <div className="mb-8">
-          <Pill>{active === "Students" ? "CREATION / MANAGEMENT" : active === "Attendance" ? "ATTENDANCE" : active === "Government exams" ? "GOV EXAMS" : active === "Question paper" ? "QUESTION PAPERS" : active === "Unit-wise paper" ? "UNIT-WISE PAPERS" : active.toUpperCase()}</Pill>
+          <Pill>{active === "User Management" ? "USER MANAGEMENT" : active === "Students" ? "CREATION / MANAGEMENT" : active === "Attendance" ? "ATTENDANCE" : active === "Government exams" ? "GOV EXAMS" : active === "Question paper" ? "QUESTION PAPERS" : active === "Unit-wise paper" ? "UNIT-WISE PAPERS" : active.toUpperCase()}</Pill>
           <p className="mt-3 max-w-lg text-sm leading-6 text-[#81758e]">
-            {active === "Students"
+            {active === "User Management"
+              ? "Manage Teacher, Admin, Student, and Parent accounts. Separate academic enrollment lines (Date, Department, Section, Session) synced to Supabase DB."
+              : active === "Students"
               ? "Comprehensive student enrollment, department batches, single & bulk import management."
               : active === "Attendance"
               ? "Department & section batch attendance with interactive roll number chips and records log."
@@ -6386,9 +6390,24 @@ function AdminWorkspace({ user, onLogout }: { user: User; onLogout: () => void }
                 Upload and dispatch chapter/unit question papers and practice sets to students and parents.
               </p>
             </button>
+            <button
+              onClick={() => setActive("User Management")}
+              className="rounded-3xl border border-[#eee6f0] bg-white p-6 text-left transition hover:-translate-y-1 sm:col-span-2"
+            >
+              <UserCheck className="text-[#6d4b9f]" size={24} />
+              <h2 className="mt-6 text-xl font-semibold">User Management (Teacher, Admin, Student, Parent)</h2>
+              <p className="mt-2 text-sm text-[#887c91]">
+                Add or remove Teacher, Admin, Student, and Parent accounts. Features a separate line for students & parents with Date, Department, Section, and Session.
+              </p>
+            </button>
           </div>
         )}
 
+        {active === "User Management" && (
+          <div className="mt-2">
+            <UserManagement />
+          </div>
+        )}
         {active === "Students" && <AdminStudentManager />}
         {active === "Attendance" && <AdminAttendanceManager />}
         {active === "Schedule" && (
