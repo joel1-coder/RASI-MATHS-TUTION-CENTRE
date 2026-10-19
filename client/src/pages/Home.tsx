@@ -778,6 +778,7 @@ function StudentProfileSection({ user, studentInfo }: { user: User; studentInfo?
 }
 
 function ParentProfileSection({ user, linkedStudent }: { user: User; linkedStudent?: ReturnType<typeof loadStoredStudents>[number] | null }) {
+  const parentPhone = linkedStudent?.parentPhone || user.parentPhone;
   return (
     <div className="rounded-3xl border border-[#eee6f0] bg-white p-6 shadow-sm">
       <div className="flex items-center gap-4 pb-6 border-b border-[#f0eaf5]">
@@ -792,7 +793,7 @@ function ParentProfileSection({ user, linkedStudent }: { user: User; linkedStude
       <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <ProfileField label="Parent Name" value={user.name} />
         <ProfileField label="Parent Email" value={user.email} />
-        <ProfileField label="Parent Phone / WhatsApp" value={user.parentPhone} />
+        <ProfileField label="Parent Phone / WhatsApp" value={parentPhone} />
         <ProfileField label="Linked Student Name" value={linkedStudent?.name} />
         <ProfileField label="Linked Student ID" value={linkedStudent?.studentId} />
         <ProfileField label="Linked Student Email" value={linkedStudent?.email} />
@@ -2590,9 +2591,9 @@ function AdminStudentManager() {
 
     const header = lines[0].toLowerCase().split(",").map(h => h.trim().replace(/^["']|["']$/g, ""));
     const idIdx = header.findIndex(h => h.includes("studentid") || h.includes("student id") || h.includes("roll") || h === "id");
-    const nameIdx = header.findIndex(h => (h.includes("name") || h.includes("student")) && !h.includes("parent") && !h.includes("pass"));
-    const pNameIdx = header.findIndex(h => h.includes("parent") && (h.includes("name") || !h.includes("phone")));
-    const pPhoneIdx = header.findIndex(h => (h.includes("parent") || h.includes("phone") || h.includes("mobile") || h.includes("contact")) && !h.includes("email") && !h.includes("pass"));
+    const nameIdx = header.findIndex(h => h === "name" || h === "studentname" || h === "student name" || (h.includes("student") && h.includes("name") && !h.includes("id")));
+    const pNameIdx = header.findIndex(h => h === "parentname" || h === "parent name" || (h.includes("parent") && h.includes("name")));
+    const pPhoneIdx = header.findIndex(h => (h.includes("phone") || h.includes("mobile") || h.includes("contact")) && !h.includes("email") && !h.includes("pass"));
     const pEmailIdx = header.findIndex(h => h.includes("parent") && (h.includes("email") || h.includes("mail")));
     const emailIdx = header.findIndex(h => (h.includes("email") || h.includes("mail")) && !h.includes("parent"));
     const stuPassIdx = header.findIndex(h => (h.includes("student") && h.includes("pass")) || h === "studentpassword" || h.includes("student's password"));
@@ -2617,7 +2618,8 @@ function AdminStudentManager() {
       if (row.length < 2) continue;
 
       const sid = (idIdx !== -1 ? row[idIdx] : row[0]) || `RM-${Date.now()}-${i}`;
-      const sname = (nameIdx !== -1 ? row[nameIdx] : row[1]) || "Imported Student";
+      const parsedName = (nameIdx !== -1 ? row[nameIdx] : row[1]) || "Imported Student";
+      const sname = parsedName.toLowerCase() === sid.toLowerCase() && row[1] && row[1].toLowerCase() !== sid.toLowerCase() ? row[1] : parsedName;
       const sparentName = (pNameIdx !== -1 && row[pNameIdx]) ? row[pNameIdx] : "Parent";
       const sparentPhone = (pPhoneIdx !== -1 && row[pPhoneIdx]) ? row[pPhoneIdx] : "+91 98401 23450";
       const sparentEmail = (pEmailIdx !== -1 && row[pEmailIdx]) ? row[pEmailIdx] : "";
