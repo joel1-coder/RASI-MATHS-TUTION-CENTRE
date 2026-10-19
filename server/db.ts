@@ -10,7 +10,9 @@ let _client: ReturnType<typeof postgres> | null = null;
 export async function getDb() {
   if (!_db && process.env.DATABASE_URL) {
     try {
-      _client = postgres(process.env.DATABASE_URL);
+      // Supabase's transaction pooler (port 6543) does not support prepared
+      // statements because connections can move between transactions.
+      _client = postgres(process.env.DATABASE_URL, { prepare: false });
       _db = drizzle(_client);
       // Ensure unit_questions has section column
       _client.unsafe(`ALTER TABLE "unit_questions" ADD COLUMN IF NOT EXISTS "section" varchar(50) DEFAULT 'All Sections';`).catch(() => {});
