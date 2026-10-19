@@ -84,12 +84,30 @@ const trpcClient = trpc.createClient({
             localUserRaw = sessionStorage.getItem(`rasi_user_${pathRole}`) || localStorage.getItem(`rasi_user_${pathRole}`);
           }
           if (!localUserRaw) {
+            for (const role of ["admin", "teacher", "parent", "student"]) {
+              const roleUser = sessionStorage.getItem(`rasi_user_${role}`);
+              if (roleUser) {
+                localUserRaw = roleUser;
+                break;
+              }
+            }
+          }
+          if (!localUserRaw) {
             localUserRaw = localStorage.getItem("rasi_local_user");
           }
 
           let tokenRaw = sessionStorage.getItem("manus-cookie");
           if (!tokenRaw && pathRole) {
             tokenRaw = sessionStorage.getItem(`manus-cookie_${pathRole}`) || localStorage.getItem(`manus-cookie_${pathRole}`);
+          }
+          if (!tokenRaw) {
+            for (const role of ["admin", "teacher", "parent", "student"]) {
+              const roleToken = sessionStorage.getItem(`manus-cookie_${role}`);
+              if (roleToken) {
+                tokenRaw = roleToken;
+                break;
+              }
+            }
           }
           if (!tokenRaw) {
             tokenRaw = localStorage.getItem("manus-cookie");
