@@ -659,7 +659,7 @@ function MobileTopBar({
           <button
             onClick={onLogout}
             aria-label="Log out"
-            className="flex h-11 w-11 items-center justify-center rounded-xl border border-[#e4dce9] bg-white text-[#796c88]"
+            className="flex h-11 w-11 items-center justify-center rounded-xl border border-[#e4dce9] bg-white text-[#796c88] dark:border-[rgba(212,175,55,0.35)] dark:bg-[#0F1B3D] dark:text-[#F8F1DC]"
           >
             <LogOut size={18} />
           </button>
@@ -958,7 +958,7 @@ function StudentWorkspace({ user, onLogout }: { user: User; onLogout: () => void
             <button onClick={() => { setActive("Profile"); setSelectedTest(null); }} title="View profile" className="flex h-9 w-9 items-center justify-center rounded-full bg-[#e9ddf4] text-xs font-bold text-[#5b3b92] hover:ring-2 hover:ring-[#5b3b92]/30 transition">
               {studentFullName.split(" ").map(n => n[0]).join("").slice(0,2).toUpperCase()}
             </button>
-            <button onClick={onLogout} className="rounded-full border border-[#e4dce9] bg-white p-2.5 text-[#796c88] hover:text-[#5b3b92]" title="Log out"><LogOut size={16} /></button>
+            <button onClick={onLogout} className="rounded-full border border-[#e4dce9] bg-white p-2.5 text-[#796c88] hover:text-[#5b3b92] dark:border-[rgba(212,175,55,0.35)] dark:bg-[#0F1B3D] dark:text-[#F8F1DC] dark:hover:text-[#F5D76E]" title="Log out"><LogOut size={16} /></button>
           </div>
         </header>
         <div className="p-5 md:p-10">
@@ -1023,6 +1023,21 @@ function ParentWorkspace({ user, onLogout }: { user: User; onLogout: () => void 
   const attendanceQuery = trpc.student.attendance.useQuery({ studentEmail: childEmail });
   const liveAttendance = attendanceQuery.data ?? [];
   const projectsQuery = trpc.student.projects.useQuery({ studentEmail: childEmail });
+  const localProjects = useMemo(() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem("rasi_dispatched_projects") || "[]") as Array<any>;
+      const childEmailKey = childEmail.toLowerCase();
+      const childIdKey = (linkedStudent?.studentId || "").toLowerCase();
+      return saved
+        .filter(project =>
+          String(project.studentEmail || "").toLowerCase() === childEmailKey ||
+          (childIdKey && String(project.studentId || "").toLowerCase() === childIdKey)
+        )
+        .map((project, index) => ({ ...project, id: project.id || `local-project-${index}` }));
+    } catch {
+      return [];
+    }
+  }, [childEmail, linkedStudent?.studentId]);
   const collegesQuery = trpc.guidance.colleges.useQuery();
   const examsQuery = trpc.guidance.exams.useQuery();
   const intro: Record<string, string> = { Overview: `A calm view of ${child}’s learning journey.`, Attendance: "Review your child’s day-by-day attendance record.", "Mark statements": "See the same weekly and monthly test results shared with your child.", "Question paper": "Review question papers sent by Admin to your child's class.", "Unit question": "Review unit-wise questions sent by Admin to your child's class.", Projects: "Track projects assigned by the Admin and their progress.", "Orientation programs": "Centre meetings and orientation sessions scheduled for your family.", Colleges: "Explore technology and non-technology colleges by tier.", "Government exams": "Compare Central and Tamil Nadu government examination pathways.", Profile: "Your parent profile and your child's linked details." };
@@ -1045,9 +1060,14 @@ function ParentWorkspace({ user, onLogout }: { user: User; onLogout: () => void 
     }
     if (active === "Projects") {
       if (projectsQuery.isLoading) return <LoadingState label="Loading assigned projects…" />;
-      const projects = projectsQuery.data ?? [];
+      const databaseProjects = projectsQuery.data ?? [];
+      const databaseTitles = new Set(databaseProjects.map(project => `${project.studentEmail}:${project.title}`));
+      const projects = [
+        ...databaseProjects,
+        ...localProjects.filter(project => !databaseTitles.has(`${project.studentEmail}:${project.title}`)),
+      ];
       if (!projects.length) return <EmptyState title="No projects assigned yet" message={`Admin-assigned projects for ${child} will appear here automatically.`} />;
-      return <div className="grid gap-4 md:grid-cols-2">{projects.map(project => <div className="rounded-3xl border border-[#eee6f0] bg-white p-6" key={project.id}><div className="flex items-start justify-between"><span className="rounded-full bg-[#f4e9dd] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-[#c36b42]">{project.subject}</span><NotebookPen className="text-[#8060ac]" size={20} /></div><h2 className="mt-6 text-xl font-semibold">{project.title}</h2><p className="mt-2 text-sm text-[#887c91]">Assigned by Admin · Due {project.dueDate}</p><div className="mt-6 flex items-center justify-between text-xs"><span className="font-semibold text-[#6d4b9f]">{project.status}</span><span className="text-[#887c91]">{project.progress}%</span></div><div className="mt-3 h-2 overflow-hidden rounded-full bg-[#eee7f3]"><div className="h-full rounded-full bg-[#7c5ab1]" style={{ width: `${project.progress}%` }} /></div></div>)}</div>;
+      return <div className="grid gap-4 md:grid-cols-2">{projects.map(project => <div className="rounded-3xl border border-[#eee6f0] bg-white p-6" key={project.id}><div className="flex items-start justify-between"><span className="rounded-full bg-[#f4e9dd] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-[#c36b42]">{project.subject}</span><NotebookPen className="text-[#8060ac]" size={20} /></div><h2 className="mt-6 text-xl font-semibold">{project.title}</h2><p className="mt-2 text-sm text-[#887c91]">Assigned by Admin · Due {project.dueDate}</p>{project.description && <p className="mt-3 text-sm leading-6 text-[#887c91]">{project.description}</p>}<div className="mt-6 flex items-center justify-between text-xs"><span className="font-semibold text-[#6d4b9f]">{project.status}</span><span className="text-[#887c91]">{project.progress}%</span></div><div className="mt-3 h-2 overflow-hidden rounded-full bg-[#eee7f3]"><div className="h-full rounded-full bg-[#7c5ab1]" style={{ width: `${project.progress}%` }} /></div></div>)}</div>;
     }
     if (active === "Orientation programs") return <div className="space-y-4">{[["Parent orientation · Term 1", "Saturday, 10 October 2026", "10:30 AM", "Centre hall", "Scheduled"], [`Progress meeting · ${child}`, "Monday, 19 October 2026", "5:30 PM", "Video meeting", "Scheduled"], ["Career pathways evening", "Friday, 6 November 2026", "6:00 PM", "Centre hall", "Save the date"]].map(item => <div className="flex flex-col justify-between gap-4 rounded-3xl border border-[#eee6f0] bg-white p-6 md:flex-row md:items-center" key={item[0]}><div><span className="rounded-full bg-[#f4e9dd] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-[#c36b42]">{item[4]}</span><h2 className="mt-4 text-xl font-semibold">{item[0]}</h2><p className="mt-2 text-sm text-[#887c91]">{item[1]} · {item[2]} · {item[3]}</p></div><button className="rounded-full border border-[#dcd1e5] px-4 py-2.5 text-xs font-semibold text-[#6d4b9f]">View details</button></div>)}</div>;
     if (active === "Colleges") {
@@ -1110,7 +1130,7 @@ function ParentWorkspace({ user, onLogout }: { user: User; onLogout: () => void 
             <button onClick={() => setActive("Profile")} title="View profile" className="flex h-9 w-9 items-center justify-center rounded-full bg-[#e9ddf4] text-xs font-bold text-[#5b3b92] hover:ring-2 hover:ring-[#5b3b92]/30 transition">
               {user.name.split(" ").map(n => n[0]).join("").slice(0,2).toUpperCase()}
             </button>
-            <button onClick={onLogout} className="rounded-full border border-[#e4dce9] bg-white p-2.5 text-[#796c88] hover:text-[#5b3b92]" title="Log out"><LogOut size={16} /></button>
+            <button onClick={onLogout} className="rounded-full border border-[#e4dce9] bg-white p-2.5 text-[#796c88] hover:text-[#5b3b92] dark:border-[rgba(212,175,55,0.35)] dark:bg-[#0F1B3D] dark:text-[#F8F1DC] dark:hover:text-[#F5D76E]" title="Log out"><LogOut size={16} /></button>
           </div>
         </header>
         <div className="p-5 md:p-10">
@@ -6279,7 +6299,7 @@ function AdminWorkspace({ user, onLogout }: { user: User; onLogout: () => void }
           <button onClick={() => setActive("Profile")} title="View profile" className="flex h-9 w-9 items-center justify-center rounded-full bg-[#e9ddf4] text-xs font-bold text-[#5b3b92] hover:ring-2 hover:ring-[#5b3b92]/30 transition">
             {user.name.split(" ").map(n => n[0]).join("").slice(0,2).toUpperCase()}
           </button>
-          <button onClick={onLogout} className="rounded-full border border-[#e4dce9] bg-white p-2.5 text-[#796c88] transition hover:text-[#5b3b92]" title="Log out">
+          <button onClick={onLogout} className="rounded-full border border-[#e4dce9] bg-white p-2.5 text-[#796c88] transition hover:text-[#5b3b92] dark:border-[rgba(212,175,55,0.35)] dark:bg-[#0F1B3D] dark:text-[#F8F1DC] dark:hover:text-[#F5D76E]" title="Log out">
             <LogOut size={16} />
           </button>
         </div>
@@ -6411,7 +6431,14 @@ function AdminWorkspace({ user, onLogout }: { user: User; onLogout: () => void }
         {active === "Students" && <AdminStudentManager />}
         {active === "Attendance" && <AdminAttendanceManager />}
         {active === "Schedule" && (
-          <div className="grid gap-5 lg:grid-cols-[1fr_1fr]">
+          <div className="space-y-6">
+            <div>
+              <Pill>SCHEDULE</Pill>
+              <p className="mt-3 max-w-2xl text-sm leading-6 text-[#81758e]">
+                Plan student exercises and session times with the same clear, spacious workflow used for parent dispatch.
+              </p>
+            </div>
+            <div className="grid gap-5 lg:grid-cols-[1fr_1fr]">
             <div className="rounded-3xl border border-[#eee6f0] bg-white p-6">
               <div className="flex items-center justify-between">
                 <div>
@@ -6534,6 +6561,7 @@ function AdminWorkspace({ user, onLogout }: { user: User; onLogout: () => void }
                   )}
                 </div>
               </form>
+            </div>
             </div>
           </div>
         )}
@@ -7102,7 +7130,7 @@ function TeacherWorkspace({ user, onLogout }: { user: User; onLogout: () => void
             </button>
             <button
               onClick={onLogout}
-              className="rounded-full border border-[#e4dce9] bg-white p-2.5 text-[#796c88] transition hover:text-[#5b3b92]"
+              className="rounded-full border border-[#e4dce9] bg-white p-2.5 text-[#796c88] transition hover:text-[#5b3b92] dark:border-[rgba(212,175,55,0.35)] dark:bg-[#0F1B3D] dark:text-[#F8F1DC] dark:hover:text-[#F5D76E]"
               title="Log out"
             >
               <LogOut size={16} />
@@ -8449,7 +8477,7 @@ function Dashboard({ user, onLogout }: { user: User; onLogout: () => void }) {
             {/* Hamburger — mobile only */}
             <button
               onClick={() => setSidebarOpen(true)}
-              className="flex h-9 w-9 items-center justify-center rounded-xl border border-[#e4dce9] bg-white text-[#796c88] hover:text-[#5b3b92] md:hidden"
+              className="flex h-9 w-9 items-center justify-center rounded-xl border border-[#e4dce9] bg-white text-[#796c88] hover:text-[#5b3b92] dark:border-[rgba(212,175,55,0.35)] dark:bg-[#0F1B3D] dark:text-[#F8F1DC] dark:hover:text-[#F5D76E] md:hidden"
               aria-label="Open menu"
             >
               <Menu size={18} />
@@ -8473,7 +8501,7 @@ function Dashboard({ user, onLogout }: { user: User; onLogout: () => void }) {
             </div>
             <button
               onClick={onLogout}
-              className="flex h-9 w-9 items-center justify-center rounded-full border border-[#e4dce9] bg-white text-[#796c88] hover:text-[#5b3b92]"
+              className="flex h-9 w-9 items-center justify-center rounded-full border border-[#e4dce9] bg-white text-[#796c88] hover:text-[#5b3b92] dark:border-[rgba(212,175,55,0.35)] dark:bg-[#0F1B3D] dark:text-[#F8F1DC] dark:hover:text-[#F5D76E]"
               title="Log out"
             >
               <LogOut size={16} />
@@ -8653,7 +8681,7 @@ export default function Home() {
     if (currentUser.role === "student") return <div className="portal-shell"><ThemeToggle className="fixed right-5 top-5 z-[60] sm:right-24 md:hidden" /><StudentWorkspace user={currentUser} onLogout={logout} /></div>;
     if (currentUser.role === "parent") return <div className="portal-shell"><ThemeToggle className="fixed right-5 top-5 z-[60] sm:right-24 md:hidden" /><ParentWorkspace user={currentUser} onLogout={logout} /></div>;
     if (currentUser.role === "teacher") return <div className="portal-shell"><ThemeToggle className="fixed right-5 top-5 z-[60] sm:right-24 md:hidden" /><TeacherWorkspace user={currentUser} onLogout={logout} /></div>;
-    if (currentUser.role === "admin") return <div className="portal-shell"><AdminWorkspace user={currentUser} onLogout={logout} /></div>;
+    if (currentUser.role === "admin") return <div className="portal-shell"><ThemeToggle className="fixed right-5 top-5 z-[60] md:hidden" /><AdminWorkspace user={currentUser} onLogout={logout} /></div>;
   }
 
   // If visiting /portal/student etc. without an active session for that role, show login for that role
