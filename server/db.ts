@@ -14,8 +14,42 @@ export async function getDb() {
       // statements because connections can move between transactions.
       _client = postgres(process.env.DATABASE_URL, { prepare: false });
       _db = drizzle(_client);
-      // Ensure unit_questions has section column
-      _client.unsafe(`ALTER TABLE "unit_questions" ADD COLUMN IF NOT EXISTS "section" varchar(50) DEFAULT 'All Sections';`).catch(() => {});
+      // Keep the materials tables compatible with the current Drizzle schema
+      // even when the Supabase project was reset from an older snapshot.
+      await _client.unsafe(`
+        CREATE TABLE IF NOT EXISTS "question_papers" (
+          "id" serial PRIMARY KEY,
+          "title" varchar(200) NOT NULL,
+          "subject" varchar(120) NOT NULL,
+          "link" text NOT NULL DEFAULT '',
+          "targetClass" varchar(120) NOT NULL,
+          "createdAt" timestamp DEFAULT now() NOT NULL,
+          "updatedAt" timestamp DEFAULT now() NOT NULL
+        );
+        ALTER TABLE "question_papers" ADD COLUMN IF NOT EXISTS "title" varchar(200);
+        ALTER TABLE "question_papers" ADD COLUMN IF NOT EXISTS "subject" varchar(120);
+        ALTER TABLE "question_papers" ADD COLUMN IF NOT EXISTS "link" text DEFAULT '';
+        ALTER TABLE "question_papers" ADD COLUMN IF NOT EXISTS "targetClass" varchar(120);
+        ALTER TABLE "question_papers" ADD COLUMN IF NOT EXISTS "createdAt" timestamp DEFAULT now();
+        ALTER TABLE "question_papers" ADD COLUMN IF NOT EXISTS "updatedAt" timestamp DEFAULT now();
+        CREATE TABLE IF NOT EXISTS "unit_questions" (
+          "id" serial PRIMARY KEY,
+          "title" varchar(200) NOT NULL,
+          "subject" varchar(120) NOT NULL,
+          "link" text NOT NULL DEFAULT '',
+          "targetClass" varchar(120) NOT NULL,
+          "section" varchar(50) DEFAULT 'All Sections',
+          "createdAt" timestamp DEFAULT now() NOT NULL,
+          "updatedAt" timestamp DEFAULT now() NOT NULL
+        );
+        ALTER TABLE "unit_questions" ADD COLUMN IF NOT EXISTS "title" varchar(200);
+        ALTER TABLE "unit_questions" ADD COLUMN IF NOT EXISTS "subject" varchar(120);
+        ALTER TABLE "unit_questions" ADD COLUMN IF NOT EXISTS "link" text DEFAULT '';
+        ALTER TABLE "unit_questions" ADD COLUMN IF NOT EXISTS "targetClass" varchar(120);
+        ALTER TABLE "unit_questions" ADD COLUMN IF NOT EXISTS "section" varchar(50) DEFAULT 'All Sections';
+        ALTER TABLE "unit_questions" ADD COLUMN IF NOT EXISTS "createdAt" timestamp DEFAULT now();
+        ALTER TABLE "unit_questions" ADD COLUMN IF NOT EXISTS "updatedAt" timestamp DEFAULT now();
+      `).catch(() => {});
       // Ensure users has academic enrollment fields (department, section, session, joinedDate)
       await _client.unsafe(`
         ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "department" varchar(120);
