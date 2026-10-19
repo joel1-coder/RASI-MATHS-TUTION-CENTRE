@@ -829,4 +829,391 @@
   box-shadow: inset 3px 0 0 var(--accent-blue);
 }
 
+/* ============================================================
+   MATH LOADER — spinning +  −  ×  ÷
+   ============================================================ */
+
+@keyframes math-spin {
+  0%   { transform: rotate(0deg)   scale(1);    opacity: 1; }
+  25%  { transform: rotate(90deg)  scale(1.18); opacity: 0.9; }
+  50%  { transform: rotate(180deg) scale(1);    opacity: 1; }
+  75%  { transform: rotate(270deg) scale(1.18); opacity: 0.9; }
+  100% { transform: rotate(360deg) scale(1);    opacity: 1; }
+}
+
+@keyframes math-orbit {
+  from { transform: rotate(0deg) translateX(32px) rotate(0deg); }
+  to   { transform: rotate(360deg) translateX(32px) rotate(-360deg); }
+}
+
+@keyframes math-fade-in {
+  from { opacity: 0; transform: scale(0.6); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+@keyframes math-bounce {
+  0%, 100% { transform: translateY(0); }
+  40%       { transform: translateY(-8px); }
+  60%       { transform: translateY(-4px); }
+}
+
+.math-loader-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  padding: 40px;
+  min-height: 160px;
+}
+
+.math-loader {
+  position: relative;
+  width: 80px;
+  height: 80px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.math-loader-center {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #4055c6, #7648dc);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: 16px;
+  font-weight: 900;
+  box-shadow: 0 6px 20px rgba(107, 82, 217, 0.45);
+  animation: math-spin 2.4s cubic-bezier(0.23, 1, 0.32, 1) infinite;
+  z-index: 2;
+}
+
+.math-loader-symbol {
+  position: absolute;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 900;
+  color: var(--navy);
+  background: rgba(255, 255, 255, 0.92);
+  border: 1.5px solid rgba(107, 82, 217, 0.22);
+  box-shadow: 0 4px 12px rgba(72, 72, 145, 0.14);
+  animation: math-orbit 2.4s linear infinite;
+}
+
+.math-loader-symbol:nth-child(2) { animation-delay: 0s;    }  /* + */
+.math-loader-symbol:nth-child(3) { animation-delay: -0.6s; }  /* − */
+.math-loader-symbol:nth-child(4) { animation-delay: -1.2s; }  /* × */
+.math-loader-symbol:nth-child(5) { animation-delay: -1.8s; }  /* ÷ */
+
+.math-loader-text {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  animation: math-fade-in 0.6s ease forwards;
+}
+
+/* Inline math spinner (small, for inline use) */
+.math-spinner {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.math-spinner-symbols {
+  display: flex;
+  gap: 4px;
+}
+
+.math-spinner-symbols span {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #4055c6, #7648dc);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 900;
+  animation: math-bounce 1.2s ease infinite;
+}
+.math-spinner-symbols span:nth-child(1) { animation-delay: 0s;    }
+.math-spinner-symbols span:nth-child(2) { animation-delay: 0.15s; }
+.math-spinner-symbols span:nth-child(3) { animation-delay: 0.3s;  }
+.math-spinner-symbols span:nth-child(4) { animation-delay: 0.45s; }
+
+/* ============================================================
+   SCROLL REVEAL — fade + slide entrance on viewport entry
+   ============================================================ */
+
+.reveal {
+  opacity: 0;
+  transform: translateY(36px);
+  transition: opacity 0.72s cubic-bezier(0.23, 1, 0.32, 1),
+              transform 0.72s cubic-bezier(0.23, 1, 0.32, 1);
+  will-change: opacity, transform;
+}
+
+.reveal.reveal-left {
+  transform: translateX(-40px);
+}
+
+.reveal.reveal-right {
+  transform: translateX(40px);
+}
+
+.reveal.reveal-scale {
+  transform: scale(0.92);
+}
+
+.reveal.is-visible {
+  opacity: 1;
+  transform: translateY(0) translateX(0) scale(1);
+}
+
+/* Stagger delays for child elements */
+.stagger-children > * {
+  opacity: 0;
+  transform: translateY(28px);
+  transition: opacity 0.6s cubic-bezier(0.23, 1, 0.32, 1),
+              transform 0.6s cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.stagger-children.is-visible > *:nth-child(1)  { opacity: 1; transform: none; transition-delay: 0.05s; }
+.stagger-children.is-visible > *:nth-child(2)  { opacity: 1; transform: none; transition-delay: 0.12s; }
+.stagger-children.is-visible > *:nth-child(3)  { opacity: 1; transform: none; transition-delay: 0.19s; }
+.stagger-children.is-visible > *:nth-child(4)  { opacity: 1; transform: none; transition-delay: 0.26s; }
+.stagger-children.is-visible > *:nth-child(5)  { opacity: 1; transform: none; transition-delay: 0.33s; }
+.stagger-children.is-visible > *:nth-child(6)  { opacity: 1; transform: none; transition-delay: 0.40s; }
+.stagger-children.is-visible > *:nth-child(7)  { opacity: 1; transform: none; transition-delay: 0.47s; }
+.stagger-children.is-visible > *:nth-child(8)  { opacity: 1; transform: none; transition-delay: 0.54s; }
+.stagger-children.is-visible > *:nth-child(9)  { opacity: 1; transform: none; transition-delay: 0.61s; }
+.stagger-children.is-visible > *:nth-child(10) { opacity: 1; transform: none; transition-delay: 0.68s; }
+.stagger-children.is-visible > *:nth-child(11) { opacity: 1; transform: none; transition-delay: 0.75s; }
+.stagger-children.is-visible > *:nth-child(12) { opacity: 1; transform: none; transition-delay: 0.82s; }
+
+/* ============================================================
+   HERO entrance animation
+   ============================================================ */
+
+@keyframes hero-enter-left {
+  from { opacity: 0; transform: translateX(-48px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes hero-enter-right {
+  from { opacity: 0; transform: translateX(48px) scale(0.96); }
+  to   { opacity: 1; transform: translateX(0) scale(1); }
+}
+
+@keyframes hero-eyebrow-in {
+  from { opacity: 0; transform: translateY(-12px); letter-spacing: 0.35em; }
+  to   { opacity: 1; transform: translateY(0);     letter-spacing: 0.16em; }
+}
+
+.hero-copy {
+  animation: hero-enter-left 0.9s cubic-bezier(0.23, 1, 0.32, 1) both;
+  animation-delay: 0.1s;
+}
+
+.hero-copy .eyebrow {
+  animation: hero-eyebrow-in 0.7s cubic-bezier(0.23, 1, 0.32, 1) both;
+  animation-delay: 0.05s;
+}
+
+/* ============================================================
+   SECTION HEADING — slide in from left/right
+   ============================================================ */
+
+@keyframes heading-slide-in {
+  from { opacity: 0; transform: translateY(20px) skewX(-2deg); }
+  to   { opacity: 1; transform: translateY(0)    skewX(0deg); }
+}
+
+.section-heading.is-visible h2 {
+  animation: heading-slide-in 0.75s cubic-bezier(0.23, 1, 0.32, 1) both;
+  animation-delay: 0.15s;
+}
+
+.section-heading.is-visible .eyebrow {
+  animation: hero-eyebrow-in 0.55s cubic-bezier(0.23, 1, 0.32, 1) both;
+  animation-delay: 0.05s;
+}
+
+.section-heading.is-visible .section-description {
+  animation: fade-slide-up 0.6s cubic-bezier(0.23, 1, 0.32, 1) both;
+  animation-delay: 0.28s;
+}
+
+/* ============================================================
+   STAT BLOCK counter pop
+   ============================================================ */
+
+@keyframes counter-pop {
+  0%   { transform: scale(0.7); opacity: 0; }
+  70%  { transform: scale(1.08); }
+  100% { transform: scale(1);    opacity: 1; }
+}
+
+.stat-block.is-visible span {
+  animation: counter-pop 0.7s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+.stat-block.is-visible:nth-child(1) span { animation-delay: 0.05s; }
+.stat-block.is-visible:nth-child(2) span { animation-delay: 0.15s; }
+.stat-block.is-visible:nth-child(3) span { animation-delay: 0.25s; }
+.stat-block.is-visible:nth-child(4) span { animation-delay: 0.35s; }
+
+/* ============================================================
+   FLOATING MATH SYMBOLS BACKGROUND (decorative)
+   ============================================================ */
+
+@keyframes float-symbol {
+  0%   { transform: translateY(0) rotate(0deg);   opacity: 0.07; }
+  50%  { transform: translateY(-22px) rotate(8deg); opacity: 0.12; }
+  100% { transform: translateY(0) rotate(0deg);   opacity: 0.07; }
+}
+
+.math-float-bg {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+  z-index: 0;
+}
+
+.math-float-bg span {
+  position: absolute;
+  font-family: var(--serif);
+  font-weight: 900;
+  color: var(--navy);
+  user-select: none;
+  animation: float-symbol linear infinite;
+}
+
+.math-float-bg span:nth-child(1)  { font-size: 72px;  top: 8%;  left: 4%;   animation-duration: 7.1s;  animation-delay: 0s; }
+.math-float-bg span:nth-child(2)  { font-size: 48px;  top: 18%; left: 88%;  animation-duration: 8.3s;  animation-delay: -1.2s; }
+.math-float-bg span:nth-child(3)  { font-size: 90px;  top: 55%; left: 6%;   animation-duration: 9.5s;  animation-delay: -2.4s; }
+.math-float-bg span:nth-child(4)  { font-size: 56px;  top: 72%; left: 82%;  animation-duration: 6.8s;  animation-delay: -0.6s; }
+.math-float-bg span:nth-child(5)  { font-size: 38px;  top: 40%; left: 50%;  animation-duration: 11.2s; animation-delay: -3.5s; }
+.math-float-bg span:nth-child(6)  { font-size: 64px;  top: 85%; left: 30%;  animation-duration: 8.0s;  animation-delay: -1.8s; }
+.math-float-bg span:nth-child(7)  { font-size: 42px;  top: 28%; left: 68%;  animation-duration: 10.0s; animation-delay: -4.2s; }
+.math-float-bg span:nth-child(8)  { font-size: 80px;  top: 60%; left: 42%;  animation-duration: 12.5s; animation-delay: -5.0s; }
+
+/* ============================================================
+   TESTIMONIAL scroll shimmer on blockquote
+   ============================================================ */
+
+@keyframes quote-shimmer {
+  0%   { background-position: -200% center; }
+  100% { background-position: 200% center; }
+}
+
+.marquee-note blockquote {
+  background: linear-gradient(
+    90deg,
+    var(--navy) 0%,
+    var(--navy) 30%,
+    var(--purple) 50%,
+    var(--navy) 70%,
+    var(--navy) 100%
+  );
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: quote-shimmer 6s linear infinite;
+}
+
+/* ============================================================
+   BUTTON micro-animation — ripple on click
+   ============================================================ */
+
+.button {
+  position: relative;
+  overflow: hidden;
+}
+
+.button::after {
+  content: "";
+  position: absolute;
+  inset: 50% 50%;
+  width: 0;
+  height: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.3);
+  transition: inset 0s, width 0.45s ease, height 0.45s ease, opacity 0.45s ease;
+  opacity: 0;
+}
+
+.button:active::after {
+  inset: -100% -100%;
+  width: 300%;
+  height: 300%;
+  opacity: 1;
+  transition: inset 0s, width 0s, height 0s, opacity 0s;
+}
+
+/* ============================================================
+   DARK MODE animation overrides
+   ============================================================ */
+
+.dark .math-loader-center {
+  box-shadow: 0 6px 20px rgba(107, 82, 217, 0.6);
+}
+
+.dark .math-loader-symbol {
+  background: rgba(20, 20, 40, 0.9);
+  color: var(--text-primary);
+  border-color: rgba(107, 82, 217, 0.35);
+}
+
+.dark .math-float-bg span {
+  color: #fff;
+}
+
+.dark .marquee-note blockquote {
+  background: linear-gradient(
+    90deg,
+    #e8e9ff 0%,
+    #e8e9ff 30%,
+    #a78bfa 50%,
+    #e8e9ff 70%,
+    #e8e9ff 100%
+  );
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: quote-shimmer 6s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reveal, .stagger-children > * {
+    opacity: 1 !important;
+    transform: none !important;
+    transition: none !important;
+  }
+  .math-loader-center,
+  .math-loader-symbol,
+  .math-spinner-symbols span,
+  .hero-floating-badge,
+  .hero-copy,
+  .hero-copy .eyebrow,
+  .math-float-bg span,
+  .marquee-note blockquote,
+  .stat-block.is-visible span {
+    animation: none !important;
+  }
+}
 

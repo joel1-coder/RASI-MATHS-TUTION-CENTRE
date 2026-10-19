@@ -47,9 +47,15 @@ function Pill({ children }: { children: React.ReactNode }) {
 
 function LoadingState({ label }: { label: string }) {
   return (
-    <div className="flex items-center gap-3 py-12 text-sm text-[#8d8197]">
-      <Loader2 className="animate-spin text-[#6d4b9f]" size={18} />
-      {label}
+    <div className="flex flex-col items-center gap-4 py-12 text-sm text-[#8d8197]">
+      <div className="math-loader" style={{ width: 64, height: 64 }}>
+        <div className="math-loader-center" style={{ width: 22, height: 22, fontSize: 12 }}>π</div>
+        <div className="math-loader-symbol" style={{ width: 18, height: 18, fontSize: 11 }}>+</div>
+        <div className="math-loader-symbol" style={{ width: 18, height: 18, fontSize: 11 }}>−</div>
+        <div className="math-loader-symbol" style={{ width: 18, height: 18, fontSize: 11 }}>×</div>
+        <div className="math-loader-symbol" style={{ width: 18, height: 18, fontSize: 11 }}>÷</div>
+      </div>
+      <span className="text-xs font-medium tracking-wide">{label}</span>
     </div>
   );
 }

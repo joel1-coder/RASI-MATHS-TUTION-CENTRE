@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import {
   ArrowUpRight,
   Clock3,
@@ -39,6 +39,52 @@ interface PortfolioProps {
   user?: { name: string; role: string; email: string } | null;
   onGoToPortal?: () => void;
   onLogout?: () => void;
+}
+
+/* ── Math-symbol loading component ───────────────────────── */
+function MathLoader({ label = "Loading…" }: { label?: string }) {
+  return (
+    <div className="math-loader-wrap">
+      <div className="math-loader">
+        <div className="math-loader-center">π</div>
+        <div className="math-loader-symbol">+</div>
+        <div className="math-loader-symbol">−</div>
+        <div className="math-loader-symbol">×</div>
+        <div className="math-loader-symbol">÷</div>
+      </div>
+      <span className="math-loader-text">{label}</span>
+    </div>
+  );
+}
+
+/* ── Scroll-reveal hook ───────────────────────────────────── */
+function useScrollReveal() {
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const root = ref.current;
+    if (!root) return;
+    const selectors = [
+      ".reveal",
+      ".stagger-children",
+      ".section-heading",
+      ".stat-block",
+    ];
+    const els = root.querySelectorAll<HTMLElement>(selectors.join(","));
+    if (!els.length) return;
+    const io = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add("is-visible");
+          }
+        });
+      },
+      { threshold: 0.12, rootMargin: "0px 0px -48px 0px" }
+    );
+    els.forEach((el) => io.observe(el));
+    return () => io.disconnect();
+  }, []);
+  return ref;
 }
 
 export default function Portfolio({ onLogin, user, onGoToPortal, onLogout }: PortfolioProps) {
@@ -99,8 +145,10 @@ export default function Portfolio({ onLogin, user, onGoToPortal, onLogout }: Por
     }
   };
 
+  const shellRef = useScrollReveal();
+
   return (
-    <div className="site-shell">
+    <div className="site-shell" ref={shellRef}>
       <img className="site-watermark" src="/rasi-logo.png" alt="" aria-hidden="true" />
       <header className="site-header">
         <div className="page-width header-inner">
@@ -231,14 +279,25 @@ export default function Portfolio({ onLogin, user, onGoToPortal, onLogout }: Por
           </div>
         </section>
 
-        <section className="stats-section" id="results">
-          <div className="page-width">
+        <section className="stats-section" id="results" style={{ position: "relative" }}>
+          {/* Floating math symbols in background */}
+          <div className="math-float-bg" aria-hidden="true">
+            <span>+</span>
+            <span>÷</span>
+            <span>−</span>
+            <span>×</span>
+            <span>∑</span>
+            <span>∞</span>
+            <span>π</span>
+            <span>√</span>
+          </div>
+          <div className="page-width" style={{ position: "relative", zIndex: 1 }}>
             <SectionHeading
               eyebrow="02 / The difference"
               title={<>Progress you can<br />feel in the room.</>}
               description="We measure success in better questions, steadier confidence, and results that follow."
             />
-            <div className="stats-grid">
+            <div className="stats-grid stagger-children">
               {stats.map((stat) => <div className="stat-block" key={stat.value}><span>{stat.value}</span><p>{stat.label}</p></div>)}
             </div>
           </div>
@@ -246,12 +305,14 @@ export default function Portfolio({ onLogin, user, onGoToPortal, onLogout }: Por
 
         <section className="content-section teachers-section" id="teachers">
           <div className="page-width">
-            <SectionHeading
-              eyebrow="03 / The people"
-              title={<>Teachers who make<br />space for thinking.</>}
-              description="No scripts, no shortcuts. Just experienced teachers who know when to lead — and when to listen."
-            />
-            <div className="teachers-grid">
+            <div className="reveal">
+              <SectionHeading
+                eyebrow="03 / The people"
+                title={<>Teachers who make<br />space for thinking.</>}
+                description="No scripts, no shortcuts. Just experienced teachers who know when to lead — and when to listen."
+              />
+            </div>
+            <div className="teachers-grid stagger-children">
               {siteData.teachers.map((teacher) => (
                 <article className="teacher-card" key={teacher.name}>
                   <div className="teacher-photo"><img src={teacher.image} alt={`${teacher.name}, ${teacher.subject} teacher`} loading="eager" /></div>
@@ -268,12 +329,14 @@ export default function Portfolio({ onLogin, user, onGoToPortal, onLogout }: Por
 
         <section className="content-section gallery-section">
           <div className="page-width">
-            <SectionHeading
-              eyebrow="04 / The place"
-              title="Inside the classroom."
-              description="A bright, unhurried space where work is taken seriously — and curiosity is always welcome."
-            />
-            <div className="gallery-grid">
+            <div className="reveal">
+              <SectionHeading
+                eyebrow="04 / The place"
+                title="Inside the classroom."
+                description="A bright, unhurried space where work is taken seriously — and curiosity is always welcome."
+              />
+            </div>
+            <div className="gallery-grid stagger-children">
               {siteData.gallery.map((item, index) => <div className={`gallery-item ${item.layout === "wide" ? "gallery-wide" : ""} ${item.layout === "tall" ? "gallery-tall" : ""}`} key={`${item.image}-${index}`}><img src={item.image} alt={item.alt} loading="eager" /></div>)}
             </div>
           </div>
@@ -290,7 +353,7 @@ export default function Portfolio({ onLogin, user, onGoToPortal, onLogout }: Por
               </p>
             </div>
 
-            <div className="gov-exams-grid">
+            <div className="gov-exams-grid stagger-children">
               {Array.from({ length: 12 }, (_, i) => i + 1).map((mIndex) => {
                 const monthName = new Date(2026, mIndex - 1, 1).toLocaleString("default", { month: "long" });
                 const examsInMonth = (siteData.govExams || []).filter(
@@ -399,7 +462,7 @@ export default function Portfolio({ onLogin, user, onGoToPortal, onLogout }: Por
         </section>
 
         <section className="testimonial-section">
-          <div className="page-width testimonial-inner mx-auto mb-10">
+          <div className="page-width testimonial-inner mx-auto mb-10 reveal">
             <p className="eyebrow">05 / A parent's note</p>
           </div>
           <div className="testimonial-marquee" aria-label="Parent testimonials">
