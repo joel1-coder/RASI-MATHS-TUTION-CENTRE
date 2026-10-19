@@ -21,6 +21,7 @@ export async function getDb() {
         ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "session" varchar(120);
         ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "joinedDate" varchar(60);
       `).catch(() => {});
+      await _client.unsafe(`ALTER TABLE "student_attendance" ADD COLUMN IF NOT EXISTS "description" text NOT NULL DEFAULT '';`).catch(() => {});
       // Ensure site_settings table exists for persistent portfolio content
       _client.unsafe(`
         CREATE TABLE IF NOT EXISTS "site_settings" (
@@ -246,8 +247,8 @@ export async function upsertStudentAttendance(record: InsertStudentAttendance) {
   if (!db) return undefined;
   const existing = await db.select().from(studentAttendance).where(and(eq(studentAttendance.studentEmail, record.studentEmail), eq(studentAttendance.attendanceDate, record.attendanceDate))).limit(1);
   if (existing[0]) {
-    await db.update(studentAttendance).set({ status: record.status }).where(eq(studentAttendance.id, existing[0].id));
-    return { ...existing[0], status: record.status };
+    await db.update(studentAttendance).set({ status: record.status, description: record.description ?? "" }).where(eq(studentAttendance.id, existing[0].id));
+    return { ...existing[0], status: record.status, description: record.description ?? "" };
   }
   const result = await db.insert(studentAttendance).values(record).returning({ id: studentAttendance.id });
   return { ...record, id: result[0].id };
@@ -269,11 +270,12 @@ export async function deleteStudentAttendanceBatch(ids: number[]) {
   return true;
 }
 
-export async function updateStudentAttendanceById(id: number, status: "present" | "late" | "absent", attendanceDate?: string) {
+export async function updateStudentAttendanceById(id: number, status: "present" | "late" | "absent", attendanceDate?: string, description?: string) {
   const db = await getDb();
   if (!db) return undefined;
   const payload: any = { status };
   if (attendanceDate) payload.attendanceDate = attendanceDate;
+  if (description !== undefined) payload.description = description;
   await db.update(studentAttendance).set(payload).where(eq(studentAttendance.id, id));
   return { id, status, attendanceDate };
 }

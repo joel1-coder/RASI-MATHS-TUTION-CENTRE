@@ -43,3 +43,13 @@ export const adminProcedure = t.procedure.use(
     });
   }),
 );
+
+export const staffProcedure = t.procedure.use(
+  t.middleware(async opts => {
+    const { ctx, next } = opts;
+    if (!ctx.user || (ctx.user.role !== "admin" && ctx.user.role !== "teacher")) {
+      throw new TRPCError({ code: "FORBIDDEN", message: "Admin or teacher access required" });
+    }
+    return next({ ctx: { ...ctx, user: ctx.user } });
+  }),
+);

@@ -6,6 +6,11 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { AlertCircle, ArrowRight, ArrowUpRight, BarChart3, BookOpen, Building2, CalendarDays, Check, CheckCircle2, ChevronRight, ClipboardCheck, Clock3, Copy, Download, Edit3, Eye, EyeOff, FileCheck, FileSpreadsheet, FileText, FileUp, Filter, FolderPlus, GraduationCap, LayoutDashboard, Loader2, LogOut, Menu, MessageCircle, NotebookPen, Phone, Plus, Search, Send, ShieldCheck, Sparkles, Trash2, Upload, UploadCloud, User as UserIcon, UserCheck, UserPlus, Users, X } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { parseAttendanceCsv, summarizeAttendance } from "@shared/portalData";
+
+function formatAttendanceDate(dateStr: string) {
+  const [year, month, day] = dateStr.split("-");
+  return year && month && day ? `${day}/${month}/${year}` : dateStr;
+}
 import { COOKIE_NAME } from "@shared/const";
 import { readSiteData, saveSiteData, type StudyMaterial } from "@/lib/siteData";
 import { exportToCsv } from "@/lib/exportCsv";
@@ -863,9 +868,10 @@ function StudentWorkspace({ user, onLogout }: { user: User; onLogout: () => void
   const studentFullName = studentInfo?.name || user.name;
   const studentDept = studentInfo?.department || user.department || "Grade 6";
   const studentSection = studentInfo?.section || user.section || "A";
-  const attendanceQuery = trpc.student.attendance.useQuery({ studentEmail: user.email });
-  const scheduleQuery = trpc.student.schedule.useQuery({ studentEmail: user.email });
-  const projectsQuery = trpc.student.projects.useQuery({ studentEmail: user.email });
+  const portalQueryOptions = { retry: false, staleTime: 30_000, refetchOnWindowFocus: false } as const;
+  const attendanceQuery = trpc.student.attendance.useQuery({ studentEmail: user.email }, portalQueryOptions);
+  const scheduleQuery = trpc.student.schedule.useQuery({ studentEmail: user.email }, portalQueryOptions);
+  const projectsQuery = trpc.student.projects.useQuery({ studentEmail: user.email }, portalQueryOptions);
   const liveAttendance = attendanceQuery.data ?? [];
   const liveSchedule = scheduleQuery.data ?? [];
   const scheduleByDate = Object.fromEntries(liveSchedule.map(session => [Number(session.sessionDate.slice(-2)), `${session.subject} · ${session.exercise}`]));
@@ -878,7 +884,7 @@ function StudentWorkspace({ user, onLogout }: { user: User; onLogout: () => void
       if (attendanceQuery.isLoading) return <LoadingState label="Loading daily attendance…" />;
       if (!liveAttendance.length) return <EmptyState title="No attendance has been published" message="When Admin records attendance for this student, the daily calendar and summary will appear here." />;
       const { present, late, absent, percentage } = summarizeAttendance(liveAttendance);
-      return <div className="grid gap-5 lg:grid-cols-[1.1fr_.9fr]"><div className="rounded-3xl border border-[#eee6f0] bg-white p-6"><div className="flex items-center justify-between"><div><p className="text-xs font-bold uppercase tracking-[0.18em] text-[#ef8656]">Daily attendance</p><h2 className="mt-2 text-2xl font-semibold">Admin-updated record</h2></div><span className="rounded-full bg-[#e9f5ed] px-3 py-1 text-xs font-semibold text-[#44835b]">{percentage}% present</span></div><div className="mt-7 space-y-3">{liveAttendance.slice().sort((a, b) => b.attendanceDate.localeCompare(a.attendanceDate)).map(record => <div className="flex items-center justify-between rounded-2xl bg-[#faf7fc] p-4" key={record.id}><span className="text-sm font-semibold">{record.attendanceDate}</span><span className={`rounded-full px-3 py-1 text-xs font-semibold ${record.status === "present" ? "bg-[#e9f5ed] text-[#44835b]" : record.status === "late" ? "bg-[#fff0e7] text-[#c36b42]" : "bg-[#fbe8eb] text-[#c25b68]"}`}>{record.status}</span></div>)}</div></div><div className="rounded-3xl bg-[#5b3b92] p-6 text-white"><ClipboardCheck className="text-[#f6ae8a]" size={20} /><p className="mt-8 text-5xl font-semibold">{present}<span className="text-2xl text-white/50"> / {liveAttendance.length}</span></p><p className="mt-2 text-sm text-white/65">present · {late} late · {absent} absent</p><div className="mt-8 border-t border-white/15 pt-5 text-sm text-white/75">This record is synced from the Admin dashboard.</div></div></div>;
+      return <div className="grid gap-5 lg:grid-cols-[1.1fr_.9fr]"><div className="rounded-3xl border border-[#eee6f0] bg-white p-6"><div className="flex items-center justify-between"><div><p className="text-xs font-bold uppercase tracking-[0.18em] text-[#ef8656]">Daily attendance</p><h2 className="mt-2 text-2xl font-semibold">Admin-updated record</h2></div><span className="rounded-full bg-[#e9f5ed] px-3 py-1 text-xs font-semibold text-[#44835b]">{percentage}% present</span></div><div className="mt-7 space-y-3">{liveAttendance.slice().sort((a, b) => b.attendanceDate.localeCompare(a.attendanceDate)).map(record => <div className="flex items-center justify-between gap-4 rounded-2xl bg-[#faf7fc] p-4" key={record.id}><div><p className="text-sm font-semibold">{formatAttendanceDate(record.attendanceDate)}</p><p className="mt-1 text-xs text-[#887c91]">Topic: {record.description || "Daily attendance"}</p></div><span className={`rounded-full px-3 py-1 text-xs font-semibold ${record.status === "present" ? "bg-[#e9f5ed] text-[#44835b]" : record.status === "late" ? "bg-[#fff0e7] text-[#c36b42]" : "bg-[#fbe8eb] text-[#c25b68]"}`}>{record.status}</span></div>)}</div></div><div className="rounded-3xl bg-[#5b3b92] p-6 text-white"><ClipboardCheck className="text-[#f6ae8a]" size={20} /><p className="mt-8 text-5xl font-semibold">{present}<span className="text-2xl text-white/50"> / {liveAttendance.length}</span></p><p className="mt-2 text-sm text-white/65">present · {late} late · {absent} absent</p><div className="mt-8 border-t border-white/15 pt-5 text-sm text-white/75">This record is synced from the Admin dashboard.</div></div></div>;
     }
     if (active === "Mark statement") return <MarkStatements studentEmail={user.email} />;
     if (active === "Schedule") {
@@ -1021,9 +1027,10 @@ function ParentWorkspace({ user, onLogout }: { user: User; onLogout: () => void 
   const childEmail = linkedStudentLocal?.email || (user.linkedStudentEmail && user.linkedStudentEmail.includes("@") ? user.linkedStudentEmail : user.email);
   const childDept = linkedStudentLocal?.department || user.department || "Grade 10";
   const childSection = linkedStudent?.section || user.section || "A";
-  const attendanceQuery = trpc.student.attendance.useQuery({ studentEmail: childEmail });
+  const portalQueryOptions = { retry: false, staleTime: 30_000, refetchOnWindowFocus: false } as const;
+  const attendanceQuery = trpc.student.attendance.useQuery({ studentEmail: childEmail }, portalQueryOptions);
   const liveAttendance = attendanceQuery.data ?? [];
-  const projectsQuery = trpc.student.projects.useQuery({ studentEmail: childEmail });
+  const projectsQuery = trpc.student.projects.useQuery({ studentEmail: childEmail }, portalQueryOptions);
   const localProjects = useMemo(() => {
     try {
       const saved = JSON.parse(localStorage.getItem("rasi_dispatched_projects") || "[]") as Array<any>;
@@ -1047,7 +1054,7 @@ function ParentWorkspace({ user, onLogout }: { user: User; onLogout: () => void 
       if (attendanceQuery.isLoading) return <LoadingState label="Loading child attendance…" />;
       if (!liveAttendance.length) return <EmptyState title="No attendance has been published" message={`Admin attendance updates for ${child} will appear here automatically.`} />;
       const { present, percentage } = summarizeAttendance(liveAttendance);
-      return <div className="grid gap-5 lg:grid-cols-[1.1fr_.9fr]"><div className="rounded-3xl border border-[#eee6f0] bg-white p-6"><div className="flex items-center justify-between"><div><p className="text-xs font-bold uppercase tracking-[0.18em] text-[#ef8656]">Child attendance</p><h2 className="mt-2 text-2xl font-semibold">{child} · Admin-updated</h2></div><span className="rounded-full bg-[#e9f5ed] px-3 py-1 text-xs font-semibold text-[#44835b]">{percentage}% present</span></div><div className="mt-7 space-y-3">{liveAttendance.slice().sort((a, b) => b.attendanceDate.localeCompare(a.attendanceDate)).map(record => <div className="flex items-center justify-between rounded-2xl bg-[#faf7fc] p-4" key={record.id}><span className="text-sm font-semibold">{record.attendanceDate}</span><span className={`rounded-full px-3 py-1 text-xs font-semibold ${record.status === "present" ? "bg-[#e9f5ed] text-[#44835b]" : record.status === "late" ? "bg-[#fff0e7] text-[#c36b42]" : "bg-[#fbe8eb] text-[#c25b68]"}`}>{record.status}</span></div>)}</div></div><div className="rounded-3xl bg-[#5b3b92] p-6 text-white"><ClipboardCheck className="text-[#f6ae8a]" size={20} /><h2 className="mt-8 text-2xl font-semibold">Live family<br /><em className="font-serif font-normal">visibility.</em></h2><p className="mt-4 text-sm leading-6 text-white/65">Attendance changes saved by Admin are reflected here for the linked parent.</p></div></div>;
+      return <div className="grid gap-5 lg:grid-cols-[1.1fr_.9fr]"><div className="rounded-3xl border border-[#eee6f0] bg-white p-6"><div className="flex items-center justify-between"><div><p className="text-xs font-bold uppercase tracking-[0.18em] text-[#ef8656]">Child attendance</p><h2 className="mt-2 text-2xl font-semibold">{child} · Admin-updated</h2></div><span className="rounded-full bg-[#e9f5ed] px-3 py-1 text-xs font-semibold text-[#44835b]">{percentage}% present</span></div><div className="mt-7 space-y-3">{liveAttendance.slice().sort((a, b) => b.attendanceDate.localeCompare(a.attendanceDate)).map(record => <div className="flex items-center justify-between gap-4 rounded-2xl bg-[#faf7fc] p-4" key={record.id}><div><p className="text-sm font-semibold">{formatAttendanceDate(record.attendanceDate)}</p><p className="mt-1 text-xs text-[#887c91]">Topic: {record.description || "Daily attendance"}</p></div><span className={`rounded-full px-3 py-1 text-xs font-semibold ${record.status === "present" ? "bg-[#e9f5ed] text-[#44835b]" : record.status === "late" ? "bg-[#fff0e7] text-[#c36b42]" : "bg-[#fbe8eb] text-[#c25b68]"}`}>{record.status}</span></div>)}</div></div><div className="rounded-3xl bg-[#5b3b92] p-6 text-white"><ClipboardCheck className="text-[#f6ae8a]" size={20} /><h2 className="mt-8 text-2xl font-semibold">Live family<br /><em className="font-serif font-normal">visibility.</em></h2><p className="mt-4 text-sm leading-6 text-white/65">Attendance changes saved by Admin are reflected here for the linked parent.</p></div></div>;
     }
     if (active === "Mark statements") return <MarkStatements parent studentEmail={childEmail} />;
     if (active === "Question paper" || active === "Important Question papers") {
@@ -4081,6 +4088,7 @@ function AdminAttendanceManager() {
       const recordsToSync = newBatchStudents.map(student => ({
         studentEmail: student.email,
         attendanceDate: newDate,
+        description: newDescription.trim() || "Regular attendance session",
         status: (newAttendanceMap[student.studentId] === "absent" ? "absent" : "present") as "present" | "absent",
       }));
       await bulkAttendanceMutation.mutateAsync({ records: recordsToSync });
@@ -4176,6 +4184,7 @@ function AdminAttendanceManager() {
       await upsertAttendanceMutation.mutateAsync({
         studentEmail: record.email,
         attendanceDate: record.date,
+        description: sessionLogs.find(session => session.id === record.sessionId)?.description || "Daily attendance",
         status: newStatus,
       });
       allDbAttendanceQuery.refetch();
@@ -6657,6 +6666,7 @@ function TeacherWorkspace({ user, onLogout }: { user: User; onLogout: () => void
   const [whatsappModalRecord, setWhatsappModalRecord] = useState<AttendanceSessionRecord | null>(null);
   const [whatsappFilter, setWhatsappFilter] = useState<"absent" | "all">("absent");
   const [sentWhatsappIds, setSentWhatsappIds] = useState<Record<string, boolean>>({});
+  const bulkAttendanceMutation = trpc.admin.attendanceBulk.useMutation();
 
   // --- ATTENDANCE RECORDS STATE (Tab 2: Filter & Roster Edit) ---
   const [fetchAttDept, setFetchAttDept] = useState("Grade 10");
@@ -6746,7 +6756,7 @@ function TeacherWorkspace({ user, onLogout }: { user: User; onLogout: () => void
   const absentCount = batchStudents.filter(s => attendanceState[s.studentId] === "absent").length;
   const absentIds = batchStudents.filter(s => attendanceState[s.studentId] === "absent").map(s => s.studentId);
 
-  const handleSubmitAttendance = (e: React.FormEvent) => {
+  const handleSubmitAttendance = async (e: React.FormEvent) => {
     e.preventDefault();
     if (isSubmittingAttendance) return;
     if (batchStudents.length === 0) {
@@ -6768,11 +6778,21 @@ function TeacherWorkspace({ user, onLogout }: { user: User; onLogout: () => void
         recordedAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       };
       setSessionLogs([newRecord, ...sessionLogs]);
+      await bulkAttendanceMutation.mutateAsync({
+        records: batchStudents.map(student => ({
+          studentEmail: student.email,
+          attendanceDate: attendanceDate,
+          description: newRecord.description,
+          status: attendanceState[student.studentId] === "absent" ? "absent" : "present",
+        })),
+      });
       showToast(`✅ Attendance saved for ${selectedDept} Sec ${selectedSection} (${presentCount} Present, ${absentCount} Absent)`);
       setAttendanceDescription("");
       // Launch WhatsApp alert checklist modal immediately
       setWhatsappModalRecord(newRecord);
       setWhatsappFilter("absent");
+    } catch {
+      showToast("Attendance was saved locally, but database sync failed. Please retry.");
     } finally {
       setIsSubmittingAttendance(false);
     }

@@ -48,6 +48,7 @@ export const studentAttendance = pgTable("student_attendance", {
   id: serial("id").primaryKey(),
   studentEmail: varchar("studentEmail", { length: 320 }).notNull(),
   attendanceDate: varchar("attendanceDate", { length: 10 }).notNull(),
+  description: text("description").notNull().default(""),
   status: attendanceStatusEnum("status").notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().notNull(),
