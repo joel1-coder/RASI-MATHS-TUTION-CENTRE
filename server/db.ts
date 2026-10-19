@@ -17,7 +17,7 @@ export async function getDb() {
       // Ensure unit_questions has section column
       _client.unsafe(`ALTER TABLE "unit_questions" ADD COLUMN IF NOT EXISTS "section" varchar(50) DEFAULT 'All Sections';`).catch(() => {});
       // Ensure users has academic enrollment fields (department, section, session, joinedDate)
-      _client.unsafe(`
+      await _client.unsafe(`
         ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "department" varchar(120);
         ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "section" varchar(60);
         ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "session" varchar(120);
