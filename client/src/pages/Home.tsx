@@ -295,7 +295,12 @@ function RoleLoginPage({ role, onLogin, onBack }: { role: Role; onLogin: (user: 
             localStorage.setItem(`manus-cookie_${role}`, `${COOKIE_NAME}=${res.token}`);
             localStorage.setItem("manus-cookie", `${COOKIE_NAME}=${res.token}`);
           }
-        } catch {}
+        } catch (error: any) {
+          if (role === "admin") {
+            setError(error?.message || "Admin authentication failed. Please sign in with the database admin account.");
+            return;
+          }
+        }
 
         onLogin(enrichedUser);
         return;
@@ -6258,7 +6263,17 @@ function AdminUnitPaperManager() {
 
 function AdminWorkspace({ user, onLogout }: { user: User; onLogout: () => void }) {
   const studentEmail = "student@portal.com";
-  const [active, setActive] = useState<"Overview" | "User Management" | "Students" | "Attendance" | "Schedule" | "Marks" | "Projects" | "Government exams" | "Question paper" | "Unit-wise paper" | "Profile">("Attendance");
+  const [active, setActive] = useState<"Overview" | "User Management" | "Students" | "Attendance" | "Schedule" | "Marks" | "Projects" | "Government exams" | "Question paper" | "Unit-wise paper" | "Profile">(() => {
+    try {
+      const saved = sessionStorage.getItem("rasi_admin_active_tab");
+      return (saved as any) || "Attendance";
+    } catch {
+      return "Attendance";
+    }
+  });
+  useEffect(() => {
+    try { sessionStorage.setItem("rasi_admin_active_tab", active); } catch {}
+  }, [active]);
   const [sessionDate, setSessionDate] = useState(new Date().toISOString().slice(0, 10));
   const [subject, setSubject] = useState("Mathematics");
   const [exercise, setExercise] = useState("");
