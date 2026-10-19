@@ -204,7 +204,13 @@ export async function deleteSubject(id: number) {
 export async function listStudentAttendance(studentEmail: string) {
   const db = await getDb();
   if (!db) return [];
-  return db.select().from(studentAttendance).where(eq(studentAttendance.studentEmail, studentEmail));
+  return db.select().from(studentAttendance).where(eq(studentAttendance.studentEmail, studentEmail)).orderBy(desc(studentAttendance.attendanceDate));
+}
+
+export async function listAllStudentAttendance() {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(studentAttendance).orderBy(desc(studentAttendance.attendanceDate));
 }
 
 export async function upsertStudentAttendance(record: InsertStudentAttendance) {
@@ -217,6 +223,31 @@ export async function upsertStudentAttendance(record: InsertStudentAttendance) {
   }
   const result = await db.insert(studentAttendance).values(record).returning({ id: studentAttendance.id });
   return { ...record, id: result[0].id };
+}
+
+export async function deleteStudentAttendanceById(id: number) {
+  const db = await getDb();
+  if (!db) return false;
+  await db.delete(studentAttendance).where(eq(studentAttendance.id, id));
+  return true;
+}
+
+export async function deleteStudentAttendanceBatch(ids: number[]) {
+  const db = await getDb();
+  if (!db || !ids.length) return false;
+  for (const id of ids) {
+    await db.delete(studentAttendance).where(eq(studentAttendance.id, id));
+  }
+  return true;
+}
+
+export async function updateStudentAttendanceById(id: number, status: "present" | "late" | "absent", attendanceDate?: string) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const payload: any = { status };
+  if (attendanceDate) payload.attendanceDate = attendanceDate;
+  await db.update(studentAttendance).set(payload).where(eq(studentAttendance.id, id));
+  return { id, status, attendanceDate };
 }
 
 export async function listScheduleSessions(studentEmail: string) {

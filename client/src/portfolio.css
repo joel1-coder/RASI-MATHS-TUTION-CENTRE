@@ -474,3 +474,359 @@
   color: var(--text-primary);
 }
 
+/* ============================================================
+   MODERN PORTFOLIO ANIMATIONS & TRANSITIONS (ENHANCED DYNAMICS)
+   ============================================================ */
+
+@keyframes hero-float {
+  0%, 100% {
+    transform: translateY(0px) rotate(0deg);
+  }
+  50% {
+    transform: translateY(-9px) rotate(0.4deg);
+  }
+}
+
+@keyframes hero-float-reverse {
+  0%, 100% {
+    transform: translateY(0px) rotate(0deg);
+  }
+  50% {
+    transform: translateY(8px) rotate(-0.4deg);
+  }
+}
+
+@keyframes pulse-ring {
+  0% {
+    box-shadow: 0 0 0 0 rgba(239, 167, 88, 0.45);
+  }
+  70% {
+    box-shadow: 0 0 0 10px rgba(239, 167, 88, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(239, 167, 88, 0);
+  }
+}
+
+@keyframes pulse-green-ring {
+  0% {
+    box-shadow: 0 0 0 0 rgba(85, 186, 126, 0.5);
+  }
+  70% {
+    box-shadow: 0 0 0 8px rgba(85, 186, 126, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(85, 186, 126, 0);
+  }
+}
+
+@keyframes shimmer-sweep {
+  0% {
+    transform: translateX(-100%) rotate(45deg);
+  }
+  100% {
+    transform: translateX(200%) rotate(45deg);
+  }
+}
+
+@keyframes fade-slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Hero floating badge */
+.hero-floating-badge {
+  position: absolute;
+  top: -18px;
+  right: 20px;
+  z-index: 10;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.88);
+  border: 1px solid rgba(107, 82, 217, 0.22);
+  box-shadow: 0 12px 30px rgba(107, 82, 217, 0.15);
+  backdrop-filter: blur(14px);
+  color: var(--navy);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  animation: hero-float 4.8s ease-in-out infinite;
+  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.3s ease;
+}
+
+.hero-floating-badge:hover {
+  transform: translateY(-4px) scale(1.04);
+  box-shadow: 0 16px 36px rgba(107, 82, 217, 0.25);
+}
+
+.hero-floating-badge .badge-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #10b981;
+  animation: pulse-green-ring 2s infinite;
+}
+
+/* Hero visual animation */
+.hero-panel {
+  animation: hero-float 6.5s ease-in-out infinite;
+  transition: transform 0.4s ease;
+}
+
+.hero-image-wrap {
+  transition: transform 0.5s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.5s ease;
+}
+
+.hero-panel:hover .hero-image-wrap {
+  transform: scale(1.018);
+  box-shadow: 0 35px 80px rgba(13, 27, 53, 0.24);
+}
+
+.glass-panel {
+  transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.4s ease, border-color 0.3s ease;
+}
+
+.hero-panel:hover .glass-panel {
+  transform: translateY(-4px);
+  box-shadow: 0 28px 60px rgba(13, 27, 53, 0.2);
+  border-color: rgba(239, 167, 88, 0.4);
+}
+
+.note-dot {
+  animation: pulse-ring 2.2s infinite;
+}
+
+/* Nav hover animations */
+.site-nav a {
+  position: relative;
+  transition: color 0.25s ease, transform 0.25s ease;
+}
+
+.site-nav a::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: -4px;
+  width: 0;
+  height: 2px;
+  background: var(--purple);
+  border-radius: 2px;
+  transition: width 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.site-nav a:hover {
+  transform: translateY(-1px);
+}
+
+.site-nav a:hover::after {
+  width: 100%;
+}
+
+.nav-login {
+  transition: all 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.nav-login:hover {
+  background: var(--navy);
+  color: #fff;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(32, 40, 92, 0.18);
+}
+
+/* Section heading animation */
+.section-heading h2 {
+  transition: color 0.3s ease, transform 0.3s ease;
+}
+
+/* Stat blocks interactive bounce & glow */
+.stat-block {
+  position: relative;
+  overflow: hidden;
+  transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.35s ease, border-color 0.3s ease;
+}
+
+.stat-block::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 80%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
+  transition: left 0.7s ease;
+  pointer-events: none;
+}
+
+.stat-block:hover {
+  transform: translateY(-6px) scale(1.02);
+  box-shadow: 0 24px 48px rgba(107, 82, 217, 0.16);
+  border-color: rgba(107, 82, 217, 0.35);
+}
+
+.stat-block:hover::before {
+  left: 140%;
+}
+
+.stat-block span {
+  display: inline-block;
+  transition: transform 0.3s ease;
+}
+
+.stat-block:hover span {
+  transform: scale(1.06);
+}
+
+/* Teacher cards interactive motion */
+.teacher-card {
+  transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.4s ease, border-color 0.3s ease;
+}
+
+.teacher-card:hover {
+  transform: translateY(-8px);
+  box-shadow: 0 26px 50px rgba(72, 72, 145, 0.16);
+  border-color: rgba(107, 82, 217, 0.25);
+}
+
+.teacher-card .teacher-name-row svg {
+  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), color 0.3s ease;
+}
+
+.teacher-card:hover .teacher-name-row svg {
+  transform: translate(3px, -3px);
+  color: var(--purple);
+}
+
+.subject-tag {
+  transition: background-color 0.25s ease, color 0.25s ease, transform 0.25s ease;
+}
+
+.teacher-card:hover .subject-tag {
+  background: var(--purple);
+  color: #fff;
+  transform: scale(1.04);
+}
+
+/* Subject rows interactive polish */
+.subject-row-clickable {
+  transition: background 0.25s ease, transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.25s ease;
+}
+
+.subject-row-clickable:hover {
+  background: rgba(255, 255, 255, 0.85);
+  transform: translateX(4px);
+  box-shadow: inset 3px 0 0 var(--purple);
+}
+
+.seat-badge {
+  transition: transform 0.2s ease, background-color 0.2s ease;
+}
+
+.subject-row-clickable:hover .seat-badge {
+  transform: scale(1.08);
+  background: #f1d7ad;
+}
+
+/* Category filter buttons interactive hover */
+.category-filters button {
+  transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.category-filters button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(107, 82, 217, 0.12);
+}
+
+/* Gallery items zoom and sheen */
+.gallery-item {
+  position: relative;
+  overflow: hidden;
+  transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.4s ease;
+}
+
+.gallery-item:hover {
+  transform: scale(1.02);
+  box-shadow: 0 18px 36px rgba(13, 27, 53, 0.2);
+  z-index: 2;
+}
+
+/* Gov Exams Month Cards */
+.gov-month-card {
+  transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.35s ease, border-color 0.3s ease;
+}
+
+.gov-month-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 20px 40px rgba(72, 72, 145, 0.12);
+  border-color: rgba(107, 82, 217, 0.28);
+}
+
+.gov-exam-item {
+  transition: transform 0.2s ease, border-color 0.2s ease, background-color 0.2s ease;
+}
+
+.gov-exam-item:hover {
+  transform: translateX(3px);
+  border-color: rgba(107, 82, 217, 0.3);
+  background: #fff;
+}
+
+/* College marquee cards */
+.college-card {
+  transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.35s ease, border-color 0.3s ease;
+}
+
+.college-card:hover {
+  transform: translateY(-7px) scale(1.02);
+  box-shadow: 0 22px 45px rgba(72, 72, 145, 0.14);
+  border-color: rgba(107, 82, 217, 0.25);
+}
+
+/* Google Map interactive wrapper */
+.map-interactive-wrapper {
+  transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.4s ease;
+}
+
+.map-interactive-wrapper:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 16px 45px rgba(0, 0, 0, 0.22);
+}
+
+.map-google-pill {
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.25s ease, box-shadow 0.25s ease;
+}
+
+.map-interactive-wrapper:hover .map-google-pill {
+  transform: translateY(-2px) scale(1.05);
+  box-shadow: 0 6px 18px rgba(26, 115, 232, 0.35);
+  background: #1a73e8;
+  color: #fff !important;
+}
+
+/* Dark mode adjustments for new animations */
+.dark .hero-floating-badge {
+  background: rgba(15, 27, 61, 0.88);
+  border-color: rgba(47, 91, 234, 0.35);
+  color: var(--text-primary);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.45);
+}
+
+.dark .stat-block:hover {
+  box-shadow: 0 24px 48px rgba(0, 0, 0, 0.4);
+  border-color: var(--accent-gold);
+}
+
+.dark .subject-row-clickable:hover {
+  background: rgba(255, 255, 255, 0.06);
+  box-shadow: inset 3px 0 0 var(--accent-blue);
+}
+
+

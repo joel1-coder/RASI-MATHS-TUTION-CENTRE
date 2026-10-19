@@ -243,7 +243,7 @@ export const defaultSiteData: SiteData = {
     { id: "batches", value: "12", label: "Batches running" },
     { id: "students", value: "180+", label: "Students learning" },
     { id: "years", value: "18 yrs", label: "Teaching together" },
-    { id: "location", value: "Indiranagar", label: "Bengaluru, India" },
+    { id: "location", value: "Panruti", label: "Tamil Nadu, India" },
   ],
   testimonials: [
     { id: "meera", quote: "The biggest change wasn't just in my daughter's marks. She started bringing her questions home — and wanting to talk about them.", attribution: "Meera S., parent of Ananya · Grade 10" },
@@ -254,7 +254,7 @@ export const defaultSiteData: SiteData = {
     { id: "open-batches", title: "New batches are open", description: "Book a free conversation for the 2026 term.", date: "2026-06-01", target: "All families" },
   ],
   contact: {
-    address: "24, 12th Main\nIndiranagar, Bengaluru",
+    address: "3rd Street, Police Line\nKamaraj Nagar, Panruti\nTamil Nadu 607106",
     phone: "+91 80 1234 5678",
     email: "rasimathstutioncentre@gmail.com",
     hours: "Mon–Sat · 9:00 AM–7:00 PM",
@@ -278,16 +278,24 @@ export function readSiteData(): SiteData {
     const saved = window.localStorage.getItem(STORAGE_KEY) || window.localStorage.getItem("study-room-site-data-v1");
     if (!saved) return defaultSiteData;
     const parsed = JSON.parse(saved) as Partial<SiteData>;
+    let contact = parsed.contact || defaultSiteData.contact;
+    if (!contact.address || contact.address.includes("Indiranagar") || contact.address.includes("Bengaluru")) {
+      contact = { ...contact, address: defaultSiteData.contact.address };
+    }
     return {
       ...defaultSiteData,
       ...parsed,
       subjects: Array.isArray(parsed.subjects) ? parsed.subjects : defaultSiteData.subjects,
       teachers: Array.isArray(parsed.teachers) ? parsed.teachers : defaultSiteData.teachers,
       gallery: Array.isArray(parsed.gallery) ? parsed.gallery : defaultSiteData.gallery,
-      heroStats: Array.isArray(parsed.heroStats) ? parsed.heroStats : defaultSiteData.heroStats,
+      heroStats: Array.isArray(parsed.heroStats)
+        ? parsed.heroStats.map(s => s.id === "location" && (s.value === "Indiranagar" || s.label.includes("Bengaluru"))
+            ? { id: "location", value: "Panruti", label: "Tamil Nadu, India" }
+            : s)
+        : defaultSiteData.heroStats,
       testimonials: Array.isArray(parsed.testimonials) ? parsed.testimonials : defaultSiteData.testimonials,
       announcements: Array.isArray(parsed.announcements) ? parsed.announcements : defaultSiteData.announcements,
-      contact: parsed.contact || defaultSiteData.contact,
+      contact,
       questionPapers: Array.isArray(parsed.questionPapers) ? parsed.questionPapers : defaultSiteData.questionPapers,
       unitQuestions: Array.isArray(parsed.unitQuestions) ? parsed.unitQuestions : defaultSiteData.unitQuestions,
       technicalColleges: Array.isArray(parsed.technicalColleges) ? parsed.technicalColleges : defaultTechnicalColleges,

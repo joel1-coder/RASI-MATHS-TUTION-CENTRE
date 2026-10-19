@@ -3913,14 +3913,25 @@ function AdminAttendanceManager() {
     }
   });
 
-  const [attendanceDate, setAttendanceDate] = useState(() => new Date().toISOString().slice(0, 10));
-  const [selectedDept, setSelectedDept] = useState("Grade 10");
-  const [selectedSection, setSelectedSection] = useState("A");
-  const [description, setDescription] = useState("");
+  // DB queries and mutations for live Supabase sync
+  const allDbAttendanceQuery = trpc.admin.listAllAttendance.useQuery(undefined, {
+    refetchOnWindowFocus: false,
+  });
+  const upsertAttendanceMutation = trpc.admin.attendance.useMutation();
+  const bulkAttendanceMutation = trpc.admin.attendanceBulk.useMutation();
+  const deleteAttendanceMutation = trpc.admin.deleteAttendanceRecord.useMutation();
 
-  // Map of studentId -> 'present' | 'absent'
-  const [attendanceState, setAttendanceState] = useState<Record<string, "present" | "absent">>({});
+  // Active view tab: 'sessions' | 'ledger' | 'issues'
+  const [viewTab, setViewTab] = useState<"sessions" | "ledger" | "issues">("sessions");
 
+  // Filters
+  const [filterDept, setFilterDept] = useState<string>("All");
+  const [filterSection, setFilterSection] = useState<string>("All");
+  const [filterStatus, setFilterStatus] = useState<string>("all");
+  const [searchQuery, setSearchQuery] = useState<string>("");
+  const [filterDate, setFilterDate] = useState<string>("");
+
+  // Session logs
   const [sessionLogs, setSessionLogs] = useState<AttendanceSessionRecord[]>(() => {
     try {
       const saved = localStorage.getItem("rasi_attendance_sessions");
@@ -3936,117 +3947,342 @@ function AdminAttendanceManager() {
     } catch {}
   }, [sessionLogs]);
 
+  // Toast notifications
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const showToast = (msg: string) => {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(null), 3500);
   };
 
-  // Available sections for chosen department
-  const availableSections = useMemo(() => {
-    const matched = sections.filter(s => s.department === selectedDept);
-    return matched.length > 0 ? matched : [{ id: "default-a", name: "A", department: selectedDept }];
-  }, [sections, selectedDept]);
+  // CRUD Modals state
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [inspectingSession, setInspectingSession] = useState<AttendanceSessionRecord | null>(null);
+  const [editingSession, setEditingSession] = useState<AttendanceSessionRecord | null>(null);
+  const [editingSingleRecord, setEditingSingleRecord] = useState<{
+    id: string;
+    studentId: string;
+    studentName: string;
+    email: string;
+    date: string;
+    status: "present" | "late" | "absent";
+  } | null>(null);
 
-  // Ensure selectedSection is valid for chosen department
+  // Form state for creating a new session
+  const [newDate, setNewDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [newDept, setNewDept] = useState("Grade 10");
+  const [newSection, setNewSection] = useState("A");
+  const [newDescription, setNewDescription] = useState("");
+  const [newAttendanceMap, setNewAttendanceMap] = useState<Record<string, "present" | "absent">>({});
+
+  // Sections for creation modal
+  const creationSections = useMemo(() => {
+    const matched = sections.filter(s => s.department === newDept);
+    return matched.length > 0 ? matched : [{ id: "def-a", name: "A", department: newDept }];
+  }, [sections, newDept]);
+
   useEffect(() => {
-    if (availableSections.length > 0 && !availableSections.some(s => s.name === selectedSection)) {
-      setSelectedSection(availableSections[0].name);
+    if (creationSections.length > 0 && !creationSections.some(s => s.name === newSection)) {
+      setNewSection(creationSections[0].name);
     }
-  }, [availableSections, selectedSection]);
+  }, [creationSections, newSection]);
 
-  // Filter students for chosen Department and Section
-  const batchStudents = useMemo(() => {
+  const newBatchStudents = useMemo(() => {
     return students.filter(
-      s => s.department.toLowerCase() === selectedDept.toLowerCase() &&
-           s.section.toLowerCase() === selectedSection.toLowerCase()
+      s => s.department.toLowerCase() === newDept.toLowerCase() &&
+           s.section.toLowerCase() === newSection.toLowerCase()
     );
-  }, [students, selectedDept, selectedSection]);
+  }, [students, newDept, newSection]);
 
-  // Initialize all batch students to 'present' when batch changes
   useEffect(() => {
     const initialMap: Record<string, "present" | "absent"> = {};
-    batchStudents.forEach(s => {
+    newBatchStudents.forEach(s => {
       initialMap[s.studentId] = "present";
     });
-    setAttendanceState(initialMap);
-  }, [batchStudents]);
+    setNewAttendanceMap(initialMap);
+  }, [newBatchStudents]);
 
-  // Toggle individual student
-  const toggleStudent = (studentId: string) => {
-    setAttendanceState(prev => ({
-      ...prev,
-      [studentId]: prev[studentId] === "absent" ? "present" : "absent",
-    }));
-  };
-
-  // Mark all present
-  const markAllPresent = () => {
-    const updated: Record<string, "present" | "absent"> = {};
-    batchStudents.forEach(s => {
-      updated[s.studentId] = "present";
-    });
-    setAttendanceState(updated);
-  };
-
-  // Mark all absent
-  const markAllAbsent = () => {
-    const updated: Record<string, "present" | "absent"> = {};
-    batchStudents.forEach(s => {
-      updated[s.studentId] = "absent";
-    });
-    setAttendanceState(updated);
-  };
-
-  // Calculate live counts
-  const presentCount = batchStudents.filter(s => (attendanceState[s.studentId] ?? "present") === "present").length;
-  const absentCount = batchStudents.filter(s => attendanceState[s.studentId] === "absent").length;
-  const absentIds = batchStudents.filter(s => attendanceState[s.studentId] === "absent").map(s => s.studentId);
-
-  // Submit attendance
-  const handleSubmitAttendance = (e: React.FormEvent) => {
+  // Handle Create Session (C)
+  const handleCreateSessionSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (batchStudents.length === 0) {
-      showToast("No students enrolled in this department and section.");
+    if (newBatchStudents.length === 0) {
+      showToast("No students enrolled in this department & section.");
       return;
     }
 
+    const presentCount = newBatchStudents.filter(s => (newAttendanceMap[s.studentId] ?? "present") === "present").length;
+    const absentCount = newBatchStudents.filter(s => newAttendanceMap[s.studentId] === "absent").length;
+    const absentIds = newBatchStudents.filter(s => newAttendanceMap[s.studentId] === "absent").map(s => s.studentId);
+
     const newRecord: AttendanceSessionRecord = {
       id: `att-sess-${Date.now()}`,
-      date: attendanceDate,
-      department: selectedDept,
-      section: selectedSection,
-      description: description.trim() || "Daily attendance record",
-      totalStudents: batchStudents.length,
+      date: newDate,
+      department: newDept,
+      section: newSection,
+      description: newDescription.trim() || "Regular attendance session",
+      totalStudents: newBatchStudents.length,
       presentCount,
       absentCount,
       absentStudentIds: absentIds,
       recordedAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
     };
 
-    setSessionLogs([newRecord, ...sessionLogs]);
-    showToast(`✅ Attendance published for ${selectedDept} — Section ${selectedSection} (${presentCount} Present, ${absentCount} Absent)`);
-    setDescription("");
-  };
+    setSessionLogs(prev => [newRecord, ...prev]);
 
-  const handleDeleteSession = (id: string) => {
-    if (confirm("Delete this attendance log?")) {
-      setSessionLogs(sessionLogs.filter(s => s.id !== id));
-      showToast("Attendance record removed.");
-    }
-  };
-
-  const formattedDisplayDate = useMemo(() => {
+    // DB sync
     try {
-      const [y, m, d] = attendanceDate.split("-");
-      return `${d}-${m}-${y}`;
-    } catch {
-      return attendanceDate;
+      const recordsToSync = newBatchStudents.map(student => ({
+        studentEmail: student.email,
+        attendanceDate: newDate,
+        status: (newAttendanceMap[student.studentId] === "absent" ? "absent" : "present") as "present" | "absent",
+      }));
+      await bulkAttendanceMutation.mutateAsync({ records: recordsToSync });
+      allDbAttendanceQuery.refetch();
+    } catch (err) {
+      console.warn("DB attendance sync notice:", err);
     }
-  }, [attendanceDate]);
+
+    setShowCreateModal(false);
+    setNewDescription("");
+    showToast(`✅ Attendance record logged: ${newDept} - Sec ${newSection} (${presentCount} Present, ${absentCount} Absent)`);
+  };
+
+  // Handle Delete Session (D)
+  const handleDeleteSession = async (sessionId: string) => {
+    if (!confirm("Are you sure you want to delete this entire attendance session record?")) return;
+    setSessionLogs(prev => prev.filter(s => s.id !== sessionId));
+    showToast("Attendance session record deleted.");
+  };
+
+  // Handle Edit Session (U)
+  const handleSaveEditedSession = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingSession) return;
+    setSessionLogs(prev => prev.map(s => s.id === editingSession.id ? editingSession : s));
+    setEditingSession(null);
+    showToast("Session record updated successfully.");
+  };
+
+  // Student Attendance Ledger records generation
+  const ledgerRecords = useMemo(() => {
+    const list: Array<{
+      id: string;
+      studentId: string;
+      name: string;
+      email: string;
+      department: string;
+      section: string;
+      date: string;
+      status: "present" | "late" | "absent";
+      sessionId: string;
+    }> = [];
+
+    sessionLogs.forEach(session => {
+      const matchingStudents = students.filter(
+        s => s.department.toLowerCase() === session.department.toLowerCase() &&
+             s.section.toLowerCase() === session.section.toLowerCase()
+      );
+
+      matchingStudents.forEach(st => {
+        const isAbsent = session.absentStudentIds.includes(st.studentId);
+        list.push({
+          id: `${session.id}-${st.studentId}`,
+          studentId: st.studentId,
+          name: st.name,
+          email: st.email,
+          department: st.department,
+          section: st.section,
+          date: session.date,
+          status: isAbsent ? "absent" : "present",
+          sessionId: session.id,
+        });
+      });
+    });
+
+    return list;
+  }, [sessionLogs, students]);
+
+  // Quick toggle status for ledger row (U)
+  const handleToggleLedgerStatus = async (record: typeof ledgerRecords[0]) => {
+    const newStatus: "present" | "absent" = record.status === "absent" ? "present" : "absent";
+
+    setSessionLogs(prev =>
+      prev.map(s => {
+        if (s.id !== record.sessionId) return s;
+        let newAbsentIds = [...s.absentStudentIds];
+        if (newStatus === "absent" && !newAbsentIds.includes(record.studentId)) {
+          newAbsentIds.push(record.studentId);
+        } else if (newStatus === "present") {
+          newAbsentIds = newAbsentIds.filter(id => id !== record.studentId);
+        }
+        return {
+          ...s,
+          absentStudentIds: newAbsentIds,
+          absentCount: newAbsentIds.length,
+          presentCount: s.totalStudents - newAbsentIds.length,
+        };
+      })
+    );
+
+    // Sync to DB
+    try {
+      await upsertAttendanceMutation.mutateAsync({
+        studentEmail: record.email,
+        attendanceDate: record.date,
+        status: newStatus,
+      });
+      allDbAttendanceQuery.refetch();
+    } catch {}
+
+    showToast(`Status updated: ${record.studentId} is now ${newStatus.toUpperCase()}`);
+  };
+
+  // Issue Detection Engine
+  const detectedIssues = useMemo(() => {
+    const issuesList: Array<{
+      id: string;
+      type: "chronic_absent" | "low_attendance" | "high_session_absence";
+      severity: "critical" | "warning";
+      title: string;
+      description: string;
+      studentId?: string;
+      studentName?: string;
+      department?: string;
+      section?: string;
+      attendanceRate?: number;
+      absentDays?: number;
+      sessionId?: string;
+    }> = [];
+
+    // 1. Analyze student-wise statistics
+    students.forEach(st => {
+      const studentHistory = ledgerRecords.filter(r => r.studentId === st.studentId);
+      if (studentHistory.length === 0) return;
+
+      const total = studentHistory.length;
+      const absents = studentHistory.filter(r => r.status === "absent").length;
+      const presents = total - absents;
+      const rate = Math.round((presents / total) * 100);
+
+      // Check consecutive absences
+      const sortedByDate = [...studentHistory].sort((a, b) => b.date.localeCompare(a.date));
+      let currentConsecutive = 0;
+      for (const item of sortedByDate) {
+        if (item.status === "absent") currentConsecutive++;
+        else break;
+      }
+
+      if (currentConsecutive >= 2) {
+        issuesList.push({
+          id: `issue-consec-${st.studentId}`,
+          type: "chronic_absent",
+          severity: "critical",
+          title: `Consecutive Absences Alert: ${st.name} (${st.studentId})`,
+          description: `Student has missed ${currentConsecutive} consecutive classes in ${st.department} — Section ${st.section}. Parent follow-up recommended.`,
+          studentId: st.studentId,
+          studentName: st.name,
+          department: st.department,
+          section: st.section,
+          attendanceRate: rate,
+          absentDays: absents,
+        });
+      } else if (rate < 75 && total >= 3) {
+        issuesList.push({
+          id: `issue-rate-${st.studentId}`,
+          type: "low_attendance",
+          severity: "warning",
+          title: `Low Attendance Rate (< 75%): ${st.name} (${st.studentId})`,
+          description: `Overall attendance is at ${rate}% (${presents}/${total} classes attended). Requires monitoring.`,
+          studentId: st.studentId,
+          studentName: st.name,
+          department: st.department,
+          section: st.section,
+          attendanceRate: rate,
+          absentDays: absents,
+        });
+      }
+    });
+
+    // 2. Analyze high session drop
+    sessionLogs.forEach(session => {
+      if (session.totalStudents > 0) {
+        const dropRate = session.absentCount / session.totalStudents;
+        if (dropRate >= 0.3) {
+          issuesList.push({
+            id: `issue-session-${session.id}`,
+            type: "high_session_absence",
+            severity: "warning",
+            title: `High Batch Absentee Rate (${Math.round(dropRate * 100)}%): ${session.department} - Sec ${session.section}`,
+            description: `On ${session.date}, ${session.absentCount} out of ${session.totalStudents} students were absent. Session note: "${session.description}"`,
+            department: session.department,
+            section: session.section,
+            sessionId: session.id,
+          });
+        }
+      }
+    });
+
+    return issuesList;
+  }, [students, ledgerRecords, sessionLogs]);
+
+  // Filtered session records
+  const filteredSessions = useMemo(() => {
+    return sessionLogs.filter(s => {
+      const matchDept = filterDept === "All" || s.department.toLowerCase() === filterDept.toLowerCase();
+      const matchSec = filterSection === "All" || s.section.toLowerCase() === filterSection.toLowerCase();
+      const matchDate = !filterDate || s.date === filterDate;
+      const matchSearch = !searchQuery ||
+        s.department.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        s.section.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        s.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        s.absentStudentIds.some(id => id.toLowerCase().includes(searchQuery.toLowerCase()));
+      const matchStatus = filterStatus === "all" ||
+        (filterStatus === "present" && s.absentCount === 0) ||
+        (filterStatus === "absent" && s.absentCount > 0);
+      return matchDept && matchSec && matchDate && matchSearch && matchStatus;
+    });
+  }, [sessionLogs, filterDept, filterSection, filterDate, searchQuery, filterStatus]);
+
+  // Filtered ledger records
+  const filteredLedger = useMemo(() => {
+    return ledgerRecords.filter(r => {
+      const matchDept = filterDept === "All" || r.department.toLowerCase() === filterDept.toLowerCase();
+      const matchSec = filterSection === "All" || r.section.toLowerCase() === filterSection.toLowerCase();
+      const matchDate = !filterDate || r.date === filterDate;
+      const matchStatus = filterStatus === "all" || r.status === filterStatus;
+      const matchSearch = !searchQuery ||
+        r.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        r.studentId.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        r.email.toLowerCase().includes(searchQuery.toLowerCase());
+      return matchDept && matchSec && matchDate && matchStatus && matchSearch;
+    });
+  }, [ledgerRecords, filterDept, filterSection, filterDate, filterStatus, searchQuery]);
+
+  // Global attendance stats
+  const totalStudentsEnrolled = students.length;
+  const totalSessionsCount = sessionLogs.length;
+  const overallPresents = sessionLogs.reduce((acc, cur) => acc + cur.presentCount, 0);
+  const overallAbsents = sessionLogs.reduce((acc, cur) => acc + cur.absentCount, 0);
+  const overallTotal = overallPresents + overallAbsents;
+  const overallAttendancePercent = overallTotal > 0 ? Math.round((overallPresents / overallTotal) * 100) : 100;
+
+  // Export records to CSV
+  const handleExportCSV = () => {
+    const headers = ["Date", "Student ID", "Student Name", "Email", "Department", "Section", "Status"];
+    const rows = filteredLedger.map(item => [
+      item.date,
+      item.studentId,
+      item.name,
+      item.email,
+      item.department,
+      item.section,
+      item.status.toUpperCase(),
+    ]);
+    exportToCsv(`Rasi_Maths_Attendance_Records_${new Date().toISOString().slice(0, 10)}.csv`, headers, rows);
+    showToast("Exported attendance report to CSV.");
+  };
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       {/* Toast Notification */}
       {toastMessage && (
         <div className="fixed bottom-6 right-6 z-50 flex items-center gap-3 rounded-2xl bg-[#2a203e] px-5 py-3.5 text-sm font-medium text-white shadow-2xl transition-all">
@@ -4055,255 +4291,918 @@ function AdminAttendanceManager() {
         </div>
       )}
 
-      {/* Main Form Container */}
+      {/* Main Top Header & Stats Card */}
       <div className="rounded-3xl border border-[#eee6f0] bg-white p-6 shadow-sm md:p-8">
-        {/* Header with Title and Date Badge */}
         <div className="flex flex-wrap items-center justify-between gap-4 border-b border-[#f3ebf6] pb-6">
           <div>
-            <h1 className="text-2xl font-bold tracking-tight text-[#1b3a6b]">
-              Attendance
-            </h1>
-            <div className="mt-1.5 h-1 w-14 rounded-full bg-[#ef8656]"></div>
+            <div className="flex items-center gap-3">
+              <h1 className="text-2xl font-bold tracking-tight text-[#1b3a6b]">
+                Attendance Records & Auditing
+              </h1>
+              <span className="rounded-full bg-[#f0eaf7] px-3 py-1 text-xs font-bold text-[#5b3b92]">
+                Admin Hub
+              </span>
+            </div>
+            <p className="mt-1.5 text-xs text-[#736683]">
+              Review student attendance history, inspect issue alerts, and execute full CRUD modifications.
+            </p>
           </div>
 
-          {/* Date Selector Badge */}
-          <div className="relative flex items-center gap-2 rounded-2xl border border-[#d8cfe0] bg-[#f8f5fc] px-4 py-2 text-xs font-semibold text-[#5b3b92]">
-            <CalendarDays size={16} className="text-[#1b55a8]" />
-            <span>Date: {formattedDisplayDate}</span>
-            <input
-              type="date"
-              value={attendanceDate}
-              onChange={e => setAttendanceDate(e.target.value)}
-              className="absolute inset-0 cursor-pointer opacity-0"
-              title="Click to change date"
-            />
+          <div className="flex flex-wrap items-center gap-2.5">
+            <button
+              type="button"
+              onClick={handleExportCSV}
+              className="inline-flex items-center gap-2 rounded-2xl border border-[#d8cfe0] bg-[#faf7fd] px-4 py-2.5 text-xs font-semibold text-[#5b3b92] transition hover:bg-[#f3ecf9]"
+            >
+              <Download size={14} />
+              Export CSV
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowCreateModal(true)}
+              className="inline-flex items-center gap-2 rounded-2xl bg-[#0f4c81] px-5 py-2.5 text-xs font-bold text-white shadow-sm transition hover:bg-[#0b3860]"
+            >
+              <Plus size={15} />
+              Record New Session
+            </button>
           </div>
         </div>
 
-        {/* Form Selectors */}
-        <form onSubmit={handleSubmitAttendance} className="mt-6 space-y-6">
-          <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-            <div>
-              <label className="block text-xs font-bold uppercase tracking-[0.14em] text-[#4a3e5c]">
-                DEPARTMENT:
-              </label>
-              <select
-                value={selectedDept}
-                onChange={e => setSelectedDept(e.target.value)}
-                className="mt-2 w-full rounded-2xl border border-[#e4dce9] bg-white px-4 py-3 text-sm text-[#2a203e] shadow-sm focus:border-[#1b55a8] focus:outline-none"
-              >
-                {departments.map(dept => (
-                  <option key={dept} value={dept}>{dept}</option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-xs font-bold uppercase tracking-[0.14em] text-[#4a3e5c]">
-                SECTION:
-              </label>
-              <select
-                value={selectedSection}
-                onChange={e => setSelectedSection(e.target.value)}
-                className="mt-2 w-full rounded-2xl border border-[#e4dce9] bg-white px-4 py-3 text-sm text-[#2a203e] shadow-sm focus:border-[#1b55a8] focus:outline-none"
-              >
-                {availableSections.map(sec => (
-                  <option key={sec.id} value={sec.name}>{sec.name}</option>
-                ))}
-              </select>
-            </div>
-
-            <div className="sm:col-span-2 lg:col-span-1">
-              <label className="block text-xs font-bold uppercase tracking-[0.14em] text-[#4a3e5c]">
-                DESCRIPTION:
-              </label>
-              <input
-                type="text"
-                value={description}
-                onChange={e => setDescription(e.target.value)}
-                placeholder="Reason / notes"
-                className="mt-2 w-full rounded-2xl border border-[#e4dce9] bg-white px-4 py-3 text-sm text-[#2a203e] shadow-sm placeholder:text-[#a89cb3] focus:border-[#1b55a8] focus:outline-none"
-              />
+        {/* 4 Overview Metric Cards */}
+        <div className="mt-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
+          <div className="rounded-2xl border border-[#e8dfef] bg-[#fdfbfd] p-4">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-[#817293]">
+              Overall Attendance
+            </span>
+            <div className="mt-2 flex items-baseline gap-2">
+              <span className="text-2xl font-bold text-[#0f4c81]">
+                {overallAttendancePercent}%
+              </span>
+              <span className="text-xs text-[#16a34a] font-medium">
+                ({overallPresents} Present / {overallTotal} Entries)
+              </span>
             </div>
           </div>
 
-          {/* Chip Attendance Marking Section */}
-          {batchStudents.length === 0 ? (
-            <div className="my-8 rounded-3xl border border-dashed border-[#d8c89b] bg-[#fdfcf7] p-10 text-center">
-              <p className="italic text-[#7a6f58]">
-                No students found for {selectedDept} — Section {selectedSection}
+          <div className="rounded-2xl border border-[#e8dfef] bg-[#fdfbfd] p-4">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-[#817293]">
+              Total Sessions
+            </span>
+            <div className="mt-2 flex items-baseline gap-2">
+              <span className="text-2xl font-bold text-[#5b3b92]">
+                {totalSessionsCount}
+              </span>
+              <span className="text-xs text-[#817293]">
+                Batches logged
+              </span>
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-[#e8dfef] bg-[#fdfbfd] p-4">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-[#817293]">
+              Total Absentees
+            </span>
+            <div className="mt-2 flex items-baseline gap-2">
+              <span className="text-2xl font-bold text-[#dc2626]">
+                {overallAbsents}
+              </span>
+              <span className="text-xs text-[#dc2626]">
+                Missed sessions
+              </span>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => setViewTab("issues")}
+            className={`rounded-2xl border p-4 text-left transition ${
+              detectedIssues.length > 0
+                ? "border-[#fed7aa] bg-[#fffaf5] hover:border-[#f97316]"
+                : "border-[#bbf7d0] bg-[#f0fdf4]"
+            }`}
+          >
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-[#9a3412]">
+                Detected Issues
+              </span>
+              {detectedIssues.length > 0 && (
+                <span className="h-2 w-2 rounded-full bg-[#ea580c] animate-ping" />
+              )}
+            </div>
+            <div className="mt-2 flex items-baseline gap-2">
+              <span className="text-2xl font-bold text-[#ea580c]">
+                {detectedIssues.length}
+              </span>
+              <span className="text-xs font-semibold text-[#9a3412]">
+                {detectedIssues.length === 1 ? "Issue flagged" : "Issues flagged"} ↗
+              </span>
+            </div>
+          </button>
+        </div>
+
+        {/* Tab Switcher */}
+        <div className="mt-6 flex flex-wrap items-center gap-2 border-b border-[#f3ebf6] pb-3">
+          <button
+            type="button"
+            onClick={() => setViewTab("sessions")}
+            className={`rounded-xl px-4 py-2 text-xs font-bold transition ${
+              viewTab === "sessions"
+                ? "bg-[#0f4c81] text-white shadow-sm"
+                : "text-[#6c5d7e] hover:bg-[#f6f2fa]"
+            }`}
+          >
+            <CalendarDays size={13} className="inline mr-1.5" />
+            Session Records ({sessionLogs.length})
+          </button>
+          <button
+            type="button"
+            onClick={() => setViewTab("ledger")}
+            className={`rounded-xl px-4 py-2 text-xs font-bold transition ${
+              viewTab === "ledger"
+                ? "bg-[#0f4c81] text-white shadow-sm"
+                : "text-[#6c5d7e] hover:bg-[#f6f2fa]"
+            }`}
+          >
+            <Users size={13} className="inline mr-1.5" />
+            Student Attendance Ledger ({ledgerRecords.length})
+          </button>
+          <button
+            type="button"
+            onClick={() => setViewTab("issues")}
+            className={`rounded-xl px-4 py-2 text-xs font-bold transition ${
+              viewTab === "issues"
+                ? "bg-[#c2410c] text-white shadow-sm"
+                : "text-[#c2410c] bg-[#fff7ed] hover:bg-[#ffedd5]"
+            }`}
+          >
+            <AlertCircle size={13} className="inline mr-1.5" />
+            Issues & Anomaly Auditor ({detectedIssues.length})
+          </button>
+        </div>
+
+        {/* Filter Controls Bar (for Sessions and Ledger) */}
+        {viewTab !== "issues" && (
+          <div className="mt-5 grid gap-3 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-5">
+            <div>
+              <label className="text-[10px] font-bold uppercase tracking-wider text-[#817293]">
+                Department
+              </label>
+              <select
+                value={filterDept}
+                onChange={e => setFilterDept(e.target.value)}
+                className="mt-1 w-full rounded-xl border border-[#e4dce9] bg-white px-3 py-2 text-xs text-[#2a203e] focus:border-[#0f4c81] focus:outline-none"
+              >
+                <option value="All">All Departments</option>
+                {departments.map(d => (
+                  <option key={d} value={d}>{d}</option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="text-[10px] font-bold uppercase tracking-wider text-[#817293]">
+                Section
+              </label>
+              <select
+                value={filterSection}
+                onChange={e => setFilterSection(e.target.value)}
+                className="mt-1 w-full rounded-xl border border-[#e4dce9] bg-white px-3 py-2 text-xs text-[#2a203e] focus:border-[#0f4c81] focus:outline-none"
+              >
+                <option value="All">All Sections</option>
+                {sections
+                  .filter(s => filterDept === "All" || s.department.toLowerCase() === filterDept.toLowerCase())
+                  .map(s => (
+                    <option key={s.id} value={s.name}>{s.name}</option>
+                  ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="text-[10px] font-bold uppercase tracking-wider text-[#817293]">
+                Status Filter
+              </label>
+              <select
+                value={filterStatus}
+                onChange={e => setFilterStatus(e.target.value)}
+                className="mt-1 w-full rounded-xl border border-[#e4dce9] bg-white px-3 py-2 text-xs text-[#2a203e] focus:border-[#0f4c81] focus:outline-none"
+              >
+                <option value="all">All Statuses</option>
+                <option value="present">Present Only</option>
+                <option value="absent">Absent Only</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="text-[10px] font-bold uppercase tracking-wider text-[#817293]">
+                Filter Date
+              </label>
+              <input
+                type="date"
+                value={filterDate}
+                onChange={e => setFilterDate(e.target.value)}
+                className="mt-1 w-full rounded-xl border border-[#e4dce9] bg-white px-3 py-2 text-xs text-[#2a203e] focus:border-[#0f4c81] focus:outline-none"
+              />
+            </div>
+
+            <div className="sm:col-span-2 md:col-span-4 lg:col-span-1">
+              <label className="text-[10px] font-bold uppercase tracking-wider text-[#817293]">
+                Search Record
+              </label>
+              <div className="relative mt-1">
+                <Search size={14} className="absolute left-3 top-2.5 text-[#9a8ca8]" />
+                <input
+                  type="text"
+                  placeholder="ID, name, note..."
+                  value={searchQuery}
+                  onChange={e => setSearchQuery(e.target.value)}
+                  className="w-full rounded-xl border border-[#e4dce9] bg-white pl-8 pr-3 py-2 text-xs text-[#2a203e] placeholder:text-[#a89cb3] focus:border-[#0f4c81] focus:outline-none"
+                />
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* VIEW 1: SESSION RECORDS HISTORY */}
+      {viewTab === "sessions" && (
+        <div className="rounded-3xl border border-[#eee6f0] bg-white p-6 shadow-sm md:p-8">
+          <div className="flex flex-wrap items-center justify-between gap-4 border-b border-[#f3ebf6] pb-4">
+            <div>
+              <h2 className="text-lg font-bold text-[#2a203e]">
+                Attendance Session Logs ({filteredSessions.length})
+              </h2>
+              <p className="mt-0.5 text-xs text-[#81758e]">
+                Inspect recorded batches, review absentees, and perform CRUD adjustments.
               </p>
-              <p className="mt-2 text-xs text-[#a0947e]">
-                Switch department/section above, or enroll students under <strong className="text-[#5b3b92]">Students (Creation / Management)</strong>.
+            </div>
+          </div>
+
+          {filteredSessions.length === 0 ? (
+            <div className="py-12 text-center text-xs text-[#8d8197]">
+              No session records match your filter criteria.
+            </div>
+          ) : (
+            <div className="mt-4 overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead>
+                  <tr className="border-b border-[#f0e8f4] text-[11px] font-bold uppercase tracking-[0.1em] text-[#8d8197]">
+                    <th className="py-3 pl-2 pr-4">Date & Time</th>
+                    <th className="py-3 px-4">Batch</th>
+                    <th className="py-3 px-4">Attendance Count</th>
+                    <th className="py-3 px-4">Absentees</th>
+                    <th className="py-3 px-4">Description / Notes</th>
+                    <th className="py-3 pr-2 pl-4 text-right">Actions (CRUD)</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[#f7f2f9]">
+                  {filteredSessions.map(session => (
+                    <tr key={session.id} className="transition hover:bg-[#fbf9fd]">
+                      <td className="py-3.5 pl-2 pr-4">
+                        <div className="font-semibold text-[#5b3b92]">{session.date}</div>
+                        <div className="text-[10px] text-[#9385a3]">{session.recordedAt}</div>
+                      </td>
+                      <td className="py-3.5 px-4">
+                        <span className="rounded-lg bg-[#f0eaf7] px-2.5 py-1 text-xs font-semibold text-[#5b3b92]">
+                          {session.department} - Sec {session.section}
+                        </span>
+                      </td>
+                      <td className="py-3.5 px-4">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-bold text-[#16a34a]">
+                            ✓ {session.presentCount}
+                          </span>
+                          <span className="text-xs font-bold text-[#dc2626]">
+                            ✗ {session.absentCount}
+                          </span>
+                          <span className="text-[11px] text-[#8d8197]">
+                            ({session.totalStudents} total)
+                          </span>
+                        </div>
+                      </td>
+                      <td className="py-3.5 px-4">
+                        {session.absentStudentIds.length === 0 ? (
+                          <span className="rounded-full bg-[#f0fdf4] px-2 py-0.5 text-[11px] font-semibold text-[#16a34a]">
+                            100% Present
+                          </span>
+                        ) : (
+                          <div className="flex flex-wrap gap-1">
+                            {session.absentStudentIds.map(id => (
+                              <span
+                                key={id}
+                                className="rounded bg-[#fee2e2] px-1.5 py-0.5 font-mono text-[10px] font-bold text-[#dc2626]"
+                              >
+                                {id}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                      </td>
+                      <td className="py-3.5 px-4 text-[#71647f]">
+                        {session.description}
+                      </td>
+                      <td className="py-3.5 pr-2 pl-4 text-right">
+                        <div className="flex items-center justify-end gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => setInspectingSession(session)}
+                            className="rounded-lg p-1.5 text-[#5b3b92] transition hover:bg-[#f3ecf9]"
+                            title="Inspect Student Roster"
+                          >
+                            <Eye size={15} />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setEditingSession(session)}
+                            className="rounded-lg p-1.5 text-[#0f4c81] transition hover:bg-[#eaf3fa]"
+                            title="Edit Session (CRUD)"
+                          >
+                            <Edit3 size={15} />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteSession(session.id)}
+                            className="rounded-lg p-1.5 text-[#b83232] transition hover:bg-[#fcedec]"
+                            title="Delete Session (CRUD)"
+                          >
+                            <Trash2 size={15} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* VIEW 2: STUDENT ATTENDANCE LEDGER */}
+      {viewTab === "ledger" && (
+        <div className="rounded-3xl border border-[#eee6f0] bg-white p-6 shadow-sm md:p-8">
+          <div className="flex flex-wrap items-center justify-between gap-4 border-b border-[#f3ebf6] pb-4">
+            <div>
+              <h2 className="text-lg font-bold text-[#2a203e]">
+                Student Attendance Ledger ({filteredLedger.length} Records)
+              </h2>
+              <p className="mt-0.5 text-xs text-[#81758e]">
+                Individual student logs. Click any status badge to instantly toggle between Present and Absent.
+              </p>
+            </div>
+          </div>
+
+          {filteredLedger.length === 0 ? (
+            <div className="py-12 text-center text-xs text-[#8d8197]">
+              No student records found.
+            </div>
+          ) : (
+            <div className="mt-4 overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead>
+                  <tr className="border-b border-[#f0e8f4] text-[11px] font-bold uppercase tracking-[0.1em] text-[#8d8197]">
+                    <th className="py-3 pl-2 pr-4">Date</th>
+                    <th className="py-3 px-4">Student ID</th>
+                    <th className="py-3 px-4">Student Name</th>
+                    <th className="py-3 px-4">Class & Sec</th>
+                    <th className="py-3 px-4">Status (Click to toggle)</th>
+                    <th className="py-3 pr-2 pl-4 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[#f7f2f9]">
+                  {filteredLedger.slice(0, 150).map(rec => (
+                    <tr key={rec.id} className="transition hover:bg-[#fbf9fd]">
+                      <td className="py-3 pl-2 pr-4 font-semibold text-[#5b3b92]">
+                        {rec.date}
+                      </td>
+                      <td className="py-3 px-4 font-mono font-bold text-[#1b3a6b]">
+                        {rec.studentId}
+                      </td>
+                      <td className="py-3 px-4">
+                        <div className="font-semibold text-[#2a203e]">{rec.name}</div>
+                        <div className="text-[10px] text-[#8d8197]">{rec.email}</div>
+                      </td>
+                      <td className="py-3 px-4 text-[#71647f]">
+                        {rec.department} - Sec {rec.section}
+                      </td>
+                      <td className="py-3 px-4">
+                        <button
+                          type="button"
+                          onClick={() => handleToggleLedgerStatus(rec)}
+                          className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold transition ${
+                            rec.status === "present"
+                              ? "bg-[#ecfdf5] text-[#047857] hover:bg-[#d1fae5]"
+                              : "bg-[#fef2f2] text-[#dc2626] hover:bg-[#fee2e2]"
+                          }`}
+                          title="Click to toggle status"
+                        >
+                          <span
+                            className={`h-2 w-2 rounded-full ${
+                              rec.status === "present" ? "bg-[#10b981]" : "bg-[#ef4444]"
+                            }`}
+                          />
+                          {rec.status.toUpperCase()}
+                        </button>
+                      </td>
+                      <td className="py-3 pr-2 pl-4 text-right">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (confirm(`Remove attendance entry for ${rec.name} on ${rec.date}?`)) {
+                              setSessionLogs(prev =>
+                                prev.map(s => {
+                                  if (s.id !== rec.sessionId) return s;
+                                  return {
+                                    ...s,
+                                    absentStudentIds: s.absentStudentIds.filter(id => id !== rec.studentId),
+                                  };
+                                })
+                              );
+                              showToast("Record removed.");
+                            }
+                          }}
+                          className="rounded-lg p-1.5 text-[#b83232] transition hover:bg-[#fcedec]"
+                          title="Delete Record"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              {filteredLedger.length > 150 && (
+                <div className="py-3 text-center text-xs text-[#8d8197]">
+                  Showing first 150 records out of {filteredLedger.length}. Use filters above to narrow your search.
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* VIEW 3: ISSUES & ANOMALY AUDITOR */}
+      {viewTab === "issues" && (
+        <div className="rounded-3xl border border-[#fed7aa] bg-white p-6 shadow-sm md:p-8">
+          <div className="flex flex-wrap items-center justify-between gap-4 border-b border-[#f3ebf6] pb-4">
+            <div>
+              <div className="flex items-center gap-2">
+                <AlertCircle className="text-[#c2410c]" size={20} />
+                <h2 className="text-lg font-bold text-[#9a3412]">
+                  Attendance Issues & Anomaly Auditor ({detectedIssues.length})
+                </h2>
+              </div>
+              <p className="mt-0.5 text-xs text-[#81758e]">
+                Automated health checker detects chronic absentees, attendance percentage warnings, and high-drop sessions.
+              </p>
+            </div>
+          </div>
+
+          {detectedIssues.length === 0 ? (
+            <div className="my-8 rounded-2xl border border-dashed border-[#86efac] bg-[#f0fdf4] p-10 text-center">
+              <CheckCircle2 className="mx-auto text-[#16a34a]" size={36} />
+              <h3 className="mt-3 text-sm font-bold text-[#166534]">
+                All Attendance Records Healthy!
+              </h3>
+              <p className="mt-1 text-xs text-[#15803d]">
+                No consecutive absences or low attendance percentages detected across your batches.
               </p>
             </div>
           ) : (
-            <div className="space-y-6 pt-2">
-              {/* Summary Bar */}
-              <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-[#eee6f0] bg-[#faf7fd] p-4">
-                <div className="flex flex-wrap items-center gap-4">
-                  <span className="flex items-center gap-1.5 text-xs font-bold text-[#1b55a8]">
-                    <span className="h-2.5 w-2.5 rounded-full bg-[#1b55a8]"></span>
-                    Present: {presentCount}
-                  </span>
-                  <span className="flex items-center gap-1.5 text-xs font-bold text-[#d93838]">
-                    <span className="h-2.5 w-2.5 rounded-full bg-[#d93838]"></span>
-                    Absent: {absentCount}
-                  </span>
-                  <span className="rounded-lg bg-[#fffdf5] px-2.5 py-1 text-xs font-serif font-bold tracking-wider text-[#b8860b] shadow-xs">
-                    {selectedDept.replace(/\s+/g, '')}{selectedSection}
-                  </span>
+            <div className="mt-6 space-y-4">
+              {detectedIssues.map(issue => (
+                <div
+                  key={issue.id}
+                  className={`rounded-2xl border p-5 transition ${
+                    issue.severity === "critical"
+                      ? "border-[#fca5a5] bg-[#fff5f5]"
+                      : "border-[#fed7aa] bg-[#fffaf5]"
+                  }`}
+                >
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2">
+                        <span
+                          className={`rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider ${
+                            issue.severity === "critical"
+                              ? "bg-[#ef4444] text-white"
+                              : "bg-[#f97316] text-white"
+                          }`}
+                        >
+                          {issue.severity === "critical" ? "Critical Issue" : "Warning"}
+                        </span>
+                        <h3 className="text-sm font-bold text-[#1b3a6b]">
+                          {issue.title}
+                        </h3>
+                      </div>
+                      <p className="text-xs text-[#4b3c58]">
+                        {issue.description}
+                      </p>
+                      {issue.attendanceRate !== undefined && (
+                        <div className="mt-2 flex items-center gap-4 text-xs font-semibold text-[#5b3b92]">
+                          <span>Current Rate: {issue.attendanceRate}%</span>
+                          <span>Total Missed: {issue.absentDays} classes</span>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      {issue.studentId && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSearchQuery(issue.studentId!);
+                            setViewTab("ledger");
+                          }}
+                          className="rounded-xl border border-[#d8cfe0] bg-white px-3.5 py-2 text-xs font-bold text-[#5b3b92] shadow-xs hover:bg-[#f8f5fc]"
+                        >
+                          View Student Ledger ↗
+                        </button>
+                      )}
+                      {issue.sessionId && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const sess = sessionLogs.find(s => s.id === issue.sessionId);
+                            if (sess) setInspectingSession(sess);
+                          }}
+                          className="rounded-xl border border-[#d8cfe0] bg-white px-3.5 py-2 text-xs font-bold text-[#5b3b92] shadow-xs hover:bg-[#f8f5fc]"
+                        >
+                          Inspect Batch ↗
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* MODAL 1: RECORD NEW SESSION (CREATE) */}
+      {showCreateModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-xs"
+          onClick={e => {
+            if (e.target === e.currentTarget) setShowCreateModal(false);
+          }}
+        >
+          <div className="relative max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-3xl bg-white p-6 shadow-2xl md:p-8">
+            <button
+              onClick={() => setShowCreateModal(false)}
+              className="absolute right-5 top-5 rounded-full p-2 text-[#897c99] hover:bg-[#f2edf7]"
+            >
+              <X size={18} />
+            </button>
+
+            <h2 className="text-xl font-bold text-[#1b3a6b]">
+              Log New Attendance Session
+            </h2>
+            <p className="mt-1 text-xs text-[#736683]">
+              Record attendance for a batch. Tap any chip to mark a student absent (red).
+            </p>
+
+            <form onSubmit={handleCreateSessionSubmit} className="mt-6 space-y-5">
+              <div className="grid gap-4 sm:grid-cols-3">
+                <div>
+                  <label className="text-xs font-bold uppercase tracking-wider text-[#4a3e5c]">
+                    Date
+                  </label>
+                  <input
+                    type="date"
+                    required
+                    value={newDate}
+                    onChange={e => setNewDate(e.target.value)}
+                    className="mt-1.5 w-full rounded-xl border border-[#e4dce9] px-3.5 py-2.5 text-xs text-[#2a203e]"
+                  />
                 </div>
 
-                <div className="flex items-center gap-3">
-                  <span className="hidden text-xs text-[#8d8197] md:inline">
-                    Tap a chip to mark absent (red)
+                <div>
+                  <label className="text-xs font-bold uppercase tracking-wider text-[#4a3e5c]">
+                    Department
+                  </label>
+                  <select
+                    value={newDept}
+                    onChange={e => setNewDept(e.target.value)}
+                    className="mt-1.5 w-full rounded-xl border border-[#e4dce9] px-3.5 py-2.5 text-xs text-[#2a203e]"
+                  >
+                    {departments.map(d => (
+                      <option key={d} value={d}>{d}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="text-xs font-bold uppercase tracking-wider text-[#4a3e5c]">
+                    Section
+                  </label>
+                  <select
+                    value={newSection}
+                    onChange={e => setNewSection(e.target.value)}
+                    className="mt-1.5 w-full rounded-xl border border-[#e4dce9] px-3.5 py-2.5 text-xs text-[#2a203e]"
+                  >
+                    {creationSections.map(s => (
+                      <option key={s.id} value={s.name}>{s.name}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="text-xs font-bold uppercase tracking-wider text-[#4a3e5c]">
+                  Session Description / Topic
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. Chapter 4 Trigonometry Problem Solving"
+                  value={newDescription}
+                  onChange={e => setNewDescription(e.target.value)}
+                  className="mt-1.5 w-full rounded-xl border border-[#e4dce9] px-3.5 py-2.5 text-xs text-[#2a203e]"
+                />
+              </div>
+
+              {/* Student Chips */}
+              <div className="rounded-2xl border border-[#eee6f0] bg-[#faf7fd] p-4">
+                <div className="flex items-center justify-between border-b border-[#eee6f0] pb-2">
+                  <span className="text-xs font-bold text-[#5b3b92]">
+                    Enrolled Students ({newBatchStudents.length})
                   </span>
-                  <div className="flex items-center gap-2">
+                  <div className="flex gap-2">
                     <button
                       type="button"
-                      onClick={markAllPresent}
-                      className="rounded-xl bg-[#0f4c81] px-4 py-2 text-xs font-bold text-white shadow-sm transition hover:bg-[#0b3860]"
+                      onClick={() => {
+                        const m: Record<string, "present" | "absent"> = {};
+                        newBatchStudents.forEach(s => { m[s.studentId] = "present"; });
+                        setNewAttendanceMap(m);
+                      }}
+                      className="rounded-lg bg-[#0f4c81] px-2.5 py-1 text-[10px] font-bold text-white"
                     >
                       All Present
                     </button>
                     <button
                       type="button"
-                      onClick={markAllAbsent}
-                      className="rounded-xl bg-[#0f4c81] px-4 py-2 text-xs font-bold text-white shadow-sm transition hover:bg-[#0b3860]"
+                      onClick={() => {
+                        const m: Record<string, "present" | "absent"> = {};
+                        newBatchStudents.forEach(s => { m[s.studentId] = "absent"; });
+                        setNewAttendanceMap(m);
+                      }}
+                      className="rounded-lg bg-[#0f4c81] px-2.5 py-1 text-[10px] font-bold text-white"
                     >
                       All Absent
                     </button>
                   </div>
                 </div>
+
+                {newBatchStudents.length === 0 ? (
+                  <p className="py-6 text-center text-xs italic text-[#8d8197]">
+                    No students enrolled in {newDept} - Sec {newSection}.
+                  </p>
+                ) : (
+                  <div className="mt-3 flex flex-wrap gap-2.5">
+                    {newBatchStudents.map(student => {
+                      const isAbsent = newAttendanceMap[student.studentId] === "absent";
+                      return (
+                        <button
+                          key={student.studentId}
+                          type="button"
+                          onClick={() => {
+                            setNewAttendanceMap(prev => ({
+                              ...prev,
+                              [student.studentId]: prev[student.studentId] === "absent" ? "present" : "absent",
+                            }));
+                          }}
+                          className={`rounded-xl border px-3.5 py-2 text-xs font-semibold transition ${
+                            isAbsent
+                              ? "border-[#ef4444] bg-[#fee2e2] text-[#dc2626]"
+                              : "border-[#d8cee0] bg-white text-[#1b3a6b] hover:border-[#5b3b92]"
+                          }`}
+                          title={`${student.name} - Click to toggle`}
+                        >
+                          {student.studentId} · {student.name.split(" ")[0]}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
 
-              {/* Student Chips Grid */}
-              <div className="flex flex-wrap gap-3">
-                {batchStudents.map(student => {
-                  const isAbsent = attendanceState[student.studentId] === "absent";
-                  return (
-                    <button
-                      key={student.id}
-                      type="button"
-                      onClick={() => toggleStudent(student.studentId)}
-                      className={`group relative flex min-w-[72px] items-center justify-center rounded-2xl border px-4 py-3 text-sm font-semibold transition-all ${
-                        isAbsent
-                          ? "border-[#ef4444] bg-[#fef2f2] text-[#dc2626] shadow-sm"
-                          : "border-[#d6c796] bg-[#fffdf8] text-[#1b3a6b] shadow-2xs hover:border-[#1b55a8] hover:bg-white"
-                      }`}
-                      title={`${student.name} (${student.email}) - Click to toggle attendance`}
-                    >
-                      <span>{student.studentId}</span>
-                    </button>
-                  );
-                })}
-              </div>
-
-              {/* Submit Button */}
-              <div className="pt-4">
+              <div className="flex justify-end gap-3 pt-3">
+                <button
+                  type="button"
+                  onClick={() => setShowCreateModal(false)}
+                  className="rounded-xl border border-[#d8cfe0] px-4 py-2.5 text-xs font-semibold text-[#6d4b9f]"
+                >
+                  Cancel
+                </button>
                 <button
                   type="submit"
-                  className="rounded-2xl bg-[#0f4c81] px-8 py-3.5 text-sm font-bold tracking-wide text-white shadow-md transition hover:bg-[#0b3860]"
+                  disabled={newBatchStudents.length === 0}
+                  className="rounded-xl bg-[#0f4c81] px-6 py-2.5 text-xs font-bold text-white shadow-sm hover:bg-[#0b3860] disabled:opacity-50"
                 >
-                  Submit Attendance
+                  Publish Attendance Record
                 </button>
               </div>
-            </div>
-          )}
-        </form>
-      </div>
-
-      {/* Attendance Records History Table */}
-      <div className="rounded-3xl border border-[#eee6f0] bg-white p-6 shadow-sm md:p-8">
-        <div className="flex flex-wrap items-center justify-between gap-4 border-b border-[#f3ebf6] pb-4">
-          <div>
-            <h2 className="text-lg font-bold text-[#2a203e]">
-              Attendance Records History ({sessionLogs.length})
-            </h2>
-            <p className="mt-0.5 text-xs text-[#81758e]">
-              Past recorded sessions, attendee breakdowns, and notes.
-            </p>
+            </form>
           </div>
         </div>
+      )}
 
-        {sessionLogs.length === 0 ? (
-          <div className="py-10 text-center text-xs text-[#8d8197]">
-            No attendance records published yet. Submit your first batch above.
-          </div>
-        ) : (
-          <div className="mt-4 overflow-x-auto">
-            <table className="w-full text-left text-xs">
-              <thead>
-                <tr className="border-b border-[#f0e8f4] text-[11px] font-bold uppercase tracking-[0.1em] text-[#8d8197]">
-                  <th className="py-3 pl-2 pr-4">Date</th>
-                  <th className="py-3 px-4">Batch</th>
-                  <th className="py-3 px-4">Present / Absent</th>
-                  <th className="py-3 px-4">Absentees</th>
-                  <th className="py-3 px-4">Description / Notes</th>
-                  <th className="py-3 pr-2 pl-4 text-right">Action</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-[#f7f2f9]">
-                {sessionLogs.map(log => (
-                  <tr key={log.id} className="transition hover:bg-[#fbf9fd]">
-                    <td className="py-3.5 pl-2 pr-4 font-semibold text-[#5b3b92]">
-                      {log.date}
-                    </td>
-                    <td className="py-3.5 px-4">
-                      <span className="rounded-lg bg-[#f0eaf7] px-2.5 py-1 text-xs font-semibold text-[#5b3b92]">
-                        {log.department} - Sec {log.section}
-                      </span>
-                    </td>
-                    <td className="py-3.5 px-4">
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs font-bold text-[#1b7e47]">
-                          ✓ {log.presentCount}
-                        </span>
-                        <span className="text-xs font-bold text-[#d93838]">
-                          ✗ {log.absentCount}
-                        </span>
-                        <span className="text-[11px] text-[#8d8197]">
-                          ({log.totalStudents} total)
+      {/* MODAL 2: INSPECT SESSION DETAILS */}
+      {inspectingSession && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-xs"
+          onClick={e => {
+            if (e.target === e.currentTarget) setInspectingSession(null);
+          }}
+        >
+          <div className="relative max-h-[90vh] w-full max-w-xl overflow-y-auto rounded-3xl bg-white p-6 shadow-2xl md:p-8">
+            <button
+              onClick={() => setInspectingSession(null)}
+              className="absolute right-5 top-5 rounded-full p-2 text-[#897c99] hover:bg-[#f2edf7]"
+            >
+              <X size={18} />
+            </button>
+
+            <span className="rounded-full bg-[#f0eaf7] px-3 py-1 text-xs font-bold text-[#5b3b92]">
+              {inspectingSession.department} - Sec {inspectingSession.section}
+            </span>
+            <h2 className="mt-2 text-xl font-bold text-[#1b3a6b]">
+              Session Breakdown ({inspectingSession.date})
+            </h2>
+            <p className="mt-1 text-xs text-[#736683]">
+              {inspectingSession.description} · Logged at {inspectingSession.recordedAt}
+            </p>
+
+            <div className="mt-4 grid grid-cols-3 gap-3">
+              <div className="rounded-xl bg-[#f0fdf4] p-3 text-center">
+                <div className="text-xl font-bold text-[#16a34a]">{inspectingSession.presentCount}</div>
+                <div className="text-[10px] uppercase font-bold text-[#166534]">Present</div>
+              </div>
+              <div className="rounded-xl bg-[#fef2f2] p-3 text-center">
+                <div className="text-xl font-bold text-[#dc2626]">{inspectingSession.absentCount}</div>
+                <div className="text-[10px] uppercase font-bold text-[#991b1b]">Absent</div>
+              </div>
+              <div className="rounded-xl bg-[#f8f5fc] p-3 text-center">
+                <div className="text-xl font-bold text-[#5b3b92]">{inspectingSession.totalStudents}</div>
+                <div className="text-[10px] uppercase font-bold text-[#5b3b92]">Total Enrolled</div>
+              </div>
+            </div>
+
+            <div className="mt-6 space-y-2">
+              <h3 className="text-xs font-bold uppercase tracking-wider text-[#4a3e5c]">
+                Enrolled Students Status in this Session
+              </h3>
+              <div className="max-h-60 overflow-y-auto divide-y divide-[#f7f2f9] rounded-xl border border-[#eee6f0]">
+                {students
+                  .filter(
+                    s => s.department.toLowerCase() === inspectingSession.department.toLowerCase() &&
+                         s.section.toLowerCase() === inspectingSession.section.toLowerCase()
+                  )
+                  .map(st => {
+                    const isAbsent = inspectingSession.absentStudentIds.includes(st.studentId);
+                    return (
+                      <div key={st.studentId} className="flex items-center justify-between p-3 text-xs">
+                        <div>
+                          <span className="font-mono font-bold text-[#1b3a6b]">{st.studentId}</span>
+                          <span className="ml-2 font-medium text-[#2a203e]">{st.name}</span>
+                        </div>
+                        <span
+                          className={`rounded-full px-2.5 py-0.5 text-[11px] font-bold ${
+                            isAbsent
+                              ? "bg-[#fee2e2] text-[#dc2626]"
+                              : "bg-[#ecfdf5] text-[#047857]"
+                          }`}
+                        >
+                          {isAbsent ? "ABSENT" : "PRESENT"}
                         </span>
                       </div>
-                    </td>
-                    <td className="py-3.5 px-4">
-                      {log.absentStudentIds.length === 0 ? (
-                        <span className="text-[11px] text-[#1b7e47]">All Present</span>
-                      ) : (
-                        <div className="flex flex-wrap gap-1">
-                          {log.absentStudentIds.map(id => (
-                            <span
-                              key={id}
-                              className="rounded bg-[#fee2e2] px-1.5 py-0.5 font-mono text-[10px] font-bold text-[#dc2626]"
-                            >
-                              {id}
-                            </span>
-                          ))}
-                        </div>
-                      )}
-                    </td>
-                    <td className="py-3.5 px-4 text-[#71647f]">
-                      {log.description}
-                    </td>
-                    <td className="py-3.5 pr-2 pl-4 text-right">
-                      <button
-                        type="button"
-                        onClick={() => handleDeleteSession(log.id)}
-                        className="rounded-lg p-1.5 text-[#b83232] transition hover:bg-[#fcedec]"
-                        title="Delete record"
-                      >
-                        <Trash2 size={15} />
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                    );
+                  })}
+              </div>
+            </div>
+
+            <div className="mt-6 flex justify-end">
+              <button
+                type="button"
+                onClick={() => setInspectingSession(null)}
+                className="rounded-xl bg-[#0f4c81] px-5 py-2 text-xs font-bold text-white"
+              >
+                Close
+              </button>
+            </div>
           </div>
-        )}
-      </div>
+        </div>
+      )}
+
+      {/* MODAL 3: EDIT SESSION (UPDATE) */}
+      {editingSession && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-xs"
+          onClick={e => {
+            if (e.target === e.currentTarget) setEditingSession(null);
+          }}
+        >
+          <div className="relative max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-3xl bg-white p-6 shadow-2xl md:p-8">
+            <button
+              onClick={() => setEditingSession(null)}
+              className="absolute right-5 top-5 rounded-full p-2 text-[#897c99] hover:bg-[#f2edf7]"
+            >
+              <X size={18} />
+            </button>
+
+            <h2 className="text-xl font-bold text-[#1b3a6b]">
+              Edit Attendance Session
+            </h2>
+            <p className="mt-1 text-xs text-[#736683]">
+              Update session date, notes, or modify absent student IDs.
+            </p>
+
+            <form onSubmit={handleSaveEditedSession} className="mt-5 space-y-4">
+              <div>
+                <label className="text-xs font-bold uppercase tracking-wider text-[#4a3e5c]">
+                  Session Date
+                </label>
+                <input
+                  type="date"
+                  required
+                  value={editingSession.date}
+                  onChange={e => setEditingSession({ ...editingSession, date: e.target.value })}
+                  className="mt-1.5 w-full rounded-xl border border-[#e4dce9] px-3.5 py-2.5 text-xs text-[#2a203e]"
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-bold uppercase tracking-wider text-[#4a3e5c]">
+                  Description / Notes
+                </label>
+                <input
+                  type="text"
+                  value={editingSession.description}
+                  onChange={e => setEditingSession({ ...editingSession, description: e.target.value })}
+                  className="mt-1.5 w-full rounded-xl border border-[#e4dce9] px-3.5 py-2.5 text-xs text-[#2a203e]"
+                />
+              </div>
+
+              {/* Absentee ID toggles */}
+              <div>
+                <label className="text-xs font-bold uppercase tracking-wider text-[#4a3e5c]">
+                  Toggle Absentees (Click to toggle)
+                </label>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {students
+                    .filter(
+                      s => s.department.toLowerCase() === editingSession.department.toLowerCase() &&
+                           s.section.toLowerCase() === editingSession.section.toLowerCase()
+                    )
+                    .map(st => {
+                      const isAbsent = editingSession.absentStudentIds.includes(st.studentId);
+                      return (
+                        <button
+                          key={st.studentId}
+                          type="button"
+                          onClick={() => {
+                            const newAbsents = isAbsent
+                              ? editingSession.absentStudentIds.filter(id => id !== st.studentId)
+                              : [...editingSession.absentStudentIds, st.studentId];
+                            setEditingSession({
+                              ...editingSession,
+                              absentStudentIds: newAbsents,
+                              absentCount: newAbsents.length,
+                              presentCount: editingSession.totalStudents - newAbsents.length,
+                            });
+                          }}
+                          className={`rounded-xl border px-3 py-1.5 text-xs font-semibold ${
+                            isAbsent
+                              ? "border-[#ef4444] bg-[#fee2e2] text-[#dc2626]"
+                              : "border-[#d8cee0] bg-white text-[#1b3a6b]"
+                          }`}
+                        >
+                          {st.studentId} ({isAbsent ? "Absent" : "Present"})
+                        </button>
+                      );
+                    })}
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-3 pt-4">
+                <button
+                  type="button"
+                  onClick={() => setEditingSession(null)}
+                  className="rounded-xl border border-[#d8cfe0] px-4 py-2.5 text-xs font-semibold text-[#6d4b9f]"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="rounded-xl bg-[#0f4c81] px-6 py-2.5 text-xs font-bold text-white shadow-sm hover:bg-[#0b3860]"
+                >
+                  Save Changes
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

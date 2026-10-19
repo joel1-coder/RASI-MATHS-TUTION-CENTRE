@@ -153,6 +153,10 @@ export default function Portfolio({ onLogin, user, onGoToPortal, onLogout }: Por
             </div>
 
             <aside className="hero-panel" aria-label="Rasi Maths Tuition Centre at a glance">
+              <div className="hero-floating-badge">
+                <span className="badge-dot" />
+                <span>Panruti, Tamil Nadu · Since 2006</span>
+              </div>
               <div className="hero-image-wrap">
                 <img src={`${imageBase}/photo-1503676260728-1c00da094a0b?auto=format&fit=crop&w=1400&q=90`} alt="Students learning together in a bright classroom" />
                 <div className="hero-image-sheen" />
@@ -393,7 +397,7 @@ export default function Portfolio({ onLogin, user, onGoToPortal, onLogout }: Por
               <p className="contact-intro">Drop by for a conversation, a cup of chai, and a look around. No pressure, ever.</p>
             </div>
             <div className="contact-details">
-              <a href="https://www.google.com/maps/search/Rasi+Maths+Tuition+Centre,+Indiranagar,+Bengaluru" target="_blank" rel="noreferrer"><MapPin size={18} /><span>{siteData.contact.address.split("\n").map((line) => <span key={line}>{line}<br /></span>)}</span></a>
+              <a href="https://www.google.com/maps/search/3rd+Street,+Police+Line,+Kamaraj+Nagar,+Panruti,+Tamil+Nadu+607106" target="_blank" rel="noreferrer"><MapPin size={18} /><span>{siteData.contact.address.split("\n").map((line) => <span key={line}>{line}<br /></span>)}</span></a>
               <a href={`tel:${siteData.contact.phone.replace(/\s/g, "")}`}><Phone size={18} /><span>{siteData.contact.phone}</span></a>
               <a href={`mailto:${siteData.contact.email}`}><Mail size={18} /><span>{siteData.contact.email}</span></a>
               <p><Clock3 size={18} /><span>{siteData.contact.hours}</span></p>
@@ -404,6 +408,7 @@ export default function Portfolio({ onLogin, user, onGoToPortal, onLogout }: Por
           {/* Google Maps Embed — click anywhere to open in Google Maps */}
           <div className="page-width" style={{ marginTop: "2.5rem" }}>
             <div
+              className="map-interactive-wrapper"
               style={{
                 position: "relative",
                 borderRadius: "20px",
@@ -413,7 +418,7 @@ export default function Portfolio({ onLogin, user, onGoToPortal, onLogout }: Por
               }}
             >
               <iframe
-                src="https://maps.google.com/maps?q=Rasi+Maths+Tuition+Centre,+Indiranagar,+Bengaluru&output=embed"
+                src="https://maps.google.com/maps?q=3rd+Street,+Police+Line,+Kamaraj+Nagar,+Panruti,+Tamil+Nadu+607106&output=embed"
                 width="100%"
                 height="100%"
                 style={{ border: 0, display: "block", pointerEvents: "none" }}
@@ -424,7 +429,7 @@ export default function Portfolio({ onLogin, user, onGoToPortal, onLogout }: Por
               />
               {/* Transparent overlay — makes entire map clickable */}
               <a
-                href="https://www.google.com/maps/search/Rasi+Maths+Tuition+Centre,+Indiranagar,+Bengaluru"
+                href="https://www.google.com/maps/search/3rd+Street,+Police+Line,+Kamaraj+Nagar,+Panruti,+Tamil+Nadu+607106"
                 target="_blank"
                 rel="noopener noreferrer"
                 aria-label="Open Rasi Maths Tuition Centre in Google Maps"
@@ -441,6 +446,7 @@ export default function Portfolio({ onLogin, user, onGoToPortal, onLogout }: Por
                 }}
               >
                 <span
+                  className="map-google-pill"
                   style={{
                     display: "inline-flex",
                     alignItems: "center",
@@ -452,7 +458,6 @@ export default function Portfolio({ onLogin, user, onGoToPortal, onLogout }: Por
                     fontSize: "12px",
                     fontWeight: 700,
                     boxShadow: "0 2px 10px rgba(0,0,0,0.18)",
-                    transition: "transform 0.15s",
                   }}
                 >
                   <MapPin size={13} />
