@@ -753,7 +753,7 @@ function StudentProfileSection({ user, studentInfo }: { user: User; studentInfo?
   const fullName = studentInfo?.name || user.name || "JOEL A";
   const emailStudent = studentInfo?.email || user.email || "codejoe68333@gmail.com";
   const parentName = studentInfo?.parentName || user.parentName || "Arputha Philomin Raj J";
-  const parentPhone = studentInfo?.parentPhone || user.parentPhone || "9361143212";
+  const parentPhone = studentInfo?.parentPhone || (user.parentPhone && !/[a-z]/i.test(user.parentPhone) ? user.parentPhone : undefined);
   const parentEmail = studentInfo?.parentEmail || user.parentEmail || "codejoe68333@gmail.com";
   const department = studentInfo?.department || user.department || "Grade 6";
   const section = studentInfo?.section || user.section || "A";
@@ -1278,6 +1278,10 @@ export const loadStoredStudents = (): ManagedStudent[] => {
     }
     const saved = localStorage.getItem("rasi_v2_admin_students");
     let parsed: ManagedStudent[] = saved ? JSON.parse(saved) : [];
+    let accountRecords: Array<any> = [];
+    try {
+      accountRecords = JSON.parse(localStorage.getItem("rasi_user_accounts") || "[]");
+    } catch {}
     // Read deleted IDs so deleted students never resurrect
     let deletedIds: string[] = [];
     try {
@@ -1285,18 +1289,33 @@ export const loadStoredStudents = (): ManagedStudent[] => {
     } catch {}
     parsed = parsed.filter(s => !deletedIds.includes(s.studentId.toLowerCase()));
 
+    const looksLikeStudentId = (value: unknown, studentId: string) => {
+      const text = String(value || "").trim().toLowerCase();
+      return !text || text === studentId.trim().toLowerCase() || /^[0-9]{2}[a-z]{2,}[0-9]+$/i.test(text);
+    };
+    const looksLikePhone = (value: unknown) => {
+      const text = String(value || "").trim();
+      return text.length >= 7 && !/[a-z]/i.test(text) && (text.match(/[0-9]/g)?.length || 0) >= 7;
+    };
+
     return parsed.map(s => {
       const initial = INITIAL_STUDENTS.find(init => init.studentId.toLowerCase() === s.studentId.toLowerCase());
-      let resolvedName = s.name;
-      // Clean up cases where name was accidentally saved as studentId (e.g. 23CS201)
-      if (initial && (s.name === s.studentId || s.name.startsWith("23CS") || s.name.startsWith("10A") || s.name.startsWith("6C"))) {
-        resolvedName = initial.name;
-      }
+      const account = accountRecords.find(a =>
+        a.studentId?.toLowerCase() === s.studentId.toLowerCase() || a.email?.toLowerCase() === s.email.toLowerCase()
+      );
+      const resolvedName = !looksLikeStudentId(s.name, s.studentId)
+        ? s.name
+        : initial?.name || (!looksLikeStudentId(account?.name, s.studentId) ? account.name : "Student name not provided");
+      const resolvedParentPhone = looksLikePhone(s.parentPhone)
+        ? s.parentPhone
+        : looksLikePhone(account?.parentPhone)
+          ? account.parentPhone
+          : initial?.parentPhone;
       return {
         ...s,
         name: resolvedName,
         parentName: s.parentName || initial?.parentName || "Parent",
-        parentPhone: s.parentPhone || initial?.parentPhone || "+91 98401 23450",
+        parentPhone: resolvedParentPhone,
         parentEmail: s.parentEmail || initial?.parentEmail || "",
       };
     });
