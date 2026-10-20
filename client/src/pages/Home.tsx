@@ -2341,8 +2341,18 @@ function AdminStudentManager() {
       setStudents(databaseStudents);
       const databaseDepartments = Array.from(new Set(databaseStudents.map(student => student.department).filter(Boolean))).sort();
       const databaseSections = databaseDepartments.flatMap(department => Array.from(new Set(databaseStudents.filter(student => student.department === department).map(student => student.section))).map(name => ({ id: `db-${department}-${name}`, name, department })));
-      if (databaseDepartments.length) setDepartments(databaseDepartments);
-      if (databaseSections.length) setSections(databaseSections);
+      if (databaseDepartments.length) {
+        setDepartments(current => Array.from(new Set([...current, ...databaseDepartments])).sort());
+      }
+      if (databaseSections.length) {
+        setSections(current => {
+          const merged = [...current];
+          for (const section of databaseSections) {
+            if (!merged.some(existing => existing.department === section.department && existing.name === section.name)) merged.push(section);
+          }
+          return merged;
+        });
+      }
     }
   }, [databaseStudents, dbPortalUsersQuery.isLoading, dbPortalUsersQuery.isError]);
 
@@ -2391,6 +2401,7 @@ function AdminStudentManager() {
   const [sectionFilter, setSectionFilter] = useState("All");
   const [statusFilter, setStatusFilter] = useState("All");
   const [showPasswords, setShowPasswords] = useState(false);
+  const [managementTab, setManagementTab] = useState<"students" | "departments" | "sections" | "add-student" | "bulk-import">("students");
   const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>([]);
   const [studentToDelete, setStudentToDelete] = useState<ManagedStudent | null>(null);
   const [isBulkDeleting, setIsBulkDeleting] = useState(false);
@@ -2404,6 +2415,12 @@ function AdminStudentManager() {
     setTimeout(() => setToastMessage(null), 3500);
   };
 
+  // Keep form selections valid when departments are added or removed.
+  useEffect(() => {
+    setNewSectionDept(current => departments.includes(current) ? current : (departments[0] || ""));
+    setSingleStudent(current => departments.includes(current.department) ? current : { ...current, department: departments[0] || "" });
+  }, [departments]);
+
   // Add Department
   const handleAddDepartment = (e: React.FormEvent) => {
     e.preventDefault();
@@ -2414,6 +2431,9 @@ function AdminStudentManager() {
       return;
     }
     setDepartments([...departments, trimmed]);
+    setNewSectionDept(trimmed);
+    setSingleStudent(current => ({ ...current, department: trimmed }));
+    setBulkDept(trimmed);
     setNewDeptName("");
     showToast(`Department "${trimmed}" added successfully.`);
   };
@@ -3038,8 +3058,30 @@ function AdminStudentManager() {
         </div>
       </div>
 
-      {/* 1. Add Department Card */}
-      <div className="rounded-3xl border border-[#eee6f0] bg-white p-6 shadow-sm">
+      {/* Student management tabs */}
+      <div className="overflow-x-auto rounded-2xl border border-[#e4dce9] bg-white p-1.5 shadow-sm">
+        <div className="flex min-w-max gap-1">
+          {([
+            ["students", "Student List"],
+            ["departments", "Add Department"],
+            ["sections", "Add Section"],
+            ["add-student", "Add Student"],
+            ["bulk-import", "Bulk Import"],
+          ] as const).map(([tab, label], index) => (
+            <button
+              key={tab}
+              type="button"
+              onClick={() => setManagementTab(tab)}
+              className={`rounded-xl px-4 py-2.5 text-xs font-semibold transition ${managementTab === tab ? "bg-[#5b3b92] text-white shadow-sm" : "text-[#71647f] hover:bg-[#f6f0fa]"}`}
+            >
+              <span className="mr-1.5 opacity-70">{index + 1}.</span>{label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* 2. Add Department Card */}
+      {managementTab === "departments" && <div className="rounded-3xl border border-[#eee6f0] bg-white p-6 shadow-sm">
         <div className="flex items-center gap-2">
           <span className="text-lg">🏛️</span>
           <h2 className="text-base font-bold text-[#2a203e]">Add Department</h2>
@@ -3089,10 +3131,10 @@ function AdminStudentManager() {
             })}
           </div>
         )}
-      </div>
+      </div>}
 
-      {/* 2. Add Section Card */}
-      <div className="rounded-3xl border border-[#eee6f0] bg-white p-6 shadow-sm">
+      {/* 3. Add Section Card */}
+      {managementTab === "sections" && <div className="rounded-3xl border border-[#eee6f0] bg-white p-6 shadow-sm">
         <div className="flex items-center gap-2">
           <span className="text-lg">📁</span>
           <h2 className="text-base font-bold text-[#2a203e]">Add Section</h2>
@@ -3146,10 +3188,10 @@ function AdminStudentManager() {
             ))}
           </div>
         )}
-      </div>
+      </div>}
 
-      {/* 3. Add Student (Single) Card */}
-      <div className="rounded-3xl border border-[#eee6f0] bg-white p-6 shadow-sm">
+      {/* 4. Add Student (Single) Card */}
+      {managementTab === "add-student" && <div className="rounded-3xl border border-[#eee6f0] bg-white p-6 shadow-sm">
         <div className="flex items-center gap-2">
           <span className="text-lg">🎓</span>
           <h2 className="text-base font-bold text-[#2a203e]">Add Student (Single)</h2>
@@ -3272,10 +3314,10 @@ function AdminStudentManager() {
             </button>
           </div>
         </form>
-      </div>
+      </div>}
 
-      {/* 4. Bulk Import Students (Excel / CSV) Card */}
-      <div className="rounded-3xl border border-[#eee6f0] bg-white p-6 shadow-sm">
+      {/* 5. Bulk Import Students (Excel / CSV) Card */}
+      {managementTab === "bulk-import" && <div className="rounded-3xl border border-[#eee6f0] bg-white p-6 shadow-sm">
         <div className="flex items-center gap-2">
           <span className="text-lg">📊</span>
           <h2 className="text-base font-bold text-[#2a203e]">Bulk Import Students (Excel / CSV)</h2>
@@ -3359,10 +3401,10 @@ function AdminStudentManager() {
             {importStatus}
           </p>
         )}
-      </div>
+      </div>}
 
-      {/* 5. Delete Student & Database Registry (CRUD & Deletion Hub) */}
-      <div className="rounded-3xl border border-[#eee6f0] bg-white p-6 shadow-sm">
+      {/* 1. Student List & Database Registry (CRUD & Deletion Hub) */}
+      {managementTab === "students" && <div className="rounded-3xl border border-[#eee6f0] bg-white p-6 shadow-sm">
         {/* Header with Title, Count, Passwords Toggle & Export */}
         <div className="flex flex-wrap items-center justify-between gap-4 border-b border-[#f0e8f4] pb-4">
           <div>
@@ -3730,7 +3772,7 @@ function AdminStudentManager() {
             </table>
           </div>
         )}
-      </div>
+      </div>}
 
       {/* Delete Confirmation Modal */}
       {studentToDelete && (
