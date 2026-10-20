@@ -59,6 +59,11 @@ export async function getDb() {
         ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "portalPassword" text;
       `).catch(() => {});
       await _client.unsafe(`ALTER TABLE "student_attendance" ADD COLUMN IF NOT EXISTS "description" text NOT NULL DEFAULT '';`).catch(() => {});
+      // Vercel does not run Drizzle migrations automatically. Keep existing
+      // project rows readable after adding the persisted description field.
+      await _client.unsafe(`ALTER TABLE "student_projects" ADD COLUMN IF NOT EXISTS "description" text NOT NULL DEFAULT '';`).catch((error) => {
+        console.error("[Database] Could not add student_projects.description:", error);
+      });
       // Ensure site_settings table exists for persistent portfolio content
       _client.unsafe(`
         CREATE TABLE IF NOT EXISTS "site_settings" (
