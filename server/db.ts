@@ -366,7 +366,25 @@ export async function upsertMarkStatement(record: InsertMarkStatement) {
 export async function listStudentProjects(studentEmail: string) {
   const db = await getDb();
   if (!db) return [];
-  return db.select().from(studentProjects).where(eq(studentProjects.studentEmail, studentEmail));
+  try {
+    return await db.select().from(studentProjects).where(eq(studentProjects.studentEmail, studentEmail));
+  } catch (error) {
+    // Keep older Supabase deployments readable while their schema catches up.
+    // The compatibility query intentionally omits the recently added field.
+    console.error("[Database] Project schema is older than the app; using compatibility query:", error);
+    const legacyRows = await db.select({
+      id: studentProjects.id,
+      studentEmail: studentProjects.studentEmail,
+      title: studentProjects.title,
+      subject: studentProjects.subject,
+      dueDate: studentProjects.dueDate,
+      status: studentProjects.status,
+      progress: studentProjects.progress,
+      createdAt: studentProjects.createdAt,
+      updatedAt: studentProjects.updatedAt,
+    }).from(studentProjects).where(eq(studentProjects.studentEmail, studentEmail));
+    return legacyRows.map(row => ({ ...row, description: "" }));
+  }
 }
 
 export async function upsertStudentProject(record: InsertStudentProject) {
