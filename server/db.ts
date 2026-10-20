@@ -369,8 +369,8 @@ export async function upsertStudentProject(record: InsertStudentProject) {
   if (!db) return undefined;
   const existing = await db.select().from(studentProjects).where(and(eq(studentProjects.studentEmail, record.studentEmail), eq(studentProjects.title, record.title))).limit(1);
   if (existing[0]) {
-    await db.update(studentProjects).set({ subject: record.subject, dueDate: record.dueDate, status: record.status, progress: record.progress }).where(eq(studentProjects.id, existing[0].id));
-    return { ...existing[0], subject: record.subject, dueDate: record.dueDate, status: record.status, progress: record.progress };
+    await db.update(studentProjects).set({ description: record.description, subject: record.subject, dueDate: record.dueDate, status: record.status, progress: record.progress }).where(eq(studentProjects.id, existing[0].id));
+    return { ...existing[0], description: record.description, subject: record.subject, dueDate: record.dueDate, status: record.status, progress: record.progress };
   }
   const result = await db.insert(studentProjects).values(record).returning({ id: studentProjects.id });
   return { ...record, id: result[0].id };

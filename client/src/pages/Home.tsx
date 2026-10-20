@@ -927,8 +927,9 @@ function StudentWorkspace({ user, onLogout }: { user: User; onLogout: () => void
     if (active === "Projects") {
       if (projectsQuery.isLoading) return <LoadingState label="Loading assigned projects…" />;
       const projects = projectsQuery.data ?? [];
-      if (!projects.length) return <EmptyState title="No projects assigned yet" message="Admin-assigned projects will appear here with subject, due date, status, and progress." />;
-      return <div className="grid gap-4 md:grid-cols-2">{projects.map(project => <div className="rounded-3xl border border-[#eee6f0] bg-white p-6" key={project.id}><div className="flex items-start justify-between"><span className="rounded-full bg-[#f4e9dd] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-[#c36b42]">{project.subject}</span><NotebookPen className="text-[#8060ac]" size={20} /></div><h2 className="mt-6 text-xl font-semibold">{project.title}</h2><p className="mt-2 text-sm text-[#887c91]">Assigned project · Due {project.dueDate}</p><div className="mt-6 flex items-center justify-between text-xs"><span className="font-semibold text-[#6d4b9f]">{project.status}</span><span className="text-[#887c91]">{project.progress}%</span></div><div className="mt-3 h-2 overflow-hidden rounded-full bg-[#eee7f3]"><div className="h-full rounded-full bg-[#7c5ab1]" style={{ width: `${project.progress}%` }} /></div></div>)}</div>;
+      if (projectsQuery.isError) return <EmptyState title="Projects could not be loaded" message={projectsQuery.error?.message || "The projects database is unavailable. Please try again shortly."} />;
+      if (!projects.length) return <EmptyState title="No projects assigned yet" message="Admin-assigned projects will appear here with title, description, due date, status, and progress." />;
+      return <div className="grid gap-4 md:grid-cols-2">{projects.map(project => <div className="rounded-3xl border border-[#eee6f0] bg-white p-6" key={project.id}><div className="flex items-start justify-between"><span className="rounded-full bg-[#f4e9dd] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-[#c36b42]">{project.subject}</span><NotebookPen className="text-[#8060ac]" size={20} /></div><h2 className="mt-6 text-xl font-semibold">{project.title}</h2><p className="mt-2 text-sm text-[#887c91]">Assigned project · Due {project.dueDate}</p>{project.description && <p className="mt-3 text-sm leading-6 text-[#887c91]">{project.description}</p>}<div className="mt-6 flex items-center justify-between text-xs"><span className="font-semibold text-[#6d4b9f]">{project.status}</span><span className="text-[#887c91]">{project.progress}%</span></div><div className="mt-3 h-2 overflow-hidden rounded-full bg-[#eee7f3]"><div className="h-full rounded-full bg-[#7c5ab1]" style={{ width: `${project.progress}%` }} /></div></div>)}</div>;
     }
 
     return <><div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">{[["92%", "Attendance", ClipboardCheck], ["86%", "Average score", BarChart3], ["04", "Upcoming sessions", CalendarDays], ["03", "Open projects", NotebookPen]].map(([value, label, Icon]) => <div key={label as string} className="rounded-3xl border border-[#eee6f0] bg-white p-5 shadow-sm"><div className="flex items-start justify-between"><p className="text-3xl font-semibold text-[#5b3b92]">{value as string}</p><span className="rounded-xl bg-[#f4edf9] p-2 text-[#8060ac]"><Icon size={17} /></span></div><p className="mt-6 text-xs text-[#877b91]">{label as string}</p></div>)}</div><div className="mt-8 grid gap-5 lg:grid-cols-[1.3fr_.7fr]"><div className="rounded-3xl border border-[#eee6f0] bg-white p-6"><div className="flex items-center justify-between"><h2 className="font-semibold">Today’s learning plan</h2><button onClick={() => setActive("Schedule")} className="text-xs font-semibold text-[#6d4b9f]">Open calendar <ChevronRight className="inline" size={14} /></button></div><div className="mt-6 space-y-4">{[["Mathematics", "Weekly problem set · Due today", "On track"], ["Physics", "Next class · Tuesday, 5:00 PM", "Upcoming"], ["Build a bridge", "Project due 18 October", "In progress"]].map(row => <div className="flex items-center justify-between rounded-2xl bg-[#faf7fc] p-4" key={row[0]}><div className="flex items-center gap-3"><span className="grid h-9 w-9 place-items-center rounded-xl bg-[#e9ddf4] text-[#6e4b9e]"><Check size={16} /></span><div><p className="text-sm font-semibold">{row[0]}</p><p className="mt-1 text-xs text-[#8d8197]">{row[1]}</p></div></div><span className="text-[11px] font-semibold text-[#ef8656]">{row[2]}</span></div>)}</div></div><div className="rounded-3xl bg-[#5b3b92] p-6 text-white"><Sparkles className="text-[#f8b08b]" size={20} /><h2 className="mt-8 text-2xl font-semibold">Small steps,<br /><em className="font-serif font-normal">strong habits.</em></h2><p className="mt-4 text-sm leading-6 text-white/65">Keep showing up for the next question.</p><button onClick={() => setActive("Mark statement")} className="mt-8 rounded-full bg-white px-4 py-2.5 text-xs font-semibold text-[#5b3b92]">Review marks <ArrowRight className="ml-1 inline" size={13} /></button></div></div></>;
@@ -1740,7 +1741,7 @@ function AdminProjectsManager() {
     setSubmittedMessage("");
   };
 
-  const projectMutation = trpc.admin.project.useMutation();
+  const projectBulkMutation = trpc.admin.projectBulk.useMutation();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -1767,20 +1768,17 @@ function AdminProjectsManager() {
         return;
       }
 
-      for (const entry of entriesToSave) {
-        try {
-          await projectMutation.mutateAsync({
-            studentEmail: entry.studentEmail,
-            title: entry.title,
-            subject: entry.subject,
-            dueDate: entry.dueDate,
-            status: entry.status,
-            progress: entry.progress,
-          });
-        } catch (err) {
-          console.warn("DB project insert fallback", err);
-        }
-      }
+      await projectBulkMutation.mutateAsync({
+        records: entriesToSave.map(entry => ({
+          studentEmail: entry.studentEmail,
+          title: entry.title,
+          description: entry.description,
+          subject: entry.subject,
+          dueDate: entry.dueDate,
+          status: entry.status,
+          progress: entry.progress,
+        })),
+      });
 
       // Persist to localStorage for parent & student portals
       try {

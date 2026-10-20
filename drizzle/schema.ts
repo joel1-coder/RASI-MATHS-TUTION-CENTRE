@@ -87,6 +87,7 @@ export const studentProjects = pgTable("student_projects", {
   id: serial("id").primaryKey(),
   studentEmail: varchar("studentEmail", { length: 320 }).notNull(),
   title: varchar("title", { length: 160 }).notNull(),
+  description: text("description").notNull().default(""),
   subject: varchar("subject", { length: 120 }).notNull(),
   dueDate: varchar("dueDate", { length: 40 }).notNull(),
   status: varchar("status", { length: 40 }).notNull(),
