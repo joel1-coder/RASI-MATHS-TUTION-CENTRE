@@ -81,13 +81,26 @@ export const appRouter = router({
           };
         }
 
-        // ── 2. DB lookup ──────────────────────────────────────────────────────
+        // ── 2. Shared database lookup ─────────────────────────────────────────
+        // Never fall back to browser-local credentials: those are not available
+        // on another device and would make the same login behave inconsistently.
+        const db = await getDb();
+        if (!db) {
+          throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database is unavailable. Please configure DATABASE_URL in Vercel and try again." });
+        }
         const dbUser = await getUserByEmail(emailKey, input.role);
 
-        if (!dbUser || !dbUser.portalPassword || dbUser.portalPassword !== input.password) {
+        if (!dbUser) {
           throw new TRPCError({
             code: "UNAUTHORIZED",
-            message: "Invalid email or password. Access denied.",
+            message: `No ${input.role ?? "portal"} account was found for this email or student ID. Create the account from Admin User Management first.`,
+          });
+        }
+
+        if (!dbUser.portalPassword || dbUser.portalPassword !== input.password) {
+          throw new TRPCError({
+            code: "UNAUTHORIZED",
+            message: "The password is incorrect for this database account.",
           });
         }
 
@@ -277,7 +290,7 @@ export const appRouter = router({
       .query(({ input }) => listPortalUsers(input.role)),
 
     // ── Bulk student + parent login creation (called when admin adds students) ──
-    bulkCreateStudentLogins: publicProcedure
+    bulkCreateStudentLogins: adminProcedure
       .input(z.object({
         students: z.array(z.object({
           studentId:      z.string().optional(),
