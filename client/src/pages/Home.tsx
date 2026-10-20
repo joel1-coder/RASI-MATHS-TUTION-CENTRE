@@ -11,6 +11,13 @@ function formatAttendanceDate(dateStr: string) {
   const [year, month, day] = dateStr.split("-");
   return year && month && day ? `${day}/${month}/${year}` : dateStr;
 }
+
+function formatScheduleDate(dateStr: string) {
+  const date = new Date(`${dateStr}T00:00:00`);
+  return Number.isNaN(date.getTime())
+    ? dateStr
+    : date.toLocaleDateString("en-IN", { day: "2-digit", month: "long", year: "numeric" });
+}
 import { COOKIE_NAME } from "@shared/const";
 import { readSiteData, saveSiteData, type StudyMaterial } from "@/lib/siteData";
 import { exportToCsv } from "@/lib/exportCsv";
@@ -867,7 +874,7 @@ function StudentWorkspace({ user, onLogout }: { user: User; onLogout: () => void
   const [active, setActive] = useState("Overview");
   const [showHelp, setShowHelp] = useState(true);
   const [selectedTest, setSelectedTest] = useState<"Weekly test" | "Monthly test" | null>(null);
-  const [selectedDate, setSelectedDate] = useState(12);
+  const [selectedDate, setSelectedDate] = useState(new Date().getDate());
   // Resolve actual student info from stored students for accurate grade/details
   const allStoredStudents = loadStoredStudents();
   const studentInfo = allStoredStudents.find(s =>
@@ -898,10 +905,14 @@ function StudentWorkspace({ user, onLogout }: { user: User; onLogout: () => void
     }
     if (active === "Mark statement") return <MarkStatements studentEmail={user.email} />;
     if (active === "Schedule") {
-      if (scheduleQuery.isLoading) return <LoadingState label="Loading scheduled exercises…" />;
-      if (!liveSchedule.length) return <EmptyState title="No sessions scheduled yet" message="Admin can add a session date and exercise from the Admin dashboard. Your calendar will update automatically." />;
+      if (scheduleQuery.isLoading) return <LoadingState label="Loading schedule…" />;
+      if (scheduleQuery.isError) return <EmptyState title="Schedule could not be loaded" message={scheduleQuery.error?.message || "The schedule database is unavailable. Please try again shortly."} />;
+      if (!liveSchedule.length) return <EmptyState title="No sessions scheduled yet" message="Admin can add a session date and description from the Admin dashboard. Your calendar will update automatically." />;
+      const scheduleAnchor = new Date(`${liveSchedule[0].sessionDate}T00:00:00`);
+      const scheduleMonthName = Number.isNaN(scheduleAnchor.getTime()) ? "Schedule" : scheduleAnchor.toLocaleString("default", { month: "long" });
+      const scheduleYear = Number.isNaN(scheduleAnchor.getTime()) ? new Date().getFullYear() : scheduleAnchor.getFullYear();
       const selectedSession = liveSchedule.find(session => Number(session.sessionDate.slice(-2)) === selectedDate);
-      return <div className="grid gap-5 lg:grid-cols-[1.15fr_.85fr]"><div className="rounded-3xl border border-[#eee6f0] bg-white p-6"><div className="flex items-center justify-between"><div><p className="text-xs font-bold uppercase tracking-[0.18em] text-[#ef8656]">Live session scheduling</p><h2 className="mt-2 text-2xl font-semibold">September 2026</h2></div><CalendarDays className="text-[#6d4b9f]" /></div><div className="mt-7 grid grid-cols-7 gap-2 text-center"><div className="col-span-7 grid grid-cols-7 text-[10px] font-bold uppercase tracking-[0.12em] text-[#aaa0b1]">{["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((day, index) => <span key={`${day}-${index}`}>{day}</span>)}</div>{Array.from({ length: 30 }, (_, i) => <button key={i} onClick={() => setSelectedDate(i + 1)} className={`grid h-11 place-items-center rounded-xl text-sm transition ${selectedDate === i + 1 ? "bg-[#5b3b92] font-semibold text-white" : scheduleByDate[i + 1] ? "bg-[#f3ecf9] font-semibold text-[#6d4b9f]" : "text-[#81758e] hover:bg-[#faf7fc]"}`}>{i + 1}</button>)}</div><p className="mt-5 text-xs text-[#8d8197]">Purple dates have an exercise scheduled by Admin.</p></div><div className="rounded-3xl bg-[#f4e9dd] p-6"><p className="text-xs font-bold uppercase tracking-[0.18em] text-[#c36b42]">Selected date</p><h2 className="mt-3 text-3xl font-semibold">September {selectedDate}</h2><div className="mt-8 rounded-2xl bg-white/70 p-4">{selectedSession ? <><p className="text-xs font-semibold uppercase tracking-[0.14em] text-[#a7633e]">Scheduled exercise</p><p className="mt-3 text-lg font-semibold text-[#4a3041]">{selectedSession.subject}</p><p className="mt-2 text-sm leading-6 text-[#887477]">{selectedSession.exercise}</p><p className="mt-3 text-xs font-semibold text-[#a7633e]">{selectedSession.sessionTime || "Time to be confirmed"}</p></> : <><p className="text-xs font-semibold uppercase tracking-[0.14em] text-[#a7633e]">No session for this date</p><p className="mt-3 text-sm leading-6 text-[#887477]">Select a purple date or ask Admin to schedule an exercise.</p></>}</div></div></div>;
+      return <div className="grid gap-5 lg:grid-cols-[1.15fr_.85fr]"><div className="rounded-3xl border border-[#eee6f0] bg-white p-6"><div className="flex items-center justify-between"><div><p className="text-xs font-bold uppercase tracking-[0.18em] text-[#ef8656]">Live session scheduling</p><h2 className="mt-2 text-2xl font-semibold">{scheduleMonthName} {scheduleYear}</h2></div><CalendarDays className="text-[#6d4b9f]" /></div><div className="mt-7 grid grid-cols-7 gap-2 text-center"><div className="col-span-7 grid grid-cols-7 text-[10px] font-bold uppercase tracking-[0.12em] text-[#aaa0b1]">{["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((day, index) => <span key={`${day}-${index}`}>{day}</span>)}</div>{Array.from({ length: 30 }, (_, i) => <button key={i} onClick={() => setSelectedDate(i + 1)} className={`grid h-11 place-items-center rounded-xl text-sm transition ${selectedDate === i + 1 ? "bg-[#5b3b92] font-semibold text-white" : scheduleByDate[i + 1] ? "bg-[#f3ecf9] font-semibold text-[#6d4b9f]" : "text-[#81758e] hover:bg-[#faf7fc]"}`}>{i + 1}</button>)}</div><p className="mt-5 text-xs text-[#8d8197]">Purple dates have a description scheduled by Admin.</p></div><div className="rounded-3xl bg-[#f4e9dd] p-6"><p className="text-xs font-bold uppercase tracking-[0.18em] text-[#c36b42]">Selected date</p><h2 className="mt-3 text-3xl font-semibold">{scheduleMonthName} {selectedDate}</h2><div className="mt-8 rounded-2xl bg-white/70 p-4">{selectedSession ? <><p className="text-xs font-semibold uppercase tracking-[0.14em] text-[#a7633e]">Schedule description</p><p className="mt-3 text-lg font-semibold text-[#4a3041]">{selectedSession.subject}</p><p className="mt-2 text-sm leading-6 text-[#887477]">{selectedSession.exercise}</p><p className="mt-3 text-xs font-semibold text-[#a7633e]">{selectedSession.sessionTime || "Time to be confirmed"}</p></> : <><p className="text-xs font-semibold uppercase tracking-[0.14em] text-[#a7633e]">No session for this date</p><p className="mt-3 text-sm leading-6 text-[#887477]">Select a purple date or ask Admin to schedule a description.</p></>}</div></div></div>;
     }
     if (active === "Timetable") return <div className="rounded-3xl border border-[#eee6f0] bg-white p-6"><div className="flex items-center justify-between"><div><p className="text-xs font-bold uppercase tracking-[0.18em] text-[#ef8656]">Weekly schedule</p><h2 className="mt-2 text-2xl font-semibold">Your timetable</h2></div><Pill>Updated by admin</Pill></div><div className="mt-7 overflow-x-auto"><table className="w-full min-w-[650px] text-left"><thead className="border-b border-[#eee6f0] text-[10px] uppercase tracking-[0.15em] text-[#a196aa]"><tr><th className="pb-3">Day</th><th className="pb-3">Time</th><th className="pb-3">Subject</th><th className="pb-3">Teacher</th><th className="pb-3">Room</th></tr></thead><tbody>{[["Monday", "4:30 PM", "Mathematics", "Aarav Menon", "Room 2"], ["Tuesday", "5:00 PM", "Physics", "Nisha Kapoor", "Room 1"], ["Wednesday", "4:30 PM", "Mathematics", "Aarav Menon", "Room 2"], ["Friday", "4:30 PM", "Chemistry", "Nisha Kapoor", "Lab 1"], ["Saturday", "10:00 AM", "English & Writing", "Kabir Shah", "Studio"]].map(row => <tr key={row[0]} className="border-b border-[#f1ebf2] last:border-0"><td className="py-4 text-sm font-semibold">{row[0]}</td><td className="py-4 text-sm text-[#6d4b9f]">{row[1]}</td><td className="py-4 text-sm">{row[2]}</td><td className="py-4 text-xs text-[#887c91]">{row[3]}</td><td className="py-4 text-xs text-[#887c91]">{row[4]}</td></tr>)}</tbody></table></div></div>;
     if (active === "Question paper" || active === "Important Question papers") {
@@ -1041,6 +1052,8 @@ function ParentWorkspace({ user, onLogout }: { user: User; onLogout: () => void 
   const attendanceQuery = trpc.student.attendance.useQuery({ studentEmail: childEmail }, portalQueryOptions);
   const liveAttendance = attendanceQuery.data ?? [];
   const projectsQuery = trpc.student.projects.useQuery({ studentEmail: childEmail }, portalQueryOptions);
+  const scheduleQuery = trpc.student.schedule.useQuery({ studentEmail: childEmail }, portalQueryOptions);
+  const liveSchedule = scheduleQuery.data ?? [];
   const localProjects = useMemo(() => {
     try {
       const saved = JSON.parse(localStorage.getItem("rasi_dispatched_projects") || "[]") as Array<any>;
@@ -1088,7 +1101,12 @@ function ParentWorkspace({ user, onLogout }: { user: User; onLogout: () => void 
       if (!projects.length) return <EmptyState title="No projects assigned yet" message={`Admin-assigned projects for ${child} will appear here automatically.`} />;
       return <div className="grid gap-4 md:grid-cols-2">{projects.map(project => <div className="rounded-3xl border border-[#eee6f0] bg-white p-6" key={project.id}><div className="flex items-start justify-between"><span className="rounded-full bg-[#f4e9dd] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-[#c36b42]">{project.subject}</span><NotebookPen className="text-[#8060ac]" size={20} /></div><h2 className="mt-6 text-xl font-semibold">{project.title}</h2><p className="mt-2 text-sm text-[#887c91]">Assigned by Admin · Due {project.dueDate}</p>{project.description && <p className="mt-3 text-sm leading-6 text-[#887c91]">{project.description}</p>}<div className="mt-6 flex items-center justify-between text-xs"><span className="font-semibold text-[#6d4b9f]">{project.status}</span><span className="text-[#887c91]">{project.progress}%</span></div><div className="mt-3 h-2 overflow-hidden rounded-full bg-[#eee7f3]"><div className="h-full rounded-full bg-[#7c5ab1]" style={{ width: `${project.progress}%` }} /></div></div>)}</div>;
     }
-    if (active === "Orientation programs") return <div className="space-y-4">{[["Parent orientation · Term 1", "Saturday, 10 October 2026", "10:30 AM", "Centre hall", "Scheduled"], [`Progress meeting · ${child}`, "Monday, 19 October 2026", "5:30 PM", "Video meeting", "Scheduled"], ["Career pathways evening", "Friday, 6 November 2026", "6:00 PM", "Centre hall", "Save the date"]].map(item => <div className="flex flex-col justify-between gap-4 rounded-3xl border border-[#eee6f0] bg-white p-6 md:flex-row md:items-center" key={item[0]}><div><span className="rounded-full bg-[#f4e9dd] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-[#c36b42]">{item[4]}</span><h2 className="mt-4 text-xl font-semibold">{item[0]}</h2><p className="mt-2 text-sm text-[#887c91]">{item[1]} · {item[2]} · {item[3]}</p></div><button className="rounded-full border border-[#dcd1e5] px-4 py-2.5 text-xs font-semibold text-[#6d4b9f]">View details</button></div>)}</div>;
+    if (active === "Orientation programs") {
+      if (scheduleQuery.isLoading) return <LoadingState label="Loading orientation programs…" />;
+      if (scheduleQuery.isError) return <EmptyState title="Orientation programs could not be loaded" message={scheduleQuery.error?.message || "The schedule database is unavailable. Please try again shortly."} />;
+      if (!liveSchedule.length) return <EmptyState title="No orientation programs scheduled yet" message={`Admin schedules for ${child} will appear here automatically.`} />;
+      return <div className="space-y-4">{liveSchedule.slice().sort((a, b) => a.sessionDate.localeCompare(b.sessionDate)).map(session => <div className="flex flex-col justify-between gap-4 rounded-3xl border border-[#eee6f0] bg-white p-6 md:flex-row md:items-center" key={session.id}><div><span className="rounded-full bg-[#f4e9dd] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-[#c36b42]">Scheduled</span><h2 className="mt-4 text-xl font-semibold">{session.subject}</h2><p className="mt-2 text-sm leading-6 text-[#887c91]">{session.exercise}</p><p className="mt-2 text-xs font-semibold text-[#6d4b9f]">{formatScheduleDate(session.sessionDate)} · {session.sessionTime || "Time to be confirmed"}</p></div><span className="rounded-full border border-[#dcd1e5] px-4 py-2.5 text-xs font-semibold text-[#6d4b9f]">For {child}</span></div>)}</div>;
+    }
     if (active === "Colleges") {
       if (collegesQuery.isLoading) return <LoadingState label="Loading college guidance…" />;
       const colleges = collegesQuery.data ?? [];
@@ -6293,7 +6311,13 @@ function AdminUnitPaperManager() {
 }
 
 function AdminWorkspace({ user, onLogout }: { user: User; onLogout: () => void }) {
-  const studentEmail = "student@portal.com";
+  const allStudents = loadStoredStudents();
+  const activeStudents = allStudents.filter(student => student.status !== "inactive" && !!student.email);
+  const departments = Array.from(new Set(activeStudents.map(student => student.department))).sort();
+  const [selectedDepartment, setSelectedDepartment] = useState(departments[0] || "Grade 10");
+  const sections = Array.from(new Set(activeStudents.filter(student => student.department === selectedDepartment).map(student => student.section))).sort();
+  const [selectedSection, setSelectedSection] = useState(sections[0] || "A");
+  const targetedStudents = activeStudents.filter(student => student.department === selectedDepartment && student.section === selectedSection);
   const [active, setActive] = useState<"Overview" | "User Management" | "Students" | "Attendance" | "Schedule" | "Marks" | "Projects" | "Government exams" | "Question paper" | "Unit-wise paper" | "Profile">(() => {
     try {
       const saved = sessionStorage.getItem("rasi_admin_active_tab");
@@ -6307,15 +6331,32 @@ function AdminWorkspace({ user, onLogout }: { user: User; onLogout: () => void }
   }, [active]);
   const [sessionDate, setSessionDate] = useState(new Date().toISOString().slice(0, 10));
   const [subject, setSubject] = useState("Mathematics");
-  const [exercise, setExercise] = useState("");
+  const [description, setDescription] = useState("");
   const [sessionTime, setSessionTime] = useState("4:30 PM");
   const [editingSessionId, setEditingSessionId] = useState<number | null>(null);
-  const scheduleQuery = trpc.student.schedule.useQuery({ studentEmail });
-  const scheduleMutation = trpc.admin.schedule.useMutation({ onSuccess: () => { scheduleQuery.refetch(); setEditingSessionId(null); setExercise(""); setActive("Schedule"); } });
+  useEffect(() => {
+    if (!sections.includes(selectedSection)) setSelectedSection(sections[0] || "A");
+  }, [selectedDepartment, sections.join("|"), selectedSection]);
+  const scheduleTargetEmail = targetedStudents[0]?.email || activeStudents[0]?.email || "student@portal.com";
+  const scheduleQuery = trpc.student.schedule.useQuery({ studentEmail: scheduleTargetEmail }, { retry: false, staleTime: 30000 });
+  const scheduleBulkMutation = trpc.admin.scheduleBulk.useMutation({
+    onSuccess: () => {
+      scheduleQuery.refetch();
+      setEditingSessionId(null);
+      setDescription("");
+      setActive("Schedule");
+      toast.success(`Schedule sent to ${targetedStudents.length} student${targetedStudents.length === 1 ? "" : "s"} and linked parent account${targetedStudents.length === 1 ? "" : "s"}.`);
+    },
+    onError: error => toast.error(error.message || "Could not save the schedule."),
+  });
   const schedule = scheduleQuery.data ?? [];
   const saveSchedule = (event: React.FormEvent) => {
     event.preventDefault();
-    scheduleMutation.mutate({ id: editingSessionId ?? undefined, studentEmail, sessionDate, subject, exercise, sessionTime });
+    if (!targetedStudents.length) {
+      toast.error("No active students were found for this department and section.");
+      return;
+    }
+    scheduleBulkMutation.mutate({ records: targetedStudents.map(student => ({ studentEmail: student.email, sessionDate, subject, exercise: description, sessionTime })) });
   };
   const now = new Date();
   const currentYear = now.getFullYear();
@@ -6505,7 +6546,7 @@ function AdminWorkspace({ user, onLogout }: { user: User; onLogout: () => void }
             <div>
               <Pill>SCHEDULE</Pill>
               <p className="mt-3 max-w-2xl text-sm leading-6 text-[#81758e]">
-                Plan student exercises and session times with the same clear, spacious workflow used for parent dispatch.
+                Plan sessions, parent meetings, and orientation programs for a department and section.
               </p>
             </div>
             <div className="grid gap-5 lg:grid-cols-[1fr_1fr]">
@@ -6540,12 +6581,12 @@ function AdminWorkspace({ user, onLogout }: { user: User; onLogout: () => void }
                         if (s) {
                           setEditingSessionId(s.id);
                           setSubject(s.subject);
-                          setExercise(s.exercise);
+                          setDescription(s.exercise);
                           setSessionTime(s.sessionTime || "");
                         } else {
                           setEditingSessionId(null);
                           setSubject("Mathematics");
-                          setExercise("");
+                          setDescription("");
                           setSessionTime("4:30 PM");
                         }
                       }}
@@ -6563,7 +6604,7 @@ function AdminWorkspace({ user, onLogout }: { user: User; onLogout: () => void }
                 })}
               </div>
               <p className="mt-5 text-xs text-[#8d8197]">
-                Purple dates have an exercise scheduled. Click any date to add or edit a session.
+                Purple dates have a description scheduled. Click any date to add or edit a session.
               </p>
             </div>
             <div className="rounded-3xl border border-[#eee6f0] bg-white p-6">
@@ -6571,9 +6612,24 @@ function AdminWorkspace({ user, onLogout }: { user: User; onLogout: () => void }
                 {editingSessionId ? "Edit schedule" : "Update schedule"}
               </p>
               <h2 className="mt-2 text-2xl font-semibold">
-                {editingSessionId ? "Edit scheduled exercise" : "Add a session exercise"}
+                {editingSessionId ? "Edit scheduled description" : "Add a schedule description"}
               </h2>
               <form className="mt-6 space-y-4" onSubmit={saveSchedule}>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <label className="block text-xs font-semibold uppercase tracking-[0.14em] text-[#776c88]">
+                    Department
+                    <select value={selectedDepartment} onChange={event => setSelectedDepartment(event.target.value)} className="mt-2 w-full rounded-2xl border border-[#e6deeb] bg-white px-4 py-3 text-sm">
+                      {departments.map(department => <option key={department} value={department}>{department}</option>)}
+                    </select>
+                  </label>
+                  <label className="block text-xs font-semibold uppercase tracking-[0.14em] text-[#776c88]">
+                    Section
+                    <select value={selectedSection} onChange={event => setSelectedSection(event.target.value)} className="mt-2 w-full rounded-2xl border border-[#e6deeb] bg-white px-4 py-3 text-sm">
+                      {sections.map(section => <option key={section} value={section}>Section {section}</option>)}
+                    </select>
+                  </label>
+                </div>
+                <p className="rounded-2xl bg-[#faf7fc] px-4 py-3 text-xs text-[#887c91]">This will be delivered to {targetedStudents.length} active student{targetedStudents.length === 1 ? "" : "s"} and their linked parent portal{targetedStudents.length === 1 ? "" : "s"}.</p>
                 <label className="block text-xs font-semibold uppercase tracking-[0.14em] text-[#776c88]">
                   Session date
                   <input
@@ -6592,12 +6648,12 @@ function AdminWorkspace({ user, onLogout }: { user: User; onLogout: () => void }
                   />
                 </label>
                 <label className="block text-xs font-semibold uppercase tracking-[0.14em] text-[#776c88]">
-                  Exercise
+                  Description
                   <textarea
                     required
-                    value={exercise}
-                    onChange={event => setExercise(event.target.value)}
-                    placeholder="e.g. Complete algebra practice set 4"
+                    value={description}
+                    onChange={event => setDescription(event.target.value)}
+                    placeholder="e.g. Parent orientation meeting for Term 1"
                     className="mt-2 min-h-24 w-full rounded-2xl border border-[#e6deeb] bg-white px-4 py-3 text-sm"
                   />
                 </label>
@@ -6611,18 +6667,18 @@ function AdminWorkspace({ user, onLogout }: { user: User; onLogout: () => void }
                 </label>
                 <div className="flex gap-2">
                   <button
-                    disabled={scheduleMutation.isPending}
+                    disabled={scheduleBulkMutation.isPending}
                     className="flex flex-1 items-center justify-center gap-2 rounded-2xl bg-[#5b3b92] py-3 text-sm font-semibold text-white disabled:opacity-60"
                   >
-                    {scheduleMutation.isPending && <Loader2 className="animate-spin" size={16} />}
-                    {editingSessionId ? "Update schedule" : "Save scheduled exercise"}
+                    {scheduleBulkMutation.isPending && <Loader2 className="animate-spin" size={16} />}
+                    {editingSessionId ? "Update schedule" : "Send schedule"}
                   </button>
                   {editingSessionId && (
                     <button
                       type="button"
                       onClick={() => {
                         setEditingSessionId(null);
-                        setExercise("");
+                        setDescription("");
                       }}
                       className="rounded-2xl border border-[#e4dce9] px-4 text-xs font-semibold text-[#6d4b9f]"
                     >
