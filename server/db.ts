@@ -57,6 +57,7 @@ export async function getDb() {
         ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "session" varchar(120);
         ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "joinedDate" varchar(60);
         ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "portalPassword" text;
+        ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "status" varchar(20) NOT NULL DEFAULT 'active';
       `).catch(() => {});
       await _client.unsafe(`ALTER TABLE "student_attendance" ADD COLUMN IF NOT EXISTS "description" text NOT NULL DEFAULT '';`).catch(() => {});
       // Vercel does not run Drizzle migrations automatically. Keep existing
@@ -203,10 +204,60 @@ export async function upsertPortalUser(input: {
         session: values.session,
         joinedDate: values.joinedDate,
         loginMethod: values.loginMethod,
+        status: "active",
         updatedAt: new Date(),
       },
     });
   const result = await db.select().from(users).where(eq(users.openId, openId)).limit(1);
+  return result[0];
+}
+
+/** Update one existing portal account without replacing fields managed elsewhere. */
+export async function updatePortalUser(input: {
+  currentEmail: string;
+  email?: string;
+  name?: string;
+  password?: string;
+  role?: "student" | "parent" | "teacher" | "admin";
+  linkedStudentEmail?: string | null;
+  department?: string | null;
+  section?: string | null;
+  session?: string | null;
+  joinedDate?: string | null;
+  status?: "active" | "inactive";
+}) {
+  const db = await getDb();
+  if (!db) throw new Error("Database is not available");
+  const currentEmail = input.currentEmail.trim().toLowerCase();
+  const current = await db.select().from(users).where(eq(users.email, currentEmail)).limit(1);
+  if (!current[0]) throw new Error("Portal account was not found");
+
+  const account = current[0];
+  const nextEmail = input.email?.trim().toLowerCase() || currentEmail;
+  const nextRole = input.role ?? account.role;
+  const updateSet: Record<string, unknown> = { updatedAt: new Date() };
+  if (input.email !== undefined) updateSet.email = nextEmail;
+  if (input.name !== undefined) updateSet.name = input.name;
+  if (input.password !== undefined) updateSet.portalPassword = input.password;
+  if (input.role !== undefined) updateSet.role = input.role;
+  if (input.linkedStudentEmail !== undefined) updateSet.linkedStudentEmail = input.linkedStudentEmail;
+  if (input.department !== undefined) updateSet.department = input.department;
+  if (input.section !== undefined) updateSet.section = input.section;
+  if (input.session !== undefined) updateSet.session = input.session;
+  if (input.joinedDate !== undefined) updateSet.joinedDate = input.joinedDate;
+  if (input.status !== undefined) updateSet.status = input.status;
+  if (nextEmail !== currentEmail || input.role !== undefined) {
+    updateSet.openId = `portal_user_${nextRole}_${nextEmail.replace(/[^a-z0-9]/g, "_")}`;
+  }
+
+  await db.update(users).set(updateSet as any).where(eq(users.id, account.id));
+
+  // Keep parent/alias relationships valid when the canonical student email changes.
+  if (account.role === "student" && !account.linkedStudentEmail && nextEmail !== currentEmail) {
+    await db.update(users).set({ linkedStudentEmail: nextEmail, updatedAt: new Date() }).where(eq(users.linkedStudentEmail, currentEmail));
+  }
+
+  const result = await db.select().from(users).where(eq(users.id, account.id)).limit(1);
   return result[0];
 }
 

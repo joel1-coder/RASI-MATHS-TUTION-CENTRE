@@ -2301,7 +2301,11 @@ function AdminStudentManager() {
 
   const [students, setStudents] = useState<ManagedStudent[]>([]);
   const bulkCreateLoginsMutation = trpc.admin.bulkCreateStudentLogins.useMutation();
-  const dbPortalUsersQuery = trpc.admin.listPortalUsers.useQuery({});
+  const dbPortalUsersQuery = trpc.admin.listPortalUsers.useQuery({}, {
+    staleTime: 0,
+    refetchOnWindowFocus: true,
+    refetchInterval: 5000,
+  });
   const { data: dbPortalUsers = [] } = dbPortalUsersQuery;
   const databaseStudents = useMemo<ManagedStudent[]>(() => {
     const users = dbPortalUsers as any[];
@@ -2319,7 +2323,7 @@ function AdminStudentManager() {
         email: user.email,
         department: user.department || "Unassigned",
         section: user.section || "A",
-        status: "active",
+        status: user.status === "inactive" ? "inactive" : "active",
         joinedDate: user.joinedDate || "—",
         studentPassword: user.portalPassword || undefined,
         parentPassword: parent?.portalPassword || undefined,
@@ -2328,6 +2332,7 @@ function AdminStudentManager() {
   }, [dbPortalUsers]);
   const deletePortalUserMutation = trpc.admin.deletePortalUser.useMutation();
   const deletePortalUsersBatchMutation = trpc.admin.deletePortalUsersBatch.useMutation();
+  const updatePortalUserMutation = trpc.admin.updatePortalUser.useMutation();
 
   // The database is the canonical roster. Do not merge local sample/template
   // students into the live Admin list, otherwise devices show different data.
@@ -2845,6 +2850,7 @@ function AdminStudentManager() {
           await deletePortalUserMutation.mutateAsync({ email: em });
         }
       }
+      await dbPortalUsersQuery.refetch();
       showToast(`Successfully deleted ${targetStudents.length} student(s) and their DB portal credentials ✓`);
     } catch (err: any) {
       showToast(`Deleted ${targetStudents.length} student(s) locally. DB note: ${err?.message || "Saved"}`);
@@ -2893,21 +2899,76 @@ function AdminStudentManager() {
   };
 
   // Toggle Student Status
-  const handleToggleStatus = (id: string) => {
-    setStudents(students.map(s => s.id === id ? { ...s, status: s.status === "active" ? "inactive" : "active" } : s));
+  const handleToggleStatus = async (id: string) => {
+    const student = students.find(s => s.id === id);
+    if (!student) return;
+    const status = student.status === "active" ? "inactive" : "active";
+    try {
+      await updatePortalUserMutation.mutateAsync({ currentEmail: student.email, status });
+      await dbPortalUsersQuery.refetch();
+      showToast(`Student marked ${status}.`);
+    } catch (err: any) {
+      showToast(`Could not update status: ${err?.message || "Database update failed"}`);
+    }
   };
 
   // Update Student Modal Save
-  const handleSaveEdit = (e: React.FormEvent) => {
+  const handleSaveEdit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingStudent) return;
-    setStudents(students.map(s => s.id === editingStudent.id ? editingStudent : s));
-    
+    const original = students.find(s => s.id === editingStudent.id) || editingStudent;
+    const studentPassword = editingStudent.studentPassword || getStudentPassword(editingStudent);
+    const originalAlias = (dbPortalUsers as any[]).find(user =>
+      user.role === "student" &&
+      user.email?.toLowerCase() === original.studentId.toLowerCase() &&
+      user.linkedStudentEmail?.toLowerCase() === original.email.toLowerCase()
+    );
+    try {
+      await updatePortalUserMutation.mutateAsync({
+        currentEmail: original.email,
+        email: editingStudent.email,
+        name: editingStudent.name,
+        password: studentPassword,
+        department: editingStudent.department,
+        section: editingStudent.section,
+        status: editingStudent.status,
+      });
+
+      if (originalAlias || editingStudent.studentId.toLowerCase() !== original.email.toLowerCase()) {
+        await updatePortalUserMutation.mutateAsync({
+          currentEmail: originalAlias?.email || original.studentId,
+          email: editingStudent.studentId,
+          name: editingStudent.name,
+          password: studentPassword,
+          role: "student",
+          linkedStudentEmail: editingStudent.email,
+          department: editingStudent.department,
+          section: editingStudent.section,
+        });
+      }
+
+      // Update the linked parent account too, without replacing unrelated fields.
+      const parentPassword = editingStudent.parentPassword || getParentPassword(editingStudent);
+      if (original.parentEmail) {
+        await updatePortalUserMutation.mutateAsync({
+          currentEmail: original.parentEmail,
+          email: editingStudent.parentEmail || original.parentEmail,
+          name: editingStudent.parentName || "Parent",
+          ...(parentPassword && parentPassword !== "—" ? { password: parentPassword } : {}),
+          linkedStudentEmail: editingStudent.email,
+        });
+      }
+      await dbPortalUsersQuery.refetch();
+    } catch (err: any) {
+      showToast(`Could not save changes: ${err?.message || "Database update failed"}`);
+      return;
+    }
+
     // Also sync updated credentials to localStorage rasi_user_accounts
     try {
       const raw = localStorage.getItem("rasi_user_accounts") || "[]";
       const accounts: any[] = JSON.parse(raw);
-      const stuPass = editingStudent.studentPassword || getStudentPassword(editingStudent);
+      const stuPass = studentPassword;
       const parPass = editingStudent.parentPassword || getParentPassword(editingStudent);
       const filtered = accounts.filter((a: any) => 
         a.email?.toLowerCase() !== editingStudent.email.toLowerCase() &&

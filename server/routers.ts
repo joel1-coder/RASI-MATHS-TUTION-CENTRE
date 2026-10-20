@@ -3,7 +3,7 @@ import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { adminProcedure, protectedProcedure, publicProcedure, router, staffProcedure } from "./_core/trpc";
 import { TRPCError } from "@trpc/server";
-import { createSubject, deleteSubject, getDb, listFeaturedSubjects, listScheduleSessions, listStudentAttendance, listAllStudentAttendance, deleteStudentAttendanceById, deleteStudentAttendanceBatch, updateStudentAttendanceById, listSubjects, updateSubject, upsertScheduleSession, upsertStudentAttendance, listColleges, listGovernmentExams, listMarkStatements, listStudentProjects, setUserRoleByEmail, upsertCollege, upsertGovernmentExam, upsertMarkStatement, upsertStudentProject, upsertUser, createQuestionPaper, deleteQuestionPaper, listQuestionPapers, createUnitQuestion, deleteUnitQuestion, listUnitQuestions, upsertBulkMarks, upsertBulkProjects, upsertBulkGovernmentExams, getUserByEmail, upsertPortalUser, deletePortalUser, listPortalUsers, getSiteSettings, upsertSiteSettings } from "./db";
+import { createSubject, deleteSubject, getDb, listFeaturedSubjects, listScheduleSessions, listStudentAttendance, listAllStudentAttendance, deleteStudentAttendanceById, deleteStudentAttendanceBatch, updateStudentAttendanceById, listSubjects, updateSubject, upsertScheduleSession, upsertStudentAttendance, listColleges, listGovernmentExams, listMarkStatements, listStudentProjects, setUserRoleByEmail, upsertCollege, upsertGovernmentExam, upsertMarkStatement, upsertStudentProject, upsertUser, createQuestionPaper, deleteQuestionPaper, listQuestionPapers, createUnitQuestion, deleteUnitQuestion, listUnitQuestions, upsertBulkMarks, upsertBulkProjects, upsertBulkGovernmentExams, getUserByEmail, upsertPortalUser, updatePortalUser, deletePortalUser, listPortalUsers, getSiteSettings, upsertSiteSettings } from "./db";
 import { subjects } from "../drizzle/schema";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
@@ -250,27 +250,19 @@ export const appRouter = router({
 
     updatePortalUser: adminProcedure
       .input(z.object({
-        email: z.string().email(),
-        name: z.string().min(1).max(120),
-        password: z.string().min(4).max(100),
-        role: z.enum(["student", "parent", "teacher", "admin"]),
+        currentEmail: z.string().min(1),
+        email: z.string().email().optional(),
+        name: z.string().min(1).max(120).optional(),
+        password: z.string().min(4).max(100).optional(),
+        role: z.enum(["student", "parent", "teacher", "admin"]).optional(),
         linkedStudentEmail: z.string().email().optional().nullable(),
         department: z.string().optional().nullable(),
         section: z.string().optional().nullable(),
         session: z.string().optional().nullable(),
         joinedDate: z.string().optional().nullable(),
+        status: z.enum(["active", "inactive"]).optional(),
       }))
-      .mutation(({ input }) => upsertPortalUser({
-        email: input.email,
-        name: input.name,
-        password: input.password,
-        role: input.role,
-        linkedStudentEmail: input.linkedStudentEmail ?? null,
-        department: input.department ?? null,
-        section: input.section ?? null,
-        session: input.session ?? null,
-        joinedDate: input.joinedDate ?? null,
-      })),
+      .mutation(({ input }) => updatePortalUser(input)),
 
     deletePortalUser: adminProcedure
       .input(z.object({ email: z.string().min(1) }))

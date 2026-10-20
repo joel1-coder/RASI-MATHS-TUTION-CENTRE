@@ -54,8 +54,9 @@ export function UserManagement() {
   // ── Server data ────────────────────────────────────────────────────────────
   const utils = trpc.useUtils();
   const { data: rawUsers = [], isLoading, refetch } = trpc.admin.listPortalUsers.useQuery({}, {
-    staleTime: 30_000,
-    refetchOnMount: false,
+    staleTime: 0,
+    refetchOnWindowFocus: true,
+    refetchInterval: 5000,
   });
 
   const createMutation = trpc.admin.createPortalUser.useMutation();
@@ -120,6 +121,7 @@ export function UserManagement() {
     try {
       if (isEditing) {
         await updateMutation.mutateAsync({
+          currentEmail: isEditing.email,
           email: acc.email,
           name: acc.name,
           password: acc.password,

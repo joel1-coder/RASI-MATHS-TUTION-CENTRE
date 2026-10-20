@@ -16,6 +16,7 @@ export const users = pgTable("users", {
   joinedDate: varchar("joinedDate", { length: 60 }),
   loginMethod: varchar("loginMethod", { length: 64 }),
   role: roleEnum("role").default("user").notNull(),
+  status: varchar("status", { length: 20 }).notNull().default("active"),
   // Portal password (plain-text for internal use; stored server-side only, never sent to client)
   portalPassword: text("portalPassword"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
