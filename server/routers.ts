@@ -346,6 +346,10 @@ export const appRouter = router({
         }
         const successful = results.filter(r => r.success).length;
         const failed     = results.filter(r => !r.success).length;
+        if (failed > 0) {
+          const details = results.filter(r => !r.success).map(r => `${r.role} ${r.email}: ${r.error || "database write failed"}`).join("; ");
+          throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: `Portal account sync failed for ${failed} account${failed === 1 ? "" : "s"}. ${details}` });
+        }
         return { successful, failed, results };
       }),
   }),  // end admin router

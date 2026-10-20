@@ -2491,7 +2491,7 @@ function AdminStudentManager() {
       });
       showToast(`Student "${newStudent.name}" added & portal logins created in database ✓`);
     } catch (err: any) {
-      showToast(`Student record saved! (Account created locally: ${err?.message || "Sync warning"})`);
+      showToast(`Student record was not synced to the shared database: ${err?.message || "Please retry from Admin User Management."}`);
     }
 
     setSingleStudent({
@@ -2660,8 +2660,8 @@ function AdminStudentManager() {
         showToast(`Successfully imported ${importedCount} students & created logins in DB!`);
         setImportStatus(`✅ Imported ${importedCount} students & created Student and Parent logins in DB.`);
       } catch (err: any) {
-        showToast(`Imported ${importedCount} students locally! (Database sync note: ${err?.message || "Saved locally"})`);
-        setImportStatus(`✅ Imported ${importedCount} new student records.`);
+        showToast(`Database account sync failed: ${err?.message || "Please retry from Admin User Management."}`);
+        setImportStatus(`⚠️ Student rows were prepared, but portal accounts were not confirmed in the shared database. ${err?.message || "Retry the import after checking the database connection."}`);
       }
 
       setSelectedFileName("");
