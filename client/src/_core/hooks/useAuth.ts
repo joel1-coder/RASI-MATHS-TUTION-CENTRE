@@ -51,6 +51,18 @@ export function useAuth(options?: UseAuthOptions) {
         sessionStorage.removeItem("rasi_local_user");
         localStorage.removeItem("rasi_active_portal");
         sessionStorage.removeItem("rasi_active_portal");
+        localStorage.removeItem("rasi_active_role");
+        sessionStorage.removeItem("rasi_active_role");
+        for (const role of ["admin", "teacher", "parent", "student"]) {
+          sessionStorage.removeItem(`rasi_user_${role}`);
+          sessionStorage.removeItem(`manus-cookie_${role}`);
+          sessionStorage.removeItem(`rasi_portal_${role}`);
+          sessionStorage.removeItem(`demo-user-email_${role}`);
+          localStorage.removeItem(`rasi_user_${role}`);
+          localStorage.removeItem(`manus-cookie_${role}`);
+          localStorage.removeItem(`rasi_portal_${role}`);
+          localStorage.removeItem(`demo-user-email_${role}`);
+        }
       } catch {}
       utils.auth.me.setData(undefined, null);
       await utils.auth.me.invalidate();
