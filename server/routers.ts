@@ -297,6 +297,8 @@ export const appRouter = router({
           studentName:    z.string().min(1),
           studentEmail:   z.string().min(1),
           studentPassword: z.string().min(1),
+          department: z.string().optional(),
+          section: z.string().optional(),
           parentName:     z.string().optional().default("Parent"),
           parentEmail:    z.string().optional(),
           parentPassword: z.string().min(1).optional(),
@@ -313,6 +315,8 @@ export const appRouter = router({
               password: s.studentPassword,
               role: "student",
               linkedStudentEmail: null,
+              department: s.department,
+              section: s.section,
             });
             // If studentId is distinct, also register login alias so student can log in using studentId
             if (s.studentId && s.studentId.trim().toLowerCase() !== s.studentEmail.trim().toLowerCase()) {
@@ -322,6 +326,8 @@ export const appRouter = router({
                 password: s.studentPassword,
                 role: "student",
                 linkedStudentEmail: s.studentEmail,
+                department: s.department,
+                section: s.section,
               });
             }
             results.push({ email: s.studentEmail, role: "student", success: true });
@@ -337,6 +343,8 @@ export const appRouter = router({
                 password: s.parentPassword,
                 role: "parent",
                 linkedStudentEmail: s.studentEmail,
+                department: s.department,
+                section: s.section,
               });
               results.push({ email: s.parentEmail, role: "parent", success: true });
             } catch (e: any) {

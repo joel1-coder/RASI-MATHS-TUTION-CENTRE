@@ -2299,11 +2299,47 @@ function AdminStudentManager() {
 
   const [sections, setSections] = useState<SectionItem[]>(loadStoredSections);
 
-  const [students, setStudents] = useState<ManagedStudent[]>(loadStoredStudents);
+  const [students, setStudents] = useState<ManagedStudent[]>([]);
   const bulkCreateLoginsMutation = trpc.admin.bulkCreateStudentLogins.useMutation();
-  const { data: dbPortalUsers = [] } = trpc.admin.listPortalUsers.useQuery({});
+  const dbPortalUsersQuery = trpc.admin.listPortalUsers.useQuery({});
+  const { data: dbPortalUsers = [] } = dbPortalUsersQuery;
+  const databaseStudents = useMemo<ManagedStudent[]>(() => {
+    const users = dbPortalUsers as any[];
+    const studentUsers = users.filter(user => user.role === "student" && String(user.email || "").includes("@"));
+    return studentUsers.map(user => {
+      const alias = users.find(candidate => candidate.role === "student" && candidate.linkedStudentEmail?.toLowerCase() === user.email?.toLowerCase());
+      const parent = users.find(candidate => candidate.role === "parent" && candidate.linkedStudentEmail?.toLowerCase() === user.email?.toLowerCase());
+      return {
+        id: `db-student-${user.id}`,
+        studentId: alias?.email || user.email,
+        name: user.name || "Student name not provided",
+        parentName: parent?.name || undefined,
+        parentPhone: undefined,
+        parentEmail: parent?.email || undefined,
+        email: user.email,
+        department: user.department || "Unassigned",
+        section: user.section || "A",
+        status: "active",
+        joinedDate: user.joinedDate || "—",
+        studentPassword: user.portalPassword || undefined,
+        parentPassword: parent?.portalPassword || undefined,
+      };
+    });
+  }, [dbPortalUsers]);
   const deletePortalUserMutation = trpc.admin.deletePortalUser.useMutation();
   const deletePortalUsersBatchMutation = trpc.admin.deletePortalUsersBatch.useMutation();
+
+  // The database is the canonical roster. Do not merge local sample/template
+  // students into the live Admin list, otherwise devices show different data.
+  useEffect(() => {
+    if (!dbPortalUsersQuery.isLoading && !dbPortalUsersQuery.isError) {
+      setStudents(databaseStudents);
+      const databaseDepartments = Array.from(new Set(databaseStudents.map(student => student.department).filter(Boolean))).sort();
+      const databaseSections = databaseDepartments.flatMap(department => Array.from(new Set(databaseStudents.filter(student => student.department === department).map(student => student.section))).map(name => ({ id: `db-${department}-${name}`, name, department })));
+      if (databaseDepartments.length) setDepartments(databaseDepartments);
+      if (databaseSections.length) setSections(databaseSections);
+    }
+  }, [databaseStudents, dbPortalUsersQuery.isLoading, dbPortalUsersQuery.isError]);
 
   // Save changes to localStorage
   useEffect(() => {
@@ -2487,6 +2523,8 @@ function AdminStudentManager() {
           parentName: newStudent.parentName || "Parent",
           parentEmail: parentContactEmail || undefined,
           parentPassword: enteredParentPassword || undefined,
+          department: newStudent.department,
+          section: newStudent.section,
         }],
       });
       showToast(`Student "${newStudent.name}" added & portal logins created in database ✓`);
@@ -2565,6 +2603,8 @@ function AdminStudentManager() {
       studentName: string;
       studentEmail: string;
       studentPassword: string;
+      department?: string;
+      section?: string;
       parentName?: string;
       parentEmail?: string;
       parentPassword?: string;
@@ -2607,6 +2647,8 @@ function AdminStudentManager() {
           studentName: sname,
           studentEmail: semail,
           studentPassword: parsedStudentPassword,
+          department: sdept,
+          section: ssec,
           parentName: sparentName,
           parentEmail: sparentEmail || undefined,
           parentPassword: parsedParentPassword || undefined,
