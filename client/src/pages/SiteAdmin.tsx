@@ -3,7 +3,7 @@ import { ArrowLeft, BookOpen, ChevronLeft, ChevronRight, Image as ImageIcon, Ima
 import { Link } from "wouter";
 import { toast } from "sonner";
 import { CloudinaryUploader } from "@/components/CloudinaryUploader";
-import { defaultSiteData, readSiteData, saveSiteData, type Announcement, type ContactDetails, type GalleryItem, type HeroStat, type SiteData, type Subject, type Teacher, type Testimonial, type StudyMaterial } from "@/lib/siteData";
+import { defaultSiteData, ensureCurrentCollegeCatalog, readSiteData, saveSiteData, type Announcement, type ContactDetails, type GalleryItem, type HeroStat, type SiteData, type Subject, type Teacher, type Testimonial, type StudyMaterial } from "@/lib/siteData";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
 
@@ -52,8 +52,9 @@ export default function SiteAdmin() {
 
   useEffect(() => {
     if (siteQuery.data) {
-      setData(siteQuery.data);
-      saveSiteData(siteQuery.data);
+      const currentSiteData = ensureCurrentCollegeCatalog(siteQuery.data);
+      setData(currentSiteData);
+      saveSiteData(currentSiteData);
     }
   }, [siteQuery.data]);
 

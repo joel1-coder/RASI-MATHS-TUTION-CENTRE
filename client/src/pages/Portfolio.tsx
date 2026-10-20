@@ -11,7 +11,7 @@ import {
   User as UserIcon,
 } from "lucide-react";
 import { toast } from "sonner";
-import { onlyHigherSecondaryExams, readSiteData, saveSiteData, type SiteData } from "@/lib/siteData";
+import { ensureCurrentCollegeCatalog, onlyHigherSecondaryExams, readSiteData, saveSiteData, type SiteData } from "@/lib/siteData";
 import { trpc } from "@/lib/trpc";
 import ThemeToggle from "@/components/ThemeToggle";
 
@@ -107,9 +107,10 @@ export default function Portfolio({ onLogin, user, onGoToPortal, onLogout }: Por
 
   useEffect(() => {
     if (siteQuery.data) {
-      setSiteData({ ...siteQuery.data, govExams: onlyHigherSecondaryExams(siteQuery.data.govExams || []) });
+      const currentSiteData = ensureCurrentCollegeCatalog(siteQuery.data);
+      setSiteData({ ...currentSiteData, govExams: onlyHigherSecondaryExams(currentSiteData.govExams || []) });
       try {
-        saveSiteData(siteQuery.data);
+        saveSiteData(currentSiteData);
       } catch {}
     }
   }, [siteQuery.data]);
@@ -355,40 +356,26 @@ export default function Portfolio({ onLogin, user, onGoToPortal, onLogout }: Por
               </p>
             </div>
 
-            <div className="gov-exams-grid stagger-children">
-              {Array.from({ length: 12 }, (_, i) => i + 1).map((mIndex) => {
-                const monthName = new Date(2026, mIndex - 1, 1).toLocaleString("default", { month: "long" });
-                const examsInMonth = (siteData.govExams || []).filter(
-                  (e) => e.monthIndex === mIndex || e.month?.toLowerCase() === monthName.toLowerCase()
-                );
-                if (!examsInMonth.length) return null;
-                return (
-                  <div className="gov-month-card" key={mIndex}>
-                    <div className="gov-month-header">
-                      <span className="gov-month-badge">{monthName}</span>
-                      <span className="gov-month-count">{examsInMonth.length} exam{examsInMonth.length > 1 ? "s" : ""}</span>
+            <div className="gov-exam-marquee" aria-label="Government examinations moving left to right">
+              <div className="gov-exam-track">
+                {[...(siteData.govExams || []), ...(siteData.govExams || [])].map((exam, index) => (
+                  <article className="gov-exam-card" key={`${exam.id}-${index}`}>
+                    <div className="gov-exam-tag-row">
+                      <span className="gov-month-badge">{exam.month}</span>
+                      <span className={`gov-tag ${exam.group === "Tamil Nadu Government" ? "tag-tn" : "tag-central"}`}>
+                        {exam.group === "Tamil Nadu Government" ? "TN Govt" : "Central"}
+                      </span>
                     </div>
-                    <div className="gov-exam-list">
-                      {examsInMonth.map((exam) => (
-                        <div className="gov-exam-item" key={exam.id}>
-                          <div className="gov-exam-tag-row">
-                            <span className={`gov-tag ${exam.group === "Tamil Nadu Government" ? "tag-tn" : "tag-central"}`}>
-                              {exam.group === "Tamil Nadu Government" ? "TN Govt" : "Central"}
-                            </span>
-                            {exam.link && (
-                              <a href={exam.link} target="_blank" rel="noopener noreferrer" className="gov-link">
-                                Portal <ArrowUpRight size={11} />
-                              </a>
-                            )}
-                          </div>
-                          <h4 className="gov-exam-name">{exam.name}</h4>
-                          <p className="gov-exam-desc">{exam.description}</p>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                );
-              })}
+                    <h4 className="gov-exam-name">{exam.name}</h4>
+                    <p className="gov-exam-desc">{exam.description}</p>
+                    <p className="gov-exam-desc"><strong>Required:</strong> {exam.eligibility || "12th pass; verify the notification"}</p>
+                    {exam.link && <a href={exam.link} target="_blank" rel="noopener noreferrer" className="gov-link">Official portal <ArrowUpRight size={11} /></a>}
+                  </article>
+                ))}
+              </div>
+            </div>
+            <div className="more-details-wrap">
+              <a href="/government-exams" className="more-details-btn">For more details <ArrowUpRight size={16} /></a>
             </div>
           </div>
         </section>
@@ -397,20 +384,21 @@ export default function Portfolio({ onLogin, user, onGoToPortal, onLogout }: Por
           <div className="page-width">
             <div className="section-heading">
               <p className="eyebrow eyebrow-orange">Where our students go</p>
-              <h2>List of Colleges (Technical)</h2>
+              <h2>List of Colleges (Engineering &amp; Technology)</h2>
               <p className="section-description">
-                A sample list of engineering and technical institutions our senior students have gone on to. Hover to pause.
+                Tamil Nadu engineering and technology institutions our senior students have gone on to. Hover to pause.
               </p>
             </div>
           </div>
-          <div className="college-marquee" aria-label="Technical Colleges marquee">
+          <div className="college-marquee" aria-label="Engineering and Technology Colleges marquee">
             <div className="college-track">
               {[...siteData.technicalColleges, ...siteData.technicalColleges].map((college, index) => (
                 <article className="college-card" key={`${college.id}-${index}`}>
                   <div>
-                    <span className="college-badge">{college.location}</span>
+                    <span className="college-badge">{college.tier} · {college.location}</span>
                     <h3 className="college-title">{college.name}</h3>
                     <p className="college-desc">{college.description}</p>
+                    <p className="college-desc">Indicative cutoff: {college.cutoff}</p>
                   </div>
                   {college.link && (
                     <a className="college-link" href={college.link} target="_blank" rel="noopener noreferrer">
@@ -432,20 +420,21 @@ export default function Portfolio({ onLogin, user, onGoToPortal, onLogout }: Por
           <div className="page-width">
             <div className="section-heading">
               <p className="eyebrow eyebrow-orange">Where our students go</p>
-              <h2>List of Colleges (Non-Technical)</h2>
+              <h2>List of Colleges (Arts &amp; Science)</h2>
               <p className="section-description">
-                Arts, science and commerce institutions our students have been admitted to.
+                Tamil Nadu Arts &amp; Science colleges ordered by their official NIRF 2025 position.
               </p>
             </div>
           </div>
-          <div className="college-marquee" aria-label="Non-Technical Colleges marquee">
+          <div className="college-marquee" aria-label="Arts and Science Colleges marquee">
             <div className="college-track">
               {[...siteData.nonTechnicalColleges, ...siteData.nonTechnicalColleges].map((college, index) => (
                 <article className="college-card" key={`${college.id}-${index}`}>
                   <div>
-                    <span className="college-badge">{college.location}</span>
+                    <span className="college-badge">NIRF {college.nirfRank ?? "—"} · {college.location}</span>
                     <h3 className="college-title">{college.name}</h3>
                     <p className="college-desc">{college.description}</p>
+                    <p className="college-desc">Indicative cutoff: {college.cutoff}</p>
                   </div>
                   {college.link && (
                     <a className="college-link" href={college.link} target="_blank" rel="noopener noreferrer">

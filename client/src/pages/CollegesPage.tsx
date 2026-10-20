@@ -21,12 +21,12 @@ function TierBadge({ tier }: { tier: Tier }) {
   );
 }
 
-function CollegeTable({ colleges, sno_offset = 0 }: { colleges: CollegeItem[]; sno_offset?: number }) {
+function CollegeTable({ colleges, showNirfRank = false }: { colleges: CollegeItem[]; showNirfRank?: boolean }) {
   return (
     <table className="w-full border-collapse text-sm">
       <thead>
         <tr className="border-b-2 border-[#e8e0f0]">
-          <th className="py-3 px-4 text-left text-xs font-bold uppercase tracking-[0.12em] text-[#8d7aa5]">Tier</th>
+          <th className="py-3 px-4 text-left text-xs font-bold uppercase tracking-[0.12em] text-[#8d7aa5]">{showNirfRank ? "NIRF Rank" : "Tier"}</th>
           <th className="py-3 px-4 text-left text-xs font-bold uppercase tracking-[0.12em] text-[#8d7aa5]">Name of College</th>
           <th className="py-3 px-4 text-left text-xs font-bold uppercase tracking-[0.12em] text-[#8d7aa5] hidden sm:table-cell">Location</th>
           <th className="py-3 px-4 text-left text-xs font-bold uppercase tracking-[0.12em] text-[#8d7aa5]">Cutoff</th>
@@ -36,7 +36,7 @@ function CollegeTable({ colleges, sno_offset = 0 }: { colleges: CollegeItem[]; s
       <tbody>
         {colleges.map((college, idx) => (
           <tr key={college.id} className="border-b border-[#f0e8f8] transition hover:bg-[#faf6ff]">
-            <td className="py-3.5 px-4"><TierBadge tier={college.tier} /></td>
+            <td className="py-3.5 px-4">{showNirfRank ? <span className="font-semibold text-[#5b3b92]">{college.nirfRank ?? "Not listed"}</span> : <TierBadge tier={college.tier} />}</td>
             <td className="py-3.5 px-4">
               <p className="font-semibold text-[#2f1f4a]">{college.name}</p>
               <p className="mt-0.5 text-xs text-[#8d7aa5] sm:hidden">{college.location}</p>
@@ -58,7 +58,7 @@ function CollegeTable({ colleges, sno_offset = 0 }: { colleges: CollegeItem[]; s
   );
 }
 
-function TierSection({ tier, colleges, sno_offset }: { tier: Tier; colleges: CollegeItem[]; sno_offset: number }) {
+function TierSection({ tier, colleges }: { tier: Tier; colleges: CollegeItem[] }) {
   if (!colleges.length) return null;
   const c = TIER_COLORS[tier];
   return (
@@ -69,8 +69,16 @@ function TierSection({ tier, colleges, sno_offset }: { tier: Tier; colleges: Col
         <span className={`ml-auto text-xs font-semibold ${c.text} opacity-70`}>{colleges.length} college{colleges.length !== 1 ? "s" : ""}</span>
       </div>
       <div className="overflow-x-auto rounded-2xl border border-[#ede6f8]">
-        <CollegeTable colleges={colleges} sno_offset={sno_offset} />
+        <CollegeTable colleges={colleges} />
       </div>
+    </div>
+  );
+}
+
+function NirfSection({ colleges }: { colleges: CollegeItem[] }) {
+  return (
+    <div className="overflow-x-auto rounded-2xl border border-[#ede6f8]">
+      <CollegeTable colleges={colleges} showNirfRank />
     </div>
   );
 }
@@ -106,7 +114,7 @@ export default function CollegesPage() {
           <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#ef8656]">Where our students go</p>
           <h1 className="mt-2 text-3xl font-bold text-[#2f1f4a] sm:text-4xl">College Details</h1>
           <p className="mt-2 text-sm text-[#8d7aa5]">
-            Browse Tamil Nadu engineering and technology colleges and arts and science colleges by tier. Cutoff figures are indicative — check official notifications for the latest data.
+            Browse Tamil Nadu engineering and technology colleges by tier, or Arts &amp; Science colleges by official NIRF 2025 position. Cutoff figures are indicative — check official notifications for the latest data.
           </p>
         </div>
 
@@ -125,7 +133,7 @@ export default function CollegesPage() {
           </button>
         </div>
 
-        <div className="mb-6 flex flex-wrap gap-4">
+        {activeTab === "technical" && <div className="mb-6 flex flex-wrap gap-4">
           {(["Tier 1", "Tier 2", "Tier 3"] as Tier[]).map(tier => (
             <div key={tier} className="flex items-center gap-1.5 text-xs text-[#8d7aa5]">
               <span className={`h-2 w-2 rounded-full ${TIER_COLORS[tier].dot}`} />
@@ -134,11 +142,13 @@ export default function CollegesPage() {
               <span>{tier === "Tier 1" ? "Premier / highly competitive" : tier === "Tier 2" ? "Well-established, moderate cutoff" : "Accessible, broad intake"}</span>
             </div>
           ))}
-        </div>
+        </div>}
 
-        <TierSection tier="Tier 1" colleges={tier1} sno_offset={0} />
-        <TierSection tier="Tier 2" colleges={tier2} sno_offset={tier1.length} />
-        <TierSection tier="Tier 3" colleges={tier3} sno_offset={tier1.length + tier2.length} />
+        {activeTab === "technical" ? <>
+          <TierSection tier="Tier 1" colleges={tier1} />
+          <TierSection tier="Tier 2" colleges={tier2} />
+          <TierSection tier="Tier 3" colleges={tier3} />
+        </> : <NirfSection colleges={allNonTechnical} />}
 
         <div className="mt-6 rounded-2xl bg-[#fff5ed] p-4 text-xs leading-5 text-[#8b6b5c]">
           <strong className="block text-[#5d3c2a]">Disclaimer</strong>

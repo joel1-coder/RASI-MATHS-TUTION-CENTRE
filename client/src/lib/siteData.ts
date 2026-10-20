@@ -1,4 +1,4 @@
-export type CollegeItem = { id: string; name: string; location: string; description: string; link: string; category: "technical" | "non-technical"; tier: "Tier 1" | "Tier 2" | "Tier 3"; cutoff: string };
+export type CollegeItem = { id: string; name: string; location: string; description: string; link: string; category: "technical" | "non-technical"; tier: "Tier 1" | "Tier 2" | "Tier 3"; cutoff: string; nirfRank?: string };
 export type Subject = { id: string; subject: string; batch: string; schedule: string; seats: string };
 export type Teacher = { id: string; name: string; subject: string; bio: string; image: string };
 export type GalleryItem = { id: string; image: string; alt: string; layout: "wide" | "tall" | "standard" };
@@ -20,7 +20,7 @@ export type StudyMaterial = {
   term?: string;
   maxMarks?: string;
 };
-export type GovExam = { id: string; name: string; month: string; monthIndex: number; group: "Central Government" | "Tamil Nadu Government"; description: string; link?: string };
+export type GovExam = { id: string; name: string; month: string; monthIndex: number; group: "Central Government" | "Tamil Nadu Government"; description: string; eligibility?: string; link?: string };
 export type SiteData = {
   subjects: Subject[];
   teachers: Teacher[];
@@ -148,130 +148,65 @@ export const defaultTechnicalColleges: CollegeItem[] = [
 ];
 
 export const defaultNonTechnicalColleges: CollegeItem[] = [
-  {
-    id: "nontech-1",
-    name: "Fatima College",
-    location: "Madurai, Tamil Nadu",
-    description: "Autonomous women's college with strong programs in commerce and sciences.",
-    link: "https://fatimacollegemdu.org",
-    category: "non-technical",
-    tier: "Tier 1",
-    cutoff: "90%",
-  },
-  {
-    id: "nontech-2",
-    name: "Lady Doak College",
-    location: "Madurai, Tamil Nadu",
-    description: "Autonomous women's college offering arts, science and management programs.",
-    link: "https://ladydoakcollege.edu.in",
-    category: "non-technical",
-    tier: "Tier 1",
-    cutoff: "88%",
-  },
-  {
-    id: "nontech-3",
-    name: "Sourashtra College",
-    location: "Madurai, Tamil Nadu",
-    description: "Grant-in-aid arts and science college affiliated to Madurai Kamaraj University.",
-    link: "http://sourashtracollege.in",
-    category: "non-technical",
-    tier: "Tier 2",
-    cutoff: "75%",
-  },
-  {
-    id: "nontech-4",
-    name: "American College",
-    location: "Madurai, Tamil Nadu",
-    description: "Autonomous arts and science college affiliated to Madurai Kamaraj University.",
-    link: "https://americancollege.edu.in",
-    category: "non-technical",
-    tier: "Tier 2",
-    cutoff: "78%",
-  },
-  {
-    id: "nontech-5",
-    name: "Madurai Kamaraj University",
-    location: "Madurai, Tamil Nadu",
-    description: "State public university offering comprehensive undergraduate, postgraduate, and research programs.",
-    link: "https://mkuniversity.ac.in",
-    category: "non-technical",
-    tier: "Tier 1",
-    cutoff: "85%",
-  },
-  {
-    id: "nontech-6",
-    name: "The Standard Fireworks Rajaratnam College for Women",
-    location: "Sivakasi, Tamil Nadu",
-    description: "Premier autonomous institution empowering women through arts, science, and computer applications.",
-    link: "https://sfrcollege.edu.in",
-    category: "non-technical",
-    tier: "Tier 2",
-    cutoff: "72%",
-  },
-  {
-    id: "nontech-7",
-    name: "Ayya Nadar Janaki Ammal College",
-    location: "Sivakasi, Tamil Nadu",
-    description: "Autonomous arts and science college affiliated to Madurai Kamaraj University.",
-    link: "https://www.anjac.ac.in",
-    category: "non-technical",
-    tier: "Tier 3",
-    cutoff: "60%",
-  },
-  {
-    id: "nontech-8",
-    name: "V.V. Vanniaperumal College for Women",
-    location: "Virudhunagar, Tamil Nadu",
-    description: "Aided women's college with arts and science programs.",
-    link: "https://www.vvvcw.ac.in",
-    category: "non-technical",
-    tier: "Tier 3",
-    cutoff: "55%",
-  },
-  { id: "nontech-9", name: "Loyola College", location: "Chennai, Tamil Nadu", description: "Autonomous arts and science college affiliated with the University of Madras.", link: "https://loyolacollege.edu", category: "non-technical", tier: "Tier 1", cutoff: "85%+ indicative" },
-  { id: "nontech-10", name: "Madras Christian College", location: "Chennai, Tamil Nadu", description: "Autonomous arts and science college in Tambaram.", link: "https://mcc.edu.in", category: "non-technical", tier: "Tier 1", cutoff: "85%+ indicative" },
-  { id: "nontech-11", name: "Stella Maris College", location: "Chennai, Tamil Nadu", description: "Autonomous women's arts and science college.", link: "https://stellamariscollege.edu.in", category: "non-technical", tier: "Tier 1", cutoff: "85%+ indicative" },
-  { id: "nontech-12", name: "Women's Christian College", location: "Chennai, Tamil Nadu", description: "Autonomous women's arts and science college.", link: "https://wcc.edu.in", category: "non-technical", tier: "Tier 1", cutoff: "85%+ indicative" },
-  { id: "nontech-13", name: "Presidency College", location: "Chennai, Tamil Nadu", description: "Government autonomous arts and science college.", link: "https://www.pachaiyappascollege.edu.in", category: "non-technical", tier: "Tier 1", cutoff: "80%+ indicative" },
-  { id: "nontech-14", name: "PSG College of Arts and Science", location: "Coimbatore, Tamil Nadu", description: "Autonomous arts and science college with undergraduate and postgraduate programs.", link: "https://www.psgcas.ac.in", category: "non-technical", tier: "Tier 1", cutoff: "85%+ indicative" },
-  { id: "nontech-15", name: "PSGR Krishnammal College for Women", location: "Coimbatore, Tamil Nadu", description: "Autonomous women's arts and science college.", link: "https://www.psgrkcw.ac.in", category: "non-technical", tier: "Tier 1", cutoff: "85%+ indicative" },
-  { id: "nontech-16", name: "Ethiraj College for Women", location: "Chennai, Tamil Nadu", description: "Autonomous women's college affiliated with the University of Madras.", link: "https://ethirajcollege.edu.in", category: "non-technical", tier: "Tier 1", cutoff: "85%+ indicative" },
-  { id: "nontech-17", name: "Madras School of Social Work", location: "Chennai, Tamil Nadu", description: "Autonomous institution offering social science and management programs.", link: "https://mssw.in", category: "non-technical", tier: "Tier 1", cutoff: "80%+ indicative" },
-  { id: "nontech-18", name: "Government Arts College, Coimbatore", location: "Coimbatore, Tamil Nadu", description: "Government arts and science college affiliated with Bharathiar University.", link: "https://gacbe.ac.in", category: "non-technical", tier: "Tier 2", cutoff: "75%+ indicative" },
-  { id: "nontech-19", name: "Dwaraka Doss Goverdhan Doss Vaishnav College", location: "Chennai, Tamil Nadu", description: "Autonomous arts and science college affiliated with the University of Madras.", link: "https://dgvaishnavcollege.edu.in", category: "non-technical", tier: "Tier 2", cutoff: "80%+ indicative" },
-  { id: "nontech-20", name: "Guru Nanak College", location: "Chennai, Tamil Nadu", description: "Autonomous arts and science college in Velachery.", link: "https://gurunanakcollege.edu.in", category: "non-technical", tier: "Tier 2", cutoff: "75%+ indicative" },
-  { id: "nontech-21", name: "The New College", location: "Chennai, Tamil Nadu", description: "Autonomous arts and science college affiliated with the University of Madras.", link: "https://thenewcollege.edu.in", category: "non-technical", tier: "Tier 2", cutoff: "75%+ indicative" },
-  { id: "nontech-22", name: "Queen Mary's College", location: "Chennai, Tamil Nadu", description: "Government autonomous women's arts and science college.", link: "https://queenmaryscollege.edu.in", category: "non-technical", tier: "Tier 2", cutoff: "75%+ indicative" },
-  { id: "nontech-23", name: "Holy Cross College", location: "Tiruchirappalli, Tamil Nadu", description: "Autonomous women's arts and science college.", link: "https://www.hcctrichy.ac.in", category: "non-technical", tier: "Tier 2", cutoff: "75%+ indicative" },
-  { id: "nontech-24", name: "Bishop Heber College", location: "Tiruchirappalli, Tamil Nadu", description: "Autonomous arts and science college affiliated with Bharathidasan University.", link: "https://bhc.edu.in", category: "non-technical", tier: "Tier 2", cutoff: "75%+ indicative" },
-  { id: "nontech-25", name: "St. Joseph's College", location: "Tiruchirappalli, Tamil Nadu", description: "Autonomous arts and science college.", link: "https://www.sjctni.edu", category: "non-technical", tier: "Tier 2", cutoff: "80%+ indicative" },
-  { id: "nontech-26", name: "Jamal Mohamed College", location: "Tiruchirappalli, Tamil Nadu", description: "Autonomous arts and science college.", link: "https://jmc.edu", category: "non-technical", tier: "Tier 2", cutoff: "75%+ indicative" },
-  { id: "nontech-27", name: "National College", location: "Tiruchirappalli, Tamil Nadu", description: "Autonomous arts and science college affiliated with Bharathidasan University.", link: "https://www.nct.ac.in", category: "non-technical", tier: "Tier 3", cutoff: "70%+ indicative" },
-  { id: "nontech-28", name: "A.V.C. College", location: "Mayiladuthurai, Tamil Nadu", description: "Autonomous arts and science college.", link: "https://avccollege.net", category: "non-technical", tier: "Tier 3", cutoff: "65%+ indicative" },
-  { id: "nontech-29", name: "Nesamony Memorial Christian College", location: "Marthandam, Tamil Nadu", description: "Autonomous arts and science college in Kanyakumari district.", link: "https://nmcc.ac.in", category: "non-technical", tier: "Tier 3", cutoff: "65%+ indicative" },
-  { id: "nontech-30", name: "Aditanar College of Arts and Science", location: "Tiruchendur, Tamil Nadu", description: "Arts and science college affiliated with Manonmaniam Sundaranar University.", link: "https://www.aditanarcollege.com", category: "non-technical", tier: "Tier 3", cutoff: "65%+ indicative" },
-  { id: "nontech-31", name: "Hindusthan College of Arts and Science", location: "Coimbatore, Tamil Nadu", description: "Autonomous arts and science college.", link: "https://www.hicas.ac.in", category: "non-technical", tier: "Tier 3", cutoff: "65%+ indicative" },
-  { id: "nontech-32", name: "Kongunadu Arts and Science College", location: "Coimbatore, Tamil Nadu", description: "Autonomous arts and science college affiliated with Bharathiar University.", link: "https://kongunaducollege.ac.in", category: "non-technical", tier: "Tier 3", cutoff: "65%+ indicative" },
-  { id: "nontech-33", name: "K.S.G. College of Arts and Science", location: "Coimbatore, Tamil Nadu", description: "Arts and science college affiliated with Bharathiar University.", link: "https://ksgcollege.com", category: "non-technical", tier: "Tier 3", cutoff: "60%+ indicative" },
+  { id: "nontech-1", name: "PSGR Krishnammal College for Women", location: "Coimbatore, Tamil Nadu", description: "Autonomous women's arts and science college.", link: "https://www.psgrkcw.ac.in", category: "non-technical", tier: "Tier 1", nirfRank: "9", cutoff: "85%+ indicative" },
+  { id: "nontech-2", name: "PSG College of Arts and Science", location: "Coimbatore, Tamil Nadu", description: "Autonomous arts and science college with undergraduate and postgraduate programs.", link: "https://www.psgcas.ac.in", category: "non-technical", tier: "Tier 1", nirfRank: "10", cutoff: "85%+ indicative" },
+  { id: "nontech-3", name: "Loyola College", location: "Chennai, Tamil Nadu", description: "Autonomous arts and science college affiliated with the University of Madras.", link: "https://loyolacollege.edu", category: "non-technical", tier: "Tier 1", nirfRank: "14", cutoff: "85%+ indicative" },
+  { id: "nontech-4", name: "Presidency College", location: "Chennai, Tamil Nadu", description: "Government autonomous arts and science college.", link: "https://www.pachaiyappascollege.edu.in", category: "non-technical", tier: "Tier 1", nirfRank: "15", cutoff: "80%+ indicative" },
+  { id: "nontech-5", name: "Madras Christian College", location: "Chennai, Tamil Nadu", description: "Autonomous arts and science college in Tambaram.", link: "https://mcc.edu.in", category: "non-technical", tier: "Tier 1", nirfRank: "16", cutoff: "85%+ indicative" },
+  { id: "nontech-6", name: "Thiagarajar College", location: "Madurai, Tamil Nadu", description: "Autonomous arts and science college in Madurai.", link: "https://www.tcarts.in", category: "non-technical", tier: "Tier 1", nirfRank: "20", cutoff: "80%+ indicative" },
+  { id: "nontech-7", name: "V.O. Chidambaram College", location: "Thoothukudi, Tamil Nadu", description: "Arts and science college in Thoothukudi.", link: "https://www.voccollege.ac.in", category: "non-technical", tier: "Tier 1", nirfRank: "22", cutoff: "75%+ indicative" },
+  { id: "nontech-8", name: "St. Joseph's College", location: "Tiruchirappalli, Tamil Nadu", description: "Autonomous arts and science college.", link: "https://www.sjctni.edu", category: "non-technical", tier: "Tier 1", nirfRank: "25", cutoff: "80%+ indicative" },
+  { id: "nontech-9", name: "Bishop Heber College", location: "Tiruchirappalli, Tamil Nadu", description: "Autonomous arts and science college affiliated with Bharathidasan University.", link: "https://bhc.edu.in", category: "non-technical", tier: "Tier 1", nirfRank: "46", cutoff: "75%+ indicative" },
+  { id: "nontech-10", name: "St. Xavier's College", location: "Palayamkottai, Tamil Nadu", description: "Autonomous arts and science college in Palayamkottai.", link: "https://www.sxcolleges.net", category: "non-technical", tier: "Tier 1", nirfRank: "48", cutoff: "75%+ indicative" },
+  { id: "nontech-11", name: "Sri Krishna Arts and Science College", location: "Coimbatore, Tamil Nadu", description: "Arts and science college in Coimbatore.", link: "https://www.skasc.ac.in", category: "non-technical", tier: "Tier 1", nirfRank: "50", cutoff: "75%+ indicative" },
+  { id: "nontech-12", name: "The American College", location: "Madurai, Tamil Nadu", description: "Autonomous arts and science college in Madurai.", link: "https://americancollege.edu.in", category: "non-technical", tier: "Tier 1", nirfRank: "59", cutoff: "78%+ indicative" },
+  { id: "nontech-13", name: "Queen Mary's College", location: "Chennai, Tamil Nadu", description: "Government autonomous women's arts and science college.", link: "https://queenmaryscollege.edu.in", category: "non-technical", tier: "Tier 1", nirfRank: "62", cutoff: "75%+ indicative" },
+  { id: "nontech-14", name: "Nesamony Memorial Christian College", location: "Marthandam, Tamil Nadu", description: "Autonomous arts and science college in Kanyakumari district.", link: "https://nmcc.ac.in", category: "non-technical", tier: "Tier 1", nirfRank: "63", cutoff: "65%+ indicative" },
+  { id: "nontech-15", name: "Ethiraj College for Women", location: "Chennai, Tamil Nadu", description: "Autonomous women's college affiliated with the University of Madras.", link: "https://ethirajcollege.edu.in", category: "non-technical", tier: "Tier 1", nirfRank: "64", cutoff: "85%+ indicative" },
+  { id: "nontech-16", name: "Dr. N.G.P. Arts and Science College", location: "Coimbatore, Tamil Nadu", description: "Autonomous arts and science college in Coimbatore.", link: "https://www.drngpasc.ac.in", category: "non-technical", tier: "Tier 1", nirfRank: "66", cutoff: "70%+ indicative" },
+  { id: "nontech-17", name: "Government Arts College", location: "Coimbatore, Tamil Nadu", description: "Government arts and science college affiliated with Bharathiar University.", link: "https://gacbe.ac.in", category: "non-technical", tier: "Tier 1", nirfRank: "67", cutoff: "75%+ indicative" },
+  { id: "nontech-18", name: "Government Arts College", location: "Kumbakonam, Tamil Nadu", description: "Government arts and science college in Kumbakonam.", link: "https://gacakum.ac.in", category: "non-technical", tier: "Tier 1", nirfRank: "71", cutoff: "70%+ indicative" },
+  { id: "nontech-19", name: "Ayya Nadar Janaki Ammal College", location: "Sivakasi, Tamil Nadu", description: "Autonomous arts and science college affiliated to Madurai Kamaraj University.", link: "https://www.anjac.ac.in", category: "non-technical", tier: "Tier 1", nirfRank: "72", cutoff: "60%+ indicative" },
+  { id: "nontech-20", name: "Sri Ramakrishna College of Arts and Science", location: "Coimbatore, Tamil Nadu", description: "Arts and science college in Coimbatore.", link: "https://www.srcas.ac.in", category: "non-technical", tier: "Tier 1", nirfRank: "76", cutoff: "70%+ indicative" },
+  { id: "nontech-21", name: "D.G. Vaishnav College", location: "Chennai, Tamil Nadu", description: "Autonomous arts and science college affiliated with the University of Madras.", link: "https://dgvaishnavcollege.edu.in", category: "non-technical", tier: "Tier 1", nirfRank: "91", cutoff: "80%+ indicative" },
+  { id: "nontech-22", name: "Sri Ramakrishna Mission Vidyalaya College of Arts and Science", location: "Coimbatore, Tamil Nadu", description: "Arts and science college in Coimbatore.", link: "https://www.srkv.org", category: "non-technical", tier: "Tier 1", nirfRank: "94", cutoff: "70%+ indicative" },
+  { id: "nontech-23", name: "Dr. S.N.S. Rajalakshmi College of Arts and Science", location: "Coimbatore, Tamil Nadu", description: "Arts and science college in Coimbatore.", link: "https://www.drsnsrcas.ac.in", category: "non-technical", tier: "Tier 1", nirfRank: "101–150 band", cutoff: "70%+ indicative" },
+  { id: "nontech-24", name: "Government Arts College", location: "Salem, Tamil Nadu", description: "Government arts and science college in Salem.", link: "https://gacsalem7.ac.in", category: "non-technical", tier: "Tier 1", nirfRank: "101–150 band", cutoff: "65%+ indicative" },
+  { id: "nontech-25", name: "Guru Nanak College", location: "Chennai, Tamil Nadu", description: "Autonomous arts and science college in Velachery.", link: "https://gurunanakcollege.edu.in", category: "non-technical", tier: "Tier 1", nirfRank: "101–150 band", cutoff: "75%+ indicative" },
+  { id: "nontech-26", name: "Hindusthan College of Arts and Science", location: "Coimbatore, Tamil Nadu", description: "Autonomous arts and science college.", link: "https://www.hicas.ac.in", category: "non-technical", tier: "Tier 1", nirfRank: "101–150 band", cutoff: "65%+ indicative" },
+  { id: "nontech-27", name: "Holy Cross College", location: "Nagercoil, Tamil Nadu", description: "Autonomous women's arts and science college.", link: "https://www.hccngt.edu.in", category: "non-technical", tier: "Tier 1", nirfRank: "101–150 band", cutoff: "65%+ indicative" },
+  { id: "nontech-28", name: "Anna Adarsh College for Women", location: "Chennai, Tamil Nadu", description: "Women's arts and science college in Chennai.", link: "https://annaadarsh.edu.in", category: "non-technical", tier: "Tier 1", nirfRank: "151–200 band", cutoff: "70%+ indicative" },
+  { id: "nontech-29", name: "Aditanar College of Arts and Science", location: "Tiruchendur, Tamil Nadu", description: "Arts and science college affiliated with Manonmaniam Sundaranar University.", link: "https://www.aditanarcollege.com", category: "non-technical", tier: "Tier 1", nirfRank: "201–300 band", cutoff: "65%+ indicative" },
+  { id: "nontech-30", name: "Auxilium College", location: "Vellore, Tamil Nadu", description: "Women's arts and science college in Vellore.", link: "https://www.auxiliumcollege.edu.in", category: "non-technical", tier: "Tier 1", nirfRank: "201–300 band", cutoff: "65%+ indicative" },
 ];
 
 export const defaultGovExams: GovExam[] = [
-  { id: "ge-jan-1", name: "SSC Stenographer Grade C & D", month: "January", monthIndex: 1, group: "Central Government", description: "Staff Selection Commission stenographer recruitment. (Eligible: 12th Pass; stenography skill required)", link: "https://ssc.gov.in" },
-  { id: "ge-feb-1", name: "SSC CHSL (10+2)", month: "February", monthIndex: 2, group: "Central Government", description: "Combined Higher Secondary Level recruitment for LDC, JSA and DEO posts. (Eligible: 12th Pass; Science with Mathematics is required for specified DEO posts)", link: "https://ssc.gov.in" },
-  { id: "ge-mar-1", name: "RRB NTPC (Undergraduate)", month: "March", monthIndex: 3, group: "Central Government", description: "Railway NTPC undergraduate posts including Commercial Cum Ticket Clerk and clerical posts. (Eligible: 12th Pass; some posts require 50% and/or typing)", link: "https://www.rrbcdg.gov.in" },
-  { id: "ge-apr-1", name: "NDA / NA Exam I", month: "April", monthIndex: 4, group: "Central Government", description: "UPSC National Defence Academy and Naval Academy examination. (Eligible: 12th Pass; Physics, Chemistry and Mathematics are required for Air Force/Naval wings)", link: "https://upsc.gov.in" },
-  { id: "ge-may-1", name: "Indian Coast Guard Navik (GD)", month: "May", monthIndex: 5, group: "Central Government", description: "Coast Guard Navik General Duty recruitment. (Eligible: 12th Pass with Physics and Mathematics)", link: "https://www.indiancoastguard.gov.in" },
-  { id: "ge-jun-1", name: "Indian Air Force Agniveer Vayu", month: "June", monthIndex: 6, group: "Central Government", description: "Agnipath recruitment for Indian Air Force Agniveer Vayu. (Eligible: 12th Pass with the prescribed PCM/English subjects, or accepted equivalent route)", link: "https://agnipathvayu.cdac.in" },
-  { id: "ge-jul-1", name: "Indian Navy Agniveer (SSR)", month: "July", monthIndex: 7, group: "Central Government", description: "Agnipath recruitment for Indian Navy Senior Secondary Recruit. (Eligible: 12th Pass with Mathematics and Physics)", link: "https://www.joinindiannavy.gov.in" },
-  { id: "ge-sep-1", name: "NDA / NA Exam II", month: "September", monthIndex: 9, group: "Central Government", description: "UPSC National Defence Academy and Naval Academy examination, second session. (Eligible: 12th Pass; Physics, Chemistry and Mathematics are required for Air Force/Naval wings)", link: "https://upsc.gov.in" },
+  { id: "ge-jan-1", name: "SSC Stenographer Grade C & D", month: "January", monthIndex: 1, group: "Central Government", description: "Staff Selection Commission stenographer recruitment.", eligibility: "12th pass; stenography skill required", link: "https://ssc.gov.in" },
+  { id: "ge-feb-1", name: "SSC CHSL (10+2)", month: "February", monthIndex: 2, group: "Central Government", description: "Combined Higher Secondary Level recruitment for LDC, JSA and DEO posts.", eligibility: "12th pass; some DEO posts require Science with Mathematics", link: "https://ssc.gov.in" },
+  { id: "ge-feb-2", name: "TNUSRB Police Constable", month: "February", monthIndex: 2, group: "Tamil Nadu Government", description: "Tamil Nadu uniformed services constable recruitment.", eligibility: "12th-pass candidates are eligible; check the current notification", link: "https://www.tnusrb.tn.gov.in" },
+  { id: "ge-mar-1", name: "RRB NTPC Undergraduate", month: "March", monthIndex: 3, group: "Central Government", description: "Railway NTPC undergraduate posts including clerical and commercial categories.", eligibility: "12th pass; some posts require marks and/or typing", link: "https://www.rrbcdg.gov.in" },
+  { id: "ge-apr-1", name: "UPSC NDA / NA Examination I", month: "April", monthIndex: 4, group: "Central Government", description: "National Defence Academy and Naval Academy officer-entry examination.", eligibility: "12th pass; PCM required for Air Force and Naval wings", link: "https://upsc.gov.in" },
+  { id: "ge-apr-2", name: "Indian Army TES", month: "April", monthIndex: 4, group: "Central Government", description: "10+2 Technical Entry Scheme for officer training in the Indian Army.", eligibility: "12th pass with PCM and JEE Main; notification-specific marks apply", link: "https://joinindianarmy.nic.in" },
+  { id: "ge-may-1", name: "Indian Coast Guard Navik (GD)", month: "May", monthIndex: 5, group: "Central Government", description: "Coast Guard Navik General Duty recruitment.", eligibility: "12th pass with Physics and Mathematics", link: "https://www.indiancoastguard.gov.in" },
+  { id: "ge-jun-1", name: "Indian Air Force Agniveer Vayu", month: "June", monthIndex: 6, group: "Central Government", description: "Agnipath recruitment for Indian Air Force Agniveer Vayu.", eligibility: "12th pass with the prescribed PCM/English subjects or accepted equivalent route", link: "https://agnipathvayu.cdac.in" },
+  { id: "ge-jun-2", name: "Tamil Nadu Forest Guard", month: "June", monthIndex: 6, group: "Tamil Nadu Government", description: "Tamil Nadu Forest Department forest guard recruitment when notified.", eligibility: "12th-pass candidates are eligible when the current notification specifies 12th qualification", link: "https://www.forests.tn.gov.in" },
+  { id: "ge-jul-1", name: "Indian Navy Agniveer SSR", month: "July", monthIndex: 7, group: "Central Government", description: "Agnipath recruitment for Indian Navy Senior Secondary Recruit.", eligibility: "12th pass with Mathematics and Physics; prescribed marks apply", link: "https://www.joinindiannavy.gov.in" },
+  { id: "ge-jul-2", name: "Tamil Nadu Fire and Rescue Services", month: "July", monthIndex: 7, group: "Tamil Nadu Government", description: "Tamil Nadu Fire and Rescue Services recruitment when notified.", eligibility: "12th-pass candidates are eligible when the current notification specifies 12th qualification", link: "https://www.tnusrb.tn.gov.in" },
+  { id: "ge-aug-1", name: "Indian Army Agniveer Clerk / Store Keeper Technical", month: "August", monthIndex: 8, group: "Central Government", description: "Indian Army Agniveer recruitment for clerical and store-keeping roles.", eligibility: "12th pass; stream, marks and typing requirements apply", link: "https://joinindianarmy.nic.in" },
+  { id: "ge-aug-2", name: "Tamil Nadu Jail Warder", month: "August", monthIndex: 8, group: "Tamil Nadu Government", description: "Tamil Nadu Prison Department warder recruitment when notified.", eligibility: "12th-pass candidates are eligible when the current notification specifies 12th qualification", link: "https://www.tnusrb.tn.gov.in" },
+  { id: "ge-sep-1", name: "UPSC NDA / NA Examination II", month: "September", monthIndex: 9, group: "Central Government", description: "Second annual National Defence Academy and Naval Academy examination.", eligibility: "12th pass; PCM required for Air Force and Naval wings", link: "https://upsc.gov.in" },
+  { id: "ge-sep-2", name: "Indian Navy 10+2 B.Tech Cadet Entry", month: "September", monthIndex: 9, group: "Central Government", description: "10+2 officer entry for engineering training in the Indian Navy.", eligibility: "12th pass with PCM and JEE Main; notification-specific marks apply", link: "https://www.joinindiannavy.gov.in" },
+  { id: "ge-oct-1", name: "TNPSC Group IV Services", month: "October", monthIndex: 10, group: "Tamil Nadu Government", description: "Tamil Nadu Combined Civil Services Examination IV recruitment.", eligibility: "12th-pass candidates are eligible; post-wise qualification must be checked", link: "https://www.tnpsc.gov.in" },
+  { id: "ge-oct-2", name: "SSC Selection Post (Higher Secondary Level)", month: "October", monthIndex: 10, group: "Central Government", description: "SSC selection-post vacancies notified at Higher Secondary level.", eligibility: "12th pass for the specific Higher Secondary-level post", link: "https://ssc.gov.in" },
+  { id: "ge-dec-1", name: "Tamil Nadu Government Technical Assistant Recruitments", month: "December", monthIndex: 12, group: "Tamil Nadu Government", description: "12th-level technical assistant vacancies when released by Tamil Nadu departments.", eligibility: "12th pass with the subject or technical certificate specified in the notification", link: "https://www.tn.gov.in" },
 ];
 
 const higherSecondaryExamPattern = /12th|10\+2|higher secondary|senior secondary|intermediate/i;
-const excludedExamPattern = /10th|sslc|matric|degree|bachelor|graduate|post[- ]?graduation|any degree/i;
+const excludedExamPattern = /degree|bachelor|graduate|post[- ]?graduation|any degree/i;
 
 export function onlyHigherSecondaryExams(exams: GovExam[]): GovExam[] {
   return exams.filter((exam) => {
-    const details = `${exam.name} ${exam.description}`;
+    const details = `${exam.name} ${exam.description} ${exam.eligibility || ""}`;
     return higherSecondaryExamPattern.test(details) && !excludedExamPattern.test(details);
   });
 }
@@ -327,6 +262,11 @@ export const defaultSiteData: SiteData = {
   govExams: defaultGovExams,
 };
 
+export function ensureCurrentCollegeCatalog(data: SiteData): SiteData {
+  const hasNirfCatalog = data.nonTechnicalColleges.some((college) => Boolean(college.nirfRank));
+  return hasNirfCatalog ? data : { ...data, nonTechnicalColleges: defaultNonTechnicalColleges };
+}
+
 const STORAGE_KEY = "study-room-site-data-v2";
 
 export function readSiteData(): SiteData {
@@ -356,7 +296,7 @@ export function readSiteData(): SiteData {
       questionPapers: Array.isArray(parsed.questionPapers) ? parsed.questionPapers : defaultSiteData.questionPapers,
       unitQuestions: Array.isArray(parsed.unitQuestions) ? parsed.unitQuestions : defaultSiteData.unitQuestions,
       technicalColleges: Array.isArray(parsed.technicalColleges) ? parsed.technicalColleges : defaultTechnicalColleges,
-      nonTechnicalColleges: Array.isArray(parsed.nonTechnicalColleges) ? parsed.nonTechnicalColleges : defaultNonTechnicalColleges,
+      nonTechnicalColleges: Array.isArray(parsed.nonTechnicalColleges) && parsed.nonTechnicalColleges.some((college) => Boolean(college.nirfRank)) ? parsed.nonTechnicalColleges : defaultNonTechnicalColleges,
       govExams: onlyHigherSecondaryExams(Array.isArray(parsed.govExams) ? parsed.govExams : defaultGovExams),
     };
   } catch {
