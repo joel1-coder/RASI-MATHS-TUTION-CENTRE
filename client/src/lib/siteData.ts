@@ -254,7 +254,7 @@ export const defaultSiteData: SiteData = {
     { id: "open-batches", title: "New batches are open", description: "Book a free conversation for the 2026 term.", date: "2026-06-01", target: "All families" },
   ],
   contact: {
-    address: "3rd Street, Police Line\nKamaraj Nagar, Panruti\nTamil Nadu 607106",
+    address: "QH83+RCM, 3rd Street, Police Line\nKamaraj Nagar, Panruti\nTamil Nadu 607106",
     phone: "+91 80 1234 5678",
     email: "rasimathstutioncentre@gmail.com",
     hours: "Mon–Sat · 9:00 AM–7:00 PM",

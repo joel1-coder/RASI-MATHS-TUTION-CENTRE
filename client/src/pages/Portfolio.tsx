@@ -16,6 +16,8 @@ import { trpc } from "@/lib/trpc";
 import ThemeToggle from "@/components/ThemeToggle";
 
 const imageBase = "https://images.unsplash.com";
+const exactCentreAddress = "QH83+RCM, 3rd Street, Police Line\nKamaraj Nagar, Panruti\nTamil Nadu 607106";
+const centreMapsUrl = "https://maps.app.goo.gl/8j9BLbCJadmXjtwC8";
 
 const stats = [
   { value: "94%", label: "students improved their last term score" },
@@ -480,7 +482,7 @@ export default function Portfolio({ onLogin, user, onGoToPortal, onLogout }: Por
               <p className="contact-intro">Drop by for a conversation, a cup of chai, and a look around. No pressure, ever.</p>
             </div>
             <div className="contact-details">
-              <a href="https://www.google.com/maps/search/3rd+Street,+Police+Line,+Kamaraj+Nagar,+Panruti,+Tamil+Nadu+607106" target="_blank" rel="noreferrer"><MapPin size={18} /><span>{siteData.contact.address.split("\n").map((line) => <span key={line}>{line}<br /></span>)}</span></a>
+              <a href={centreMapsUrl} target="_blank" rel="noreferrer"><MapPin size={18} /><span>{exactCentreAddress.split("\n").map((line) => <span key={line}>{line}<br /></span>)}</span></a>
               <a href={`tel:${siteData.contact.phone.replace(/\s/g, "")}`}><Phone size={18} /><span>{siteData.contact.phone}</span></a>
               <a href={`mailto:${siteData.contact.email}`}><Mail size={18} /><span>{siteData.contact.email}</span></a>
               <p><Clock3 size={18} /><span>{siteData.contact.hours}</span></p>
@@ -501,7 +503,7 @@ export default function Portfolio({ onLogin, user, onGoToPortal, onLogout }: Por
               }}
             >
               <iframe
-                src="https://maps.google.com/maps?q=3rd+Street,+Police+Line,+Kamaraj+Nagar,+Panruti,+Tamil+Nadu+607106&output=embed"
+                src="https://maps.google.com/maps?q=QH83%2BRCM%2C+3rd+Street%2C+Police+Line%2C+Kamaraj+Nagar%2C+Panruti%2C+Tamil+Nadu+607106&output=embed"
                 width="100%"
                 height="100%"
                 style={{ border: 0, display: "block", pointerEvents: "none" }}
@@ -512,7 +514,7 @@ export default function Portfolio({ onLogin, user, onGoToPortal, onLogout }: Por
               />
               {/* Transparent overlay — makes entire map clickable */}
               <a
-                href="https://www.google.com/maps/search/3rd+Street,+Police+Line,+Kamaraj+Nagar,+Panruti,+Tamil+Nadu+607106"
+                href={centreMapsUrl}
                 target="_blank"
                 rel="noopener noreferrer"
                 aria-label="Open Rasi Maths Tuition Centre in Google Maps"
@@ -563,6 +565,9 @@ export default function Portfolio({ onLogin, user, onGoToPortal, onLogout }: Por
             </button>
             <a href="/site-admin" className="text-inherit hover:underline">
               Site Admin
+            </a>
+            <a href={centreMapsUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-inherit hover:underline">
+              <MapPin size={12} /> Map &amp; directions
             </a>
           </div>
           <span>Learning, thoughtfully.</span>
