@@ -427,7 +427,7 @@ export default function Portfolio({ onLogin, user, onGoToPortal, onLogout }: Por
             </div>
           </div>
           <div className="college-marquee" aria-label="Arts and Science Colleges marquee">
-            <div className="college-track">
+            <div className="college-track arts-science-track">
               {[...siteData.nonTechnicalColleges, ...siteData.nonTechnicalColleges].map((college, index) => (
                 <article className="college-card" key={`${college.id}-${index}`}>
                   <div>
