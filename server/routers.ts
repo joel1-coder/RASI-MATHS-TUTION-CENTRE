@@ -356,7 +356,7 @@ export const appRouter = router({
         return null;
       }
     }),
-    saveSiteData: publicProcedure
+    saveSiteData: adminProcedure
       .input(z.object({ data: z.any() }))
       .mutation(async ({ input }) => {
         await upsertSiteSettings("portfolio_data", JSON.stringify(input.data));

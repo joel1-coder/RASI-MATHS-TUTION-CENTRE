@@ -1,10 +1,11 @@
 import { ChangeEvent, FormEvent, useState, useEffect } from "react";
-import { ArrowLeft, BookOpen, ChevronLeft, ChevronRight, Image as ImageIcon, ImagePlus, Pencil, Plus, RotateCcw, Save, Trash2, Users, Megaphone, Phone, BarChart3, Quote, FileText } from "lucide-react";
+import { ArrowLeft, BookOpen, ChevronLeft, ChevronRight, Image as ImageIcon, ImagePlus, Pencil, Plus, RotateCcw, Save, Trash2, Users, Megaphone, Phone, BarChart3, Quote, FileText, LogOut, ShieldCheck } from "lucide-react";
 import { Link } from "wouter";
 import { toast } from "sonner";
 import { CloudinaryUploader } from "@/components/CloudinaryUploader";
-import { defaultSiteData, readSiteData, resetSiteData, saveSiteData, type Announcement, type ContactDetails, type GalleryItem, type HeroStat, type SiteData, type Subject, type Teacher, type Testimonial, type StudyMaterial } from "@/lib/siteData";
+import { defaultSiteData, readSiteData, saveSiteData, type Announcement, type ContactDetails, type GalleryItem, type HeroStat, type SiteData, type Subject, type Teacher, type Testimonial, type StudyMaterial } from "@/lib/siteData";
 import { trpc } from "@/lib/trpc";
+import { useAuth } from "@/_core/hooks/useAuth";
 
 type Tab = "subjects" | "teachers" | "gallery" | "stats" | "testimonials" | "announcements" | "contact" | "papers" | "unitQuestions";
 const id = (prefix: string) => `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
@@ -21,15 +22,26 @@ const emptyUnitQuestion: StudyMaterial = { id: "", title: "", subject: "", link:
 const tabMeta: Record<Tab, { label: string; icon: typeof BookOpen }> = { subjects: { label: "Subjects & batches", icon: BookOpen }, stats: { label: "At a glance stats", icon: BarChart3 }, teachers: { label: "Teachers & staff", icon: Users }, gallery: { label: "Classroom gallery", icon: ImageIcon }, testimonials: { label: "Parent notes", icon: Quote }, announcements: { label: "Announcements", icon: Megaphone }, contact: { label: "Contact details", icon: Phone }, papers: { label: "Question papers", icon: FileText }, unitQuestions: { label: "Unit questions", icon: FileText } };
 
 export default function SiteAdmin() {
+  const auth = useAuth();
   const [data, setData] = useState<SiteData>(() => readSiteData());
   const [tab, setTab] = useState<Tab>("subjects");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [subject, setSubject] = useState(emptySubject); const [teacher, setTeacher] = useState(emptyTeacher); const [gallery, setGallery] = useState(emptyGallery); const [stat, setStat] = useState(emptyStat); const [testimonial, setTestimonial] = useState(emptyTestimonial); const [announcement, setAnnouncement] = useState(emptyAnnouncement); const [contact, setContact] = useState(emptyContact); const [paper, setPaper] = useState(emptyPaper); const [unitQuestion, setUnitQuestion] = useState(emptyUnitQuestion);
   const [preview, setPreview] = useState(true); const [previewTestimonial, setPreviewTestimonial] = useState(0);
+  const [loginEmail, setLoginEmail] = useState("");
+  const [loginPassword, setLoginPassword] = useState("");
+  const [loginError, setLoginError] = useState("");
 
   const utils = trpc.useUtils();
+  const loginMutation = trpc.auth.login.useMutation({
+    onSuccess: async () => {
+      setLoginPassword("");
+      await utils.auth.me.invalidate();
+    },
+  });
   const siteQuery = trpc.site.getSiteData.useQuery(undefined, {
     staleTime: 60000,
+    enabled: auth.user?.role === "admin",
   });
   const saveMutation = trpc.site.saveSiteData.useMutation({
     onSuccess: () => {
@@ -51,7 +63,7 @@ export default function SiteAdmin() {
       await saveMutation.mutateAsync({ data: next });
       toast.success(`${message} (Synced to Supabase DB)`);
     } catch {
-      toast.success(message);
+      toast.error("Could not save to Supabase. Please check your admin session and try again.");
     }
   };
   const clearForm = () => { setEditingId(null); setSubject(emptySubject); setTeacher(emptyTeacher); setGallery(emptyGallery); setStat(emptyStat); setTestimonial(emptyTestimonial); setAnnouncement(emptyAnnouncement); setContact(emptyContact); setPaper(emptyPaper); setUnitQuestion(emptyUnitQuestion); };
@@ -61,9 +73,22 @@ export default function SiteAdmin() {
   const saveListItem = (event: FormEvent, key: "subjects" | "teachers" | "gallery" | "heroStats" | "testimonials" | "announcements" | "questionPapers" | "unitQuestions", value: any, label: string) => { event.preventDefault(); const item = { ...value, id: value.id || id(key.slice(0, -1)) }; if (Object.entries(item).some(([field, entry]) => field !== "id" && field !== "type" && !String(entry).trim())) return toast.error("Please complete every field"); const list = data[key] as any[]; const nextList = editingId ? list.map((entry) => entry.id === editingId ? item : entry) : [...list, item]; commit({ ...data, [key]: nextList }, editingId ? `${label} updated` : `${label} added`); clearForm(); };
   const saveContact = (event: FormEvent) => { event.preventDefault(); if (!contact.address || !contact.phone || !contact.email || !contact.hours) return toast.error("Please complete every contact field"); commit({ ...data, contact }, "Contact details updated"); };
   const upload = (event: ChangeEvent<HTMLInputElement>, callback: (value: string) => void) => { const file = event.target.files?.[0]; if (!file) return; if (!file.type.startsWith("image/")) return toast.error("Choose an image file"); if (file.size > 3 * 1024 * 1024) return toast.error("Keep images below 3 MB"); const reader = new FileReader(); reader.onload = () => callback(String(reader.result)); reader.readAsDataURL(file); };
-  const restore = () => { resetSiteData(); setData(defaultSiteData); clearForm(); toast.success("Demo content restored"); };
+  const restore = () => { commit(defaultSiteData, "Demo content restored"); clearForm(); };
   const count = data.subjects.length + data.teachers.length + data.gallery.length + data.heroStats.length + data.testimonials.length + data.announcements.length + data.questionPapers.length + data.unitQuestions.length;
   const previewNote = data.testimonials[previewTestimonial % Math.max(data.testimonials.length, 1)];
+
+  const submitLogin = async (event: FormEvent) => {
+    event.preventDefault();
+    setLoginError("");
+    try {
+      await loginMutation.mutateAsync({ email: loginEmail.trim(), password: loginPassword, role: "admin" });
+    } catch (error: any) {
+      setLoginError(error?.message || "Invalid admin email or password.");
+    }
+  };
+
+  if (auth.loading) return <div className="admin-auth-shell"><div className="admin-auth-card"><ShieldCheck size={28} /><p className="admin-kicker">Secure admin area</p><h1>Checking access…</h1></div></div>;
+  if (auth.user?.role !== "admin") return <div className="admin-auth-shell"><form className="admin-auth-card" onSubmit={submitLogin}><ShieldCheck size={30} /><p className="admin-kicker">Rasi Maths Tuition Centre</p><h1>Admin sign in</h1><p>Use the same Admin login ID and password as the portal.</p><label>Email<input type="email" value={loginEmail} onChange={(event) => setLoginEmail(event.target.value)} placeholder="admin@rasi.edu" autoComplete="username" required /></label><label>Password<input type="password" value={loginPassword} onChange={(event) => setLoginPassword(event.target.value)} autoComplete="current-password" required /></label>{loginError && <div className="admin-auth-error">{loginError}</div>}<button className="admin-save-button" type="submit" disabled={loginMutation.isPending}>{loginMutation.isPending ? "Signing in…" : "Sign in to edit portfolio"}</button><Link href="/" className="admin-view-link"><ArrowLeft size={15} /> Back to portfolio</Link></form></div>;
 
   const renderForm = () => {
     if (tab === "subjects") return <form className="admin-form" onSubmit={(e) => saveListItem(e, "subjects", subject, "Subject")}><Field label="Subject name" value={subject.subject} onChange={(v) => setSubject({ ...subject, subject: v })} placeholder="Tamil" /><Field label="Grade / batch" value={subject.batch} onChange={(v) => setSubject({ ...subject, batch: v })} placeholder="Grades 6–8 · Core" /><Field label="Schedule" value={subject.schedule} onChange={(v) => setSubject({ ...subject, schedule: v })} placeholder="Mon / Wed · 4:30 PM" /><Field label="Seats available" value={subject.seats} onChange={(v) => setSubject({ ...subject, seats: v })} placeholder="06 seats" /><SaveButton editing={!!editingId} label="subject" /></form>;
@@ -79,7 +104,7 @@ export default function SiteAdmin() {
 
   const renderList = () => { const key = tab === "stats" ? "heroStats" : tab === "papers" ? "questionPapers" : tab; if (tab === "contact") return <div className="contact-preview-card"><strong>{data.contact.email}</strong><span>{data.contact.phone}</span><span>{data.contact.hours}</span><span>{data.contact.address}</span></div>; const list = (data as any)[key] as any[]; return <div className="admin-list">{list.map((item) => <div className="admin-list-item" key={item.id}>{tab === "teachers" || tab === "gallery" ? <img className="list-thumb" src={item.image} alt="" /> : <div className="list-icon"><IconFor tab={tab} /></div>}<div className="list-copy"><strong>{item.name || item.subject || item.value || item.title || item.quote}</strong><span>{item.batch || item.schedule || item.label || item.attribution || item.description || item.layout || item.subject}</span></div><div className="list-actions"><button onClick={() => edit(item)} aria-label="Edit"><Pencil size={15} /></button><button onClick={() => remove(key as any, item.id)} aria-label="Delete"><Trash2 size={15} /></button></div></div>)}</div>; };
 
-  return <div className="admin-shell"><header className="admin-header"><div className="admin-header-inner"><Link href="/" className="admin-brand"><span className="brand-mark">RM</span><span><b>Rasi Maths Tuition Centre</b><small>Portfolio content manager</small></span></Link><div className="admin-header-actions"><span className="admin-status"><i /> Supabase Cloud Sync</span><Link href="/" className="admin-view-link"><ArrowLeft size={15} /> View portfolio</Link></div></div></header><main className="admin-main page-width"><div className="admin-intro"><div><p className="eyebrow">Admin / Content editor</p><h1>Keep the story<br /><em>up to date.</em></h1><p>Every field below supports CRUD. Edits are saved directly to Supabase DB and sync automatically across all devices (Mobile & Desktop).</p></div><div className="admin-summary"><strong>{count}</strong><span>editable content items</span></div></div><div className="admin-tabs" role="tablist">{(Object.keys(tabMeta) as Tab[]).map((key) => { const Meta = tabMeta[key]; const Icon = Meta.icon; const length = key === "stats" ? data.heroStats.length : key === "contact" ? 1 : key === "papers" ? data.questionPapers.length : key === "unitQuestions" ? data.unitQuestions.length : ((data as any)[key] as any[]).length; return <button key={key} className={tab === key ? "is-active" : ""} onClick={() => selectTab(key)}><Icon size={16} /> {Meta.label} <b>{length}</b></button>; })}</div><div className="preview-toggle-row"><span><span className="live-dot" /> Live preview updates as you type</span><button className={`preview-toggle ${preview ? "is-on" : ""}`} onClick={() => setPreview(!preview)}>{preview ? "Preview on" : "Preview off"}</button></div><section className={`admin-workspace ${preview ? "with-preview" : ""}`}><div className="admin-form-panel"><div className="admin-panel-heading"><div><span className="admin-kicker">{editingId ? "Update existing" : "Create new"}</span><h2>{editingId ? "Edit item" : `Add ${tabMeta[tab].label.toLowerCase()}`}</h2></div>{editingId && <button className="text-button" onClick={clearForm}>Cancel edit</button>}</div>{renderForm()}</div><div className="admin-list-panel"><div className="admin-panel-heading"><div><span className="admin-kicker">Published items</span><h2>{tabMeta[tab].label}</h2></div>{tab !== "contact" && <button className="admin-add-button" onClick={clearForm}><Plus size={16} /> New</button>}</div>{renderList()}</div>{preview && <Preview data={data} tab={tab} subject={subject} teacher={teacher} gallery={gallery} stat={stat} testimonial={testimonial} announcement={announcement} contact={contact} paper={paper} unitQuestion={unitQuestion} />}</section><div className="admin-footer-actions"><button className="reset-button" onClick={restore}><RotateCcw size={15} /> Restore demo content</button><span><Save size={14} /> Synced with Supabase DB · Live on Mobile & Desktop</span></div></main></div>;
+  return <div className="admin-shell"><header className="admin-header"><div className="admin-header-inner"><Link href="/" className="admin-brand"><span className="brand-mark">RM</span><span><b>Rasi Maths Tuition Centre</b><small>Portfolio content manager</small></span></Link><div className="admin-header-actions"><span className="admin-status"><i /> Supabase Cloud Sync</span><Link href="/" className="admin-view-link"><ArrowLeft size={15} /> View portfolio</Link><button className="admin-logout-button" onClick={() => void auth.logout()}><LogOut size={15} /> Log out</button></div></div></header><main className="admin-main page-width"><div className="admin-intro"><div><p className="eyebrow">Admin / Content editor</p><h1>Keep the story<br /><em>up to date.</em></h1><p>Every field below supports CRUD. Edits are saved directly to Supabase DB and sync automatically across all devices (Mobile & Desktop).</p></div><div className="admin-summary"><strong>{count}</strong><span>editable content items</span></div></div><div className="admin-tabs" role="tablist">{(Object.keys(tabMeta) as Tab[]).map((key) => { const Meta = tabMeta[key]; const Icon = Meta.icon; const length = key === "stats" ? data.heroStats.length : key === "contact" ? 1 : key === "papers" ? data.questionPapers.length : key === "unitQuestions" ? data.unitQuestions.length : ((data as any)[key] as any[]).length; return <button key={key} className={tab === key ? "is-active" : ""} onClick={() => selectTab(key)}><Icon size={16} /> {Meta.label} <b>{length}</b></button>; })}</div><div className="preview-toggle-row"><span><span className="live-dot" /> Live preview updates as you type</span><button className={`preview-toggle ${preview ? "is-on" : ""}`} onClick={() => setPreview(!preview)}>{preview ? "Preview on" : "Preview off"}</button></div><section className={`admin-workspace ${preview ? "with-preview" : ""}`}><div className="admin-form-panel"><div className="admin-panel-heading"><div><span className="admin-kicker">{editingId ? "Update existing" : "Create new"}</span><h2>{editingId ? "Edit item" : `Add ${tabMeta[tab].label.toLowerCase()}`}</h2></div>{editingId && <button className="text-button" onClick={clearForm}>Cancel edit</button>}</div>{renderForm()}</div><div className="admin-list-panel"><div className="admin-panel-heading"><div><span className="admin-kicker">Published items</span><h2>{tabMeta[tab].label}</h2></div>{tab !== "contact" && <button className="admin-add-button" onClick={clearForm}><Plus size={16} /> New</button>}</div>{renderList()}</div>{preview && <Preview data={data} tab={tab} subject={subject} teacher={teacher} gallery={gallery} stat={stat} testimonial={testimonial} announcement={announcement} contact={contact} paper={paper} unitQuestion={unitQuestion} />}</section><div className="admin-footer-actions"><button className="reset-button" onClick={restore}><RotateCcw size={15} /> Restore demo content</button><span><Save size={14} /> Synced with Supabase DB · Live on Mobile & Desktop</span></div></main></div>;
 }
 
 function Field({ label, value, onChange, placeholder }: { label: string; value: string; onChange: (v: string) => void; placeholder?: string }) { return <label>{label}<input value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} /></label>; }
