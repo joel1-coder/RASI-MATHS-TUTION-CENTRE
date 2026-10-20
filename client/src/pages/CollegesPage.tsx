@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { ArrowLeft, ExternalLink } from "lucide-react";
-import { readSiteData, defaultTechnicalColleges, defaultNonTechnicalColleges, type CollegeItem } from "@/lib/siteData";
+import { defaultTechnicalColleges, defaultNonTechnicalColleges, type CollegeItem } from "@/lib/siteData";
 
 type Category = "technical" | "non-technical";
 type Tier = "Tier 1" | "Tier 2" | "Tier 3";
@@ -26,10 +26,9 @@ function CollegeTable({ colleges, sno_offset = 0 }: { colleges: CollegeItem[]; s
     <table className="w-full border-collapse text-sm">
       <thead>
         <tr className="border-b-2 border-[#e8e0f0]">
-          <th className="py-3 pl-4 pr-2 text-left text-xs font-bold uppercase tracking-[0.12em] text-[#8d7aa5] w-12">S.No</th>
+          <th className="py-3 px-4 text-left text-xs font-bold uppercase tracking-[0.12em] text-[#8d7aa5]">Tier</th>
           <th className="py-3 px-4 text-left text-xs font-bold uppercase tracking-[0.12em] text-[#8d7aa5]">Name of College</th>
           <th className="py-3 px-4 text-left text-xs font-bold uppercase tracking-[0.12em] text-[#8d7aa5] hidden sm:table-cell">Location</th>
-          <th className="py-3 px-4 text-left text-xs font-bold uppercase tracking-[0.12em] text-[#8d7aa5]">Tier</th>
           <th className="py-3 px-4 text-left text-xs font-bold uppercase tracking-[0.12em] text-[#8d7aa5]">Cutoff</th>
           <th className="py-3 px-4 text-left text-xs font-bold uppercase tracking-[0.12em] text-[#8d7aa5] hidden md:table-cell">Website</th>
         </tr>
@@ -37,15 +36,12 @@ function CollegeTable({ colleges, sno_offset = 0 }: { colleges: CollegeItem[]; s
       <tbody>
         {colleges.map((college, idx) => (
           <tr key={college.id} className="border-b border-[#f0e8f8] transition hover:bg-[#faf6ff]">
-            <td className="py-3.5 pl-4 pr-2 text-center text-sm font-medium text-[#a09ab0]">
-              {sno_offset + idx + 1}
-            </td>
+            <td className="py-3.5 px-4"><TierBadge tier={college.tier} /></td>
             <td className="py-3.5 px-4">
               <p className="font-semibold text-[#2f1f4a]">{college.name}</p>
               <p className="mt-0.5 text-xs text-[#8d7aa5] sm:hidden">{college.location}</p>
             </td>
             <td className="py-3.5 px-4 text-[#6b5a82] hidden sm:table-cell">{college.location}</td>
-            <td className="py-3.5 px-4"><TierBadge tier={college.tier} /></td>
             <td className="py-3.5 px-4 font-semibold text-[#5b3b92]">{college.cutoff}</td>
             <td className="py-3.5 px-4 hidden md:table-cell">
               {college.link ? (
@@ -80,15 +76,9 @@ function TierSection({ tier, colleges, sno_offset }: { tier: Tier; colleges: Col
 }
 
 export default function CollegesPage() {
-  const siteData = readSiteData();
   const [activeTab, setActiveTab] = useState<Category>("technical");
-
-  const rawTechnical = siteData.technicalColleges;
-  const rawNonTechnical = siteData.nonTechnicalColleges;
-
-  // Fallback to hardcoded defaults if localStorage data is empty/stale
-  const allTechnical = rawTechnical.length > 0 ? rawTechnical : defaultTechnicalColleges;
-  const allNonTechnical = rawNonTechnical.length > 0 ? rawNonTechnical : defaultNonTechnicalColleges;
+  const allTechnical = defaultTechnicalColleges.slice(0, 30);
+  const allNonTechnical = defaultNonTechnicalColleges.slice(0, 30);
 
   const colleges = activeTab === "technical" ? allTechnical : allNonTechnical;
   const tier1 = colleges.filter(c => c.tier === "Tier 1");
@@ -116,7 +106,7 @@ export default function CollegesPage() {
           <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#ef8656]">Where our students go</p>
           <h1 className="mt-2 text-3xl font-bold text-[#2f1f4a] sm:text-4xl">College Details</h1>
           <p className="mt-2 text-sm text-[#8d7aa5]">
-            Browse Technical and Non-Technical institutions by tier. Cutoff figures are indicative — check official notifications for the latest data.
+            Browse Tamil Nadu engineering and technology colleges and arts and science colleges by tier. Cutoff figures are indicative — check official notifications for the latest data.
           </p>
         </div>
 
@@ -125,13 +115,13 @@ export default function CollegesPage() {
             onClick={() => setActiveTab("technical")}
             className={`rounded-full px-5 py-2 text-sm font-semibold transition ${activeTab === "technical" ? "bg-[#5b3b92] text-white shadow-md" : "border border-[#e4dce9] bg-white text-[#6d4b9f] hover:bg-[#f0e8f8]"}`}
           >
-            Technical ({allTechnical.length})
+            Engineering &amp; Technology ({allTechnical.length})
           </button>
           <button
             onClick={() => setActiveTab("non-technical")}
             className={`rounded-full px-5 py-2 text-sm font-semibold transition ${activeTab === "non-technical" ? "bg-[#5b3b92] text-white shadow-md" : "border border-[#e4dce9] bg-white text-[#6d4b9f] hover:bg-[#f0e8f8]"}`}
           >
-            Non-Technical ({allNonTechnical.length})
+            Arts &amp; Science ({allNonTechnical.length})
           </button>
         </div>
 
