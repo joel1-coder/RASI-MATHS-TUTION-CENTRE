@@ -11,7 +11,7 @@ import {
   User as UserIcon,
 } from "lucide-react";
 import { toast } from "sonner";
-import { readSiteData, saveSiteData, type SiteData } from "@/lib/siteData";
+import { onlyHigherSecondaryExams, readSiteData, saveSiteData, type SiteData } from "@/lib/siteData";
 import { trpc } from "@/lib/trpc";
 import ThemeToggle from "@/components/ThemeToggle";
 
@@ -107,7 +107,7 @@ export default function Portfolio({ onLogin, user, onGoToPortal, onLogout }: Por
 
   useEffect(() => {
     if (siteQuery.data) {
-      setSiteData(siteQuery.data);
+      setSiteData({ ...siteQuery.data, govExams: onlyHigherSecondaryExams(siteQuery.data.govExams || []) });
       try {
         saveSiteData(siteQuery.data);
       } catch {}

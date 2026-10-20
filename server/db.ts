@@ -397,7 +397,13 @@ export async function upsertCollege(record: InsertCollege) {
 export async function listGovernmentExams() {
   const db = await getDb();
   if (!db) return [];
-  return db.select().from(governmentExams);
+  const exams = await db.select().from(governmentExams);
+  const higherSecondaryPattern = /12th|10\+2|higher secondary|senior secondary|intermediate/i;
+  const excludedPattern = /10th|sslc|matric|degree|bachelor|graduate|post[- ]?graduation|any degree/i;
+  return exams.filter((exam) => {
+    const details = `${exam.name} ${exam.qualification}`;
+    return higherSecondaryPattern.test(details) && !excludedPattern.test(details);
+  });
 }
 
 export async function upsertGovernmentExam(record: InsertGovernmentExam) {

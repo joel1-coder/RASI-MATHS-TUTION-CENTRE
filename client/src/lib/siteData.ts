@@ -205,19 +205,25 @@ export const defaultNonTechnicalColleges: CollegeItem[] = [
 ];
 
 export const defaultGovExams: GovExam[] = [
-  { id: "ge-jan-1", name: "TNPSC Group 4 (Prelims)", month: "January", monthIndex: 1, group: "Tamil Nadu Government", description: "Combined Civil Services Exam IV for Grade IV & Typist posts. (Eligible: 10th/12th Pass)", link: "https://www.tnpsc.gov.in" },
-  { id: "ge-feb-1", name: "SSC CHSL (Tier I)", month: "February", monthIndex: 2, group: "Central Government", description: "Combined Higher Secondary Level exam for LDC, JSA, DEO posts. (Eligible: 12th Pass)", link: "https://ssc.nic.in" },
-  { id: "ge-mar-1", name: "RRB NTPC (Undergraduate)", month: "March", monthIndex: 3, group: "Central Government", description: "Railway Recruitment Board Non-Technical Popular Categories for Commercial cum Ticket Clerk, etc. (Eligible: 12th Pass)", link: "https://www.rrbcdg.gov.in" },
-  { id: "ge-apr-1", name: "NDA / NA Exam I", month: "April", monthIndex: 4, group: "Central Government", description: "National Defence Academy & Naval Academy exam for Armed Forces. (Eligible: 12th Pass)", link: "https://upsc.gov.in" },
-  { id: "ge-may-1", name: "SSC GD Constable", month: "May", monthIndex: 5, group: "Central Government", description: "General Duty Constable in CAPFs, SSF, Rifleman. (Eligible: 10th/12th Pass)", link: "https://ssc.nic.in" },
-  { id: "ge-jun-1", name: "TNUSRB Police Constable", month: "June", monthIndex: 6, group: "Tamil Nadu Government", description: "Tamil Nadu Uniformed Services Recruitment Board Police Constable. (Eligible: 10th/12th Pass)", link: "https://www.tnusrb.tn.gov.in" },
-  { id: "ge-jul-1", name: "SSC MTS", month: "July", monthIndex: 7, group: "Central Government", description: "Multi-Tasking (Non-Technical) Staff exam. (Eligible: 10th/12th Pass)", link: "https://ssc.nic.in" },
-  { id: "ge-aug-1", name: "Indian Air Force Agniveer Vayu", month: "August", monthIndex: 8, group: "Central Government", description: "Agnipath Scheme recruitment for Air Force. (Eligible: 12th Pass with PCM/English)", link: "https://agnipathvayu.cdac.in" },
-  { id: "ge-sep-1", name: "NDA / NA Exam II", month: "September", monthIndex: 9, group: "Central Government", description: "National Defence Academy & Naval Academy exam (Session II). (Eligible: 12th Pass)", link: "https://upsc.gov.in" },
-  { id: "ge-oct-1", name: "TN Forest Guard", month: "October", monthIndex: 10, group: "Tamil Nadu Government", description: "Tamil Nadu Forest Uniformed Services Recruitment Committee for Forest Guard. (Eligible: 12th Pass)", link: "https://www.forests.tn.gov.in" },
-  { id: "ge-nov-1", name: "Indian Navy Agniveer (SSR)", month: "November", monthIndex: 11, group: "Central Government", description: "Agnipath Scheme recruitment for Indian Navy Senior Secondary Recruit. (Eligible: 12th Pass with Math/Physics)", link: "https://www.joinindiannavy.gov.in" },
-  { id: "ge-dec-1", name: "TNPSC CCSE Notification", month: "December", monthIndex: 12, group: "Tamil Nadu Government", description: "Annual combined exam notifications for TNPSC Group 4 and other exams. (Eligible: 10th/12th Pass)", link: "https://www.tnpsc.gov.in" },
+  { id: "ge-jan-1", name: "SSC Stenographer Grade C & D", month: "January", monthIndex: 1, group: "Central Government", description: "Staff Selection Commission stenographer recruitment. (Eligible: 12th Pass; stenography skill required)", link: "https://ssc.gov.in" },
+  { id: "ge-feb-1", name: "SSC CHSL (10+2)", month: "February", monthIndex: 2, group: "Central Government", description: "Combined Higher Secondary Level recruitment for LDC, JSA and DEO posts. (Eligible: 12th Pass; Science with Mathematics is required for specified DEO posts)", link: "https://ssc.gov.in" },
+  { id: "ge-mar-1", name: "RRB NTPC (Undergraduate)", month: "March", monthIndex: 3, group: "Central Government", description: "Railway NTPC undergraduate posts including Commercial Cum Ticket Clerk and clerical posts. (Eligible: 12th Pass; some posts require 50% and/or typing)", link: "https://www.rrbcdg.gov.in" },
+  { id: "ge-apr-1", name: "NDA / NA Exam I", month: "April", monthIndex: 4, group: "Central Government", description: "UPSC National Defence Academy and Naval Academy examination. (Eligible: 12th Pass; Physics, Chemistry and Mathematics are required for Air Force/Naval wings)", link: "https://upsc.gov.in" },
+  { id: "ge-may-1", name: "Indian Coast Guard Navik (GD)", month: "May", monthIndex: 5, group: "Central Government", description: "Coast Guard Navik General Duty recruitment. (Eligible: 12th Pass with Physics and Mathematics)", link: "https://www.indiancoastguard.gov.in" },
+  { id: "ge-jun-1", name: "Indian Air Force Agniveer Vayu", month: "June", monthIndex: 6, group: "Central Government", description: "Agnipath recruitment for Indian Air Force Agniveer Vayu. (Eligible: 12th Pass with the prescribed PCM/English subjects, or accepted equivalent route)", link: "https://agnipathvayu.cdac.in" },
+  { id: "ge-jul-1", name: "Indian Navy Agniveer (SSR)", month: "July", monthIndex: 7, group: "Central Government", description: "Agnipath recruitment for Indian Navy Senior Secondary Recruit. (Eligible: 12th Pass with Mathematics and Physics)", link: "https://www.joinindiannavy.gov.in" },
+  { id: "ge-sep-1", name: "NDA / NA Exam II", month: "September", monthIndex: 9, group: "Central Government", description: "UPSC National Defence Academy and Naval Academy examination, second session. (Eligible: 12th Pass; Physics, Chemistry and Mathematics are required for Air Force/Naval wings)", link: "https://upsc.gov.in" },
 ];
+
+const higherSecondaryExamPattern = /12th|10\+2|higher secondary|senior secondary|intermediate/i;
+const excludedExamPattern = /10th|sslc|matric|degree|bachelor|graduate|post[- ]?graduation|any degree/i;
+
+export function onlyHigherSecondaryExams(exams: GovExam[]): GovExam[] {
+  return exams.filter((exam) => {
+    const details = `${exam.name} ${exam.description}`;
+    return higherSecondaryExamPattern.test(details) && !excludedExamPattern.test(details);
+  });
+}
 
 export const defaultSiteData: SiteData = {
   subjects: [
@@ -300,7 +306,7 @@ export function readSiteData(): SiteData {
       unitQuestions: Array.isArray(parsed.unitQuestions) ? parsed.unitQuestions : defaultSiteData.unitQuestions,
       technicalColleges: Array.isArray(parsed.technicalColleges) ? parsed.technicalColleges : defaultTechnicalColleges,
       nonTechnicalColleges: Array.isArray(parsed.nonTechnicalColleges) ? parsed.nonTechnicalColleges : defaultNonTechnicalColleges,
-      govExams: Array.isArray(parsed.govExams) ? parsed.govExams : defaultGovExams,
+      govExams: onlyHigherSecondaryExams(Array.isArray(parsed.govExams) ? parsed.govExams : defaultGovExams),
     };
   } catch {
     return defaultSiteData;
