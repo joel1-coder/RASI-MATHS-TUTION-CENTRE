@@ -3407,20 +3407,6 @@ function AdminStudentManager() {
       {managementTab === "students" && <div className="rounded-3xl border border-[#eee6f0] bg-white p-6 shadow-sm">
         {/* Header with Title, Count, Passwords Toggle & Export */}
         <div className="flex flex-wrap items-center justify-between gap-4 border-b border-[#f0e8f4] pb-4">
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="grid h-8 w-8 place-items-center rounded-xl bg-[#fcedec] text-[#d32f2f] shadow-2xs">
-                <Trash2 size={17} />
-              </span>
-              <h2 className="text-lg font-bold text-[#2a203e]">
-                Delete Student & Database Registry ({filteredStudents.length})
-              </h2>
-            </div>
-            <p className="mt-1 text-xs text-[#81758e]">
-              Filter by Department and Section to view full student database credentials, CSV details, and delete students one-by-one or in batches.
-            </p>
-          </div>
-
           <div className="flex flex-wrap items-center gap-2.5">
             <button
               type="button"
@@ -6463,7 +6449,7 @@ function AdminWorkspace({ user, onLogout }: { user: User; onLogout: () => void }
         </div>
       </header>
       <div className="p-5 md:p-10">
-        <div className="mb-8">
+        {String(active) !== "Students" && <div className="mb-8">
           <Pill>{active === "User Management" ? "USER MANAGEMENT" : active === "Students" ? "CREATION / MANAGEMENT" : active === "Attendance" ? "ATTENDANCE" : active === "Government exams" ? "GOV EXAMS" : active === "Question paper" ? "QUESTION PAPERS" : active === "Unit-wise paper" ? "UNIT-WISE PAPERS" : active.toUpperCase()}</Pill>
           <p className="mt-3 max-w-lg text-sm leading-6 text-[#81758e]">
             {active === "User Management"
@@ -6484,7 +6470,7 @@ function AdminWorkspace({ user, onLogout }: { user: User; onLogout: () => void }
               ? "Upload unit-wise and chapter question papers with detail fields and dispatch to parent and student portals."
               : "Manage the linked Student and Parent experience from one protected Admin workspace."}
           </p>
-        </div>
+        </div>}
 
         {active === "Overview" && (
           <div className="grid gap-4 sm:grid-cols-2">
