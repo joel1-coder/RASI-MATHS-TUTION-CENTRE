@@ -6472,10 +6472,8 @@ function AdminWorkspace({ user, onLogout }: { user: User; onLogout: () => void }
       <div className="p-5 md:p-10">
         {String(active) !== "Students" && <div className="mb-8">
           <Pill>{active === "User Management" ? "USER MANAGEMENT" : active === "Students" ? "CREATION / MANAGEMENT" : active === "Attendance" ? "ATTENDANCE" : active === "Government exams" ? "GOV EXAMS" : active === "Question paper" ? "QUESTION PAPERS" : active === "Unit-wise paper" ? "UNIT-WISE PAPERS" : active.toUpperCase()}</Pill>
-          <p className="mt-3 max-w-lg text-sm leading-6 text-[#81758e]">
-            {active === "User Management"
-              ? "Manage Teacher, Admin, Student, and Parent accounts. Separate academic enrollment lines (Date, Department, Section, Session) synced to Supabase DB."
-              : active === "Students"
+          {active !== "User Management" && <p className="mt-3 max-w-lg text-sm leading-6 text-[#81758e]">
+            {active === "Students"
               ? "Comprehensive student enrollment, department batches, single & bulk import management."
               : active === "Attendance"
               ? "Department & section batch attendance with interactive roll number chips and records log."
@@ -6490,7 +6488,7 @@ function AdminWorkspace({ user, onLogout }: { user: User; onLogout: () => void }
               : active === "Unit-wise paper"
               ? "Upload unit-wise and chapter question papers with detail fields and dispatch to parent and student portals."
               : "Manage the linked Student and Parent experience from one protected Admin workspace."}
-          </p>
+          </p>}
         </div>}
 
         {active === "Overview" && (
@@ -8890,10 +8888,10 @@ export default function Home() {
   };
 
   if (currentUser && (activePortal || isPortalUrl)) {
-    if (currentUser.role === "student") return <div className="portal-shell"><ThemeToggle className="fixed right-5 top-5 z-[60] sm:right-24 md:hidden" /><StudentWorkspace user={currentUser} onLogout={logout} /></div>;
-    if (currentUser.role === "parent") return <div className="portal-shell"><ThemeToggle className="fixed right-5 top-5 z-[60] sm:right-24 md:hidden" /><ParentWorkspace user={currentUser} onLogout={logout} /></div>;
-    if (currentUser.role === "teacher") return <div className="portal-shell"><ThemeToggle className="fixed right-5 top-5 z-[60] sm:right-24 md:hidden" /><TeacherWorkspace user={currentUser} onLogout={logout} /></div>;
-    if (currentUser.role === "admin") return <div className="portal-shell"><ThemeToggle className="fixed right-5 top-5 z-[60] md:hidden" /><AdminWorkspace user={currentUser} onLogout={logout} /></div>;
+    if (currentUser.role === "student") return <div className="portal-shell"><StudentWorkspace user={currentUser} onLogout={logout} /></div>;
+    if (currentUser.role === "parent") return <div className="portal-shell"><ParentWorkspace user={currentUser} onLogout={logout} /></div>;
+    if (currentUser.role === "teacher") return <div className="portal-shell"><TeacherWorkspace user={currentUser} onLogout={logout} /></div>;
+    if (currentUser.role === "admin") return <div className="portal-shell"><AdminWorkspace user={currentUser} onLogout={logout} /></div>;
   }
 
   // If visiting /portal/student etc. without an active session for that role, show login for that role
