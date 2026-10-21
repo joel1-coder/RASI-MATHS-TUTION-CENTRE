@@ -1,7 +1,7 @@
 import { and, asc, desc, eq, or } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
-import { colleges, governmentExams, InsertCollege, InsertGovernmentExam, InsertMarkStatement, InsertStudentAttendance, InsertStudentProject, InsertUser, InsertScheduleSession, markStatements, scheduleSessions, studentAttendance, studentProjects, subjects, InsertSubject, users, questionPapers, unitQuestions, InsertQuestionPaper, InsertUnitQuestion, siteSettings, InsertSiteSetting } from "../drizzle/schema";
+import { announcements, colleges, governmentExams, InsertAnnouncement, InsertCollege, InsertGovernmentExam, InsertMarkStatement, InsertStudentAttendance, InsertStudentProject, InsertUser, InsertScheduleSession, markStatements, scheduleSessions, studentAttendance, studentProjects, subjects, InsertSubject, users, questionPapers, unitQuestions, InsertQuestionPaper, InsertUnitQuestion, siteSettings, InsertSiteSetting } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -64,6 +64,19 @@ export async function getDb() {
       // project rows readable after adding the persisted description field.
       await _client.unsafe(`ALTER TABLE "student_projects" ADD COLUMN IF NOT EXISTS "description" text NOT NULL DEFAULT '';`).catch((error) => {
         console.error("[Database] Could not add student_projects.description:", error);
+      });
+      await _client.unsafe(`
+        CREATE TABLE IF NOT EXISTS "announcements" (
+          "id" serial PRIMARY KEY,
+          "recipientEmail" varchar(320) NOT NULL,
+          "studentEmail" varchar(320) NOT NULL,
+          "title" varchar(160) NOT NULL,
+          "message" text NOT NULL,
+          "createdAt" timestamp DEFAULT now() NOT NULL,
+          "updatedAt" timestamp DEFAULT now() NOT NULL
+        );
+      `).catch((error) => {
+        console.error("[Database] Could not ensure announcements table:", error);
       });
       // Ensure site_settings table exists for persistent portfolio content
       _client.unsafe(`
@@ -436,6 +449,31 @@ export async function listStudentProjects(studentEmail: string) {
     }).from(studentProjects).where(eq(studentProjects.studentEmail, studentEmail));
     return legacyRows.map(row => ({ ...row, description: "" }));
   }
+}
+
+export async function createAnnouncement(record: InsertAnnouncement) {
+  const db = await getDb();
+  if (!db) throw new Error("Database is not available while sending announcement");
+  const result = await db.insert(announcements).values({
+    ...record,
+    recipientEmail: record.recipientEmail.trim().toLowerCase(),
+    studentEmail: record.studentEmail.trim().toLowerCase(),
+  }).returning();
+  return result[0];
+}
+
+export async function listAnnouncementsForRecipient(recipientEmail: string) {
+  const db = await getDb();
+  if (!db) throw new Error("Database is not available while loading announcements");
+  return db.select().from(announcements)
+    .where(eq(announcements.recipientEmail, recipientEmail.trim().toLowerCase()))
+    .orderBy(desc(announcements.createdAt));
+}
+
+export async function listAllAnnouncements() {
+  const db = await getDb();
+  if (!db) throw new Error("Database is not available while loading announcements");
+  return db.select().from(announcements).orderBy(desc(announcements.createdAt));
 }
 
 export async function upsertStudentProject(record: InsertStudentProject) {

@@ -3,7 +3,7 @@ import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { adminProcedure, protectedProcedure, publicProcedure, router, staffProcedure } from "./_core/trpc";
 import { TRPCError } from "@trpc/server";
-import { createSubject, deleteSubject, getDb, listFeaturedSubjects, listScheduleSessions, listStudentAttendance, listAllStudentAttendance, deleteStudentAttendanceById, deleteStudentAttendanceBatch, updateStudentAttendanceById, listSubjects, updateSubject, upsertScheduleSession, upsertStudentAttendance, listColleges, listGovernmentExams, listMarkStatements, listStudentProjects, setUserRoleByEmail, upsertCollege, upsertGovernmentExam, upsertMarkStatement, upsertStudentProject, upsertUser, createQuestionPaper, deleteQuestionPaper, listQuestionPapers, createUnitQuestion, deleteUnitQuestion, listUnitQuestions, upsertBulkMarks, upsertBulkProjects, upsertBulkGovernmentExams, getUserByEmail, upsertPortalUser, updatePortalUser, deletePortalUser, listPortalUsers, getSiteSettings, upsertSiteSettings } from "./db";
+import { createAnnouncement, createSubject, deleteSubject, getDb, listAllAnnouncements, listAnnouncementsForRecipient, listFeaturedSubjects, listScheduleSessions, listStudentAttendance, listAllStudentAttendance, deleteStudentAttendanceById, deleteStudentAttendanceBatch, updateStudentAttendanceById, listSubjects, updateSubject, upsertScheduleSession, upsertStudentAttendance, listColleges, listGovernmentExams, listMarkStatements, listStudentProjects, setUserRoleByEmail, upsertCollege, upsertGovernmentExam, upsertMarkStatement, upsertStudentProject, upsertUser, createQuestionPaper, deleteQuestionPaper, listQuestionPapers, createUnitQuestion, deleteUnitQuestion, listUnitQuestions, upsertBulkMarks, upsertBulkProjects, upsertBulkGovernmentExams, getUserByEmail, upsertPortalUser, updatePortalUser, deletePortalUser, listPortalUsers, getSiteSettings, upsertSiteSettings } from "./db";
 import { subjects } from "../drizzle/schema";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
@@ -187,6 +187,12 @@ export const appRouter = router({
       return { success: true } as const;
     }),
   }),
+  parent: router({
+    announcements: protectedProcedure.query(({ ctx }) => {
+      if (ctx.user.role !== "parent" || !ctx.user.email) throw new TRPCError({ code: "FORBIDDEN" });
+      return listAnnouncementsForRecipient(ctx.user.email);
+    }),
+  }),
   student: router({
     attendance: protectedProcedure.input(z.object({ studentEmail: z.string().email() })).query(({ ctx, input }) => { if (ctx.user.role !== "admin" && ctx.user.email !== input.studentEmail && ctx.user.linkedStudentEmail !== input.studentEmail) throw new TRPCError({ code: "FORBIDDEN" }); return listStudentAttendance(input.studentEmail); }),
     schedule: protectedProcedure.input(z.object({ studentEmail: z.string().email() })).query(({ ctx, input }) => { if (ctx.user.role !== "admin" && ctx.user.email !== input.studentEmail && ctx.user.linkedStudentEmail !== input.studentEmail) throw new TRPCError({ code: "FORBIDDEN" }); return listScheduleSessions(input.studentEmail); }),
@@ -206,6 +212,8 @@ export const appRouter = router({
     marksBulk: adminProcedure.input(z.object({ records: z.array(z.object({ studentEmail: z.string().email(), assessmentType: z.enum(["weekly", "monthly"]), periodLabel: z.string().min(1), subject: z.string().min(1), score: z.number().int().min(0), maxScore: z.number().int().positive() })).min(1) })).mutation(({ input }) => upsertBulkMarks(input.records)),
     project: adminProcedure.input(z.object({ studentEmail: z.string().email(), title: z.string().min(1), description: z.string(), subject: z.string().min(1), dueDate: z.string().min(1), status: z.string().min(1), progress: z.number().int().min(0).max(100) })).mutation(({ input }) => upsertStudentProject(input)),
     projectBulk: adminProcedure.input(z.object({ records: z.array(z.object({ studentEmail: z.string().email(), title: z.string().min(1), description: z.string(), subject: z.string().min(1), dueDate: z.string().min(1), status: z.string().min(1), progress: z.number().int().min(0).max(100) })).min(1) })).mutation(({ input }) => upsertBulkProjects(input.records)),
+    announcements: adminProcedure.query(() => listAllAnnouncements()),
+    createAnnouncement: adminProcedure.input(z.object({ recipientEmail: z.string().email(), studentEmail: z.string().email(), title: z.string().trim().min(1).max(160), message: z.string().trim().min(1).max(5000) })).mutation(({ input }) => createAnnouncement(input)),
     college: adminProcedure.input(z.object({ tier: z.string().min(1), name: z.string().min(1), category: z.string().min(1), cutoff: z.string().min(1) })).mutation(({ input }) => upsertCollege(input)),
     exam: adminProcedure.input(z.object({ groupName: z.string().min(1), name: z.string().min(1), qualification: z.string().min(1), maxMarks: z.string().min(1), benchmark: z.string().min(1) })).mutation(({ input }) => upsertGovernmentExam(input)),
     examBulk: adminProcedure.input(z.object({ records: z.array(z.object({ groupName: z.string().min(1), name: z.string().min(1), qualification: z.string().min(1), maxMarks: z.string().min(1), benchmark: z.string().min(1) })).min(1) })).mutation(({ input }) => upsertBulkGovernmentExams(input.records)),

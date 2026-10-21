@@ -3,7 +3,7 @@ import { toast } from "sonner";
 import Portfolio from "./Portfolio";
 import { startLogin } from "@/const";
 import { useAuth } from "@/_core/hooks/useAuth";
-import { AlertCircle, ArrowRight, ArrowUpRight, BarChart3, BookOpen, Building2, CalendarDays, Check, CheckCircle2, ChevronRight, ClipboardCheck, Clock3, Copy, Download, Edit3, Eye, EyeOff, FileCheck, FileSpreadsheet, FileText, FileUp, Filter, FolderPlus, GraduationCap, LayoutDashboard, Loader2, LogOut, Menu, MessageCircle, NotebookPen, Phone, Plus, Search, Send, ShieldCheck, Sparkles, Trash2, Upload, UploadCloud, User as UserIcon, UserCheck, UserPlus, Users, X } from "lucide-react";
+import { AlertCircle, ArrowRight, ArrowUpRight, BarChart3, BookOpen, Building2, CalendarDays, Check, CheckCircle2, ChevronRight, ClipboardCheck, Clock3, Copy, Download, Edit3, Eye, EyeOff, FileCheck, FileSpreadsheet, FileText, FileUp, Filter, FolderPlus, GraduationCap, LayoutDashboard, Loader2, LogOut, Menu, Megaphone, MessageCircle, NotebookPen, Phone, Plus, Search, Send, ShieldCheck, Sparkles, Trash2, Upload, UploadCloud, User as UserIcon, UserCheck, UserPlus, Users, X } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { parseAttendanceCsv, summarizeAttendance } from "@shared/portalData";
 
@@ -896,7 +896,7 @@ function StudentWorkspace({ user, onLogout }: { user: User; onLogout: () => void
   );
 }
 
-const parentNav = ["Overview", "Attendance", "Mark statements", "Question paper", "Unit question", "Projects", "Orientation programs", "Colleges", "Government exams", "Profile"];
+const parentNav = ["Overview", "Attendance", "Mark statements", "Question paper", "Unit question", "Projects", "Announcements", "Orientation programs", "Colleges", "Government exams", "Profile"];
 
 function ParentWorkspace({ user, onLogout }: { user: User; onLogout: () => void }) {
   const [active, setActive] = useState("Overview");
@@ -946,6 +946,7 @@ function ParentWorkspace({ user, onLogout }: { user: User; onLogout: () => void 
   const projectsQuery = trpc.student.projects.useQuery({ studentEmail: childEmail }, portalQueryOptions);
   const marksQuery = trpc.student.marks.useQuery({ studentEmail: childEmail }, portalQueryOptions);
   const scheduleQuery = trpc.student.schedule.useQuery({ studentEmail: childEmail }, portalQueryOptions);
+  const announcementsQuery = trpc.parent.announcements.useQuery(undefined, portalQueryOptions);
   const liveSchedule = scheduleQuery.data ?? [];
   const liveProjects = projectsQuery.data ?? [];
   const liveMarks = marksQuery.data ?? [];
@@ -976,7 +977,7 @@ function ParentWorkspace({ user, onLogout }: { user: User; onLogout: () => void 
   }, [childEmail, linkedStudent?.studentId]);
   const collegesQuery = trpc.guidance.colleges.useQuery();
   const examsQuery = trpc.guidance.exams.useQuery();
-  const intro: Record<string, string> = { Overview: `A calm view of ${child}’s learning journey.`, Attendance: "Review your child’s day-by-day attendance record.", "Mark statements": "See the same weekly and monthly test results shared with your child.", "Question paper": "Review question papers sent by Admin to your child's class.", "Unit question": "Review unit-wise questions sent by Admin to your child's class.", Projects: "Track projects assigned by the Admin and their progress.", "Orientation programs": "Centre meetings and orientation sessions scheduled for your family.", Colleges: "Explore technology and non-technology colleges by tier.", "Government exams": "Compare Central and Tamil Nadu government examination pathways.", Profile: "Your parent profile and your child's linked details." };
+  const intro: Record<string, string> = { Overview: `A calm view of ${child}’s learning journey.`, Attendance: "Review your child’s day-by-day attendance record.", "Mark statements": "See the same weekly and monthly test results shared with your child.", "Question paper": "Review question papers sent by Admin to your child's class.", "Unit question": "Review unit-wise questions sent by Admin to your child's class.", Projects: "Track projects assigned by the Admin and their progress.", Announcements: "Private messages from the centre about your child.", "Orientation programs": "Centre meetings and orientation sessions scheduled for your family.", Colleges: "Explore technology and non-technology colleges by tier.", "Government exams": "Compare Central and Tamil Nadu government examination pathways.", Profile: "Your parent profile and your child's linked details." };
   const render = () => {
     if (active === "Attendance") {
       if (attendanceQuery.isLoading) return <LoadingState label="Loading child attendance…" />;
@@ -986,6 +987,13 @@ function ParentWorkspace({ user, onLogout }: { user: User; onLogout: () => void 
       return <div className="grid gap-5 lg:grid-cols-[1.1fr_.9fr]"><div className="rounded-3xl border border-[#eee6f0] bg-white p-6"><div className="flex items-center justify-between"><div><p className="text-xs font-bold uppercase tracking-[0.18em] text-[#ef8656]">Child attendance</p><h2 className="mt-2 text-2xl font-semibold">{child} · Admin-updated</h2></div><span className="rounded-full bg-[#e9f5ed] px-3 py-1 text-xs font-semibold text-[#44835b]">{percentage}% present</span></div><div className="mt-7 space-y-3">{liveAttendance.slice().sort((a, b) => b.attendanceDate.localeCompare(a.attendanceDate)).map(record => <div className="flex items-center justify-between gap-4 rounded-2xl bg-[#faf7fc] p-4" key={record.id}><div><p className="text-sm font-semibold">{formatAttendanceDate(record.attendanceDate)}</p><p className="mt-1 text-xs text-[#887c91]">Topic: {record.description || "Daily attendance"}</p></div><span className={`rounded-full px-3 py-1 text-xs font-semibold ${record.status === "present" ? "bg-[#e9f5ed] text-[#44835b]" : record.status === "late" ? "bg-[#fff0e7] text-[#c36b42]" : "bg-[#fbe8eb] text-[#c25b68]"}`}>{record.status}</span></div>)}</div></div><div className="rounded-3xl bg-[#5b3b92] p-6 text-white"><ClipboardCheck className="text-[#f6ae8a]" size={20} /><h2 className="mt-8 text-2xl font-semibold">Live family<br /><em className="font-serif font-normal">visibility.</em></h2><p className="mt-4 text-sm leading-6 text-white/65">Attendance changes saved by Admin are reflected here for the linked parent.</p></div></div>;
     }
     if (active === "Mark statements") return <MarkStatements parent studentEmail={childEmail} />;
+    if (active === "Announcements") {
+      if (announcementsQuery.isLoading) return <LoadingState label="Loading announcements…" />;
+      if (announcementsQuery.isError) return <EmptyState title="Announcements could not be loaded" message={announcementsQuery.error?.message || "The announcements database is unavailable. Please try again shortly."} />;
+      const announcements = announcementsQuery.data ?? [];
+      if (!announcements.length) return <EmptyState title="No announcements yet" message="Messages from the centre about your child will appear here." />;
+      return <div className="space-y-4">{announcements.map(announcement => <article className="rounded-3xl border border-[#eee6f0] bg-white p-6" key={announcement.id}><div className="flex items-start justify-between gap-4"><div><span className="rounded-full bg-[#f4edf9] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-[#6d4b9f]">Centre announcement</span><h2 className="mt-4 text-xl font-semibold">{announcement.title}</h2></div><Megaphone className="shrink-0 text-[#8060ac]" size={21} /></div><p className="mt-4 whitespace-pre-wrap text-sm leading-6 text-[#5d506c]">{announcement.message}</p><p className="mt-5 text-xs font-semibold text-[#8d8197]">For {child} · {new Date(announcement.createdAt).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}</p></article>)}</div>;
+    }
     if (active === "Question paper" || active === "Important Question papers") {
       return <MaterialsView type="paper" targetClass={childDept} />;
     }
@@ -1030,7 +1038,7 @@ function ParentWorkspace({ user, onLogout }: { user: User; onLogout: () => void 
   };
   const parentNavItems = parentNav.map((item) => ({
     label: item,
-    icon: item === "Overview" ? <LayoutDashboard size={16} /> : item === "Attendance" ? <ClipboardCheck size={16} /> : item === "Mark statements" ? <BarChart3 size={16} /> : item === "Projects" ? <NotebookPen size={16} /> : item === "Colleges" ? <Building2 size={16} /> : item === "Government exams" ? <ShieldCheck size={16} /> : item === "Profile" ? <UserIcon size={16} /> : <BookOpen size={16} />,
+    icon: item === "Overview" ? <LayoutDashboard size={16} /> : item === "Attendance" ? <ClipboardCheck size={16} /> : item === "Mark statements" ? <BarChart3 size={16} /> : item === "Projects" ? <NotebookPen size={16} /> : item === "Announcements" ? <Megaphone size={16} /> : item === "Colleges" ? <Building2 size={16} /> : item === "Government exams" ? <ShieldCheck size={16} /> : item === "Profile" ? <UserIcon size={16} /> : <BookOpen size={16} />,
   }));
   return (
     <div className="min-h-screen bg-[#f6f2f8] text-[#2a203e]">
@@ -1042,7 +1050,7 @@ function ParentWorkspace({ user, onLogout }: { user: User; onLogout: () => void 
           {parentNav.map((item, i) => (
             <button key={item} onClick={() => setActive(item)}
               className={`mb-1 flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-sm ${active === item ? "bg-[#f0e9f7] font-semibold text-[#5b3b92]" : "text-[#81758e] hover:bg-[#faf7fc]"}`}>
-              <span className="text-xs">{i === 0 ? <LayoutDashboard size={16} /> : i === 1 ? <ClipboardCheck size={16} /> : i === 2 ? <BarChart3 size={16} /> : i === 3 ? <FileText size={16} /> : i === 4 ? <BookOpen size={16} /> : i === 5 ? <NotebookPen size={16} /> : i === 6 ? <CalendarDays size={16} /> : i === 7 ? <GraduationCap size={16} /> : i === 8 ? <ShieldCheck size={16} /> : <UserIcon size={16} />}</span>
+              <span className="text-xs">{item === "Overview" ? <LayoutDashboard size={16} /> : item === "Attendance" ? <ClipboardCheck size={16} /> : item === "Mark statements" ? <BarChart3 size={16} /> : item === "Question paper" ? <FileText size={16} /> : item === "Unit question" ? <BookOpen size={16} /> : item === "Projects" ? <NotebookPen size={16} /> : item === "Announcements" ? <Megaphone size={16} /> : item === "Orientation programs" ? <CalendarDays size={16} /> : item === "Colleges" ? <GraduationCap size={16} /> : item === "Government exams" ? <ShieldCheck size={16} /> : <UserIcon size={16} />}</span>
               {item}
             </button>
           ))}
@@ -6364,6 +6372,49 @@ function AdminUnitPaperManager() {
   );
 }
 
+function AdminAnnouncementManager() {
+  const portalUsersQuery = trpc.admin.listPortalUsers.useQuery({}, { staleTime: 0, refetchOnWindowFocus: true, refetchInterval: 10000 });
+  const announcementsQuery = trpc.admin.announcements.useQuery(undefined, { staleTime: 0, refetchOnWindowFocus: true, refetchInterval: 10000 });
+  const createAnnouncementMutation = trpc.admin.createAnnouncement.useMutation();
+  const [recipientEmail, setRecipientEmail] = useState("");
+  const [title, setTitle] = useState("");
+  const [message, setMessage] = useState("");
+  const recipients = useMemo(() => {
+    const users = (portalUsersQuery.data || []) as any[];
+    return users.filter(user => user.role === "parent" && user.email && user.linkedStudentEmail).map(parent => {
+      const child = users.find(user => user.role === "student" && user.email?.toLowerCase() === parent.linkedStudentEmail?.toLowerCase());
+      return { recipientEmail: parent.email, parentName: parent.name || parent.email, studentEmail: parent.linkedStudentEmail, studentName: child?.name || parent.linkedStudentEmail };
+    }).sort((a, b) => `${a.studentName}${a.parentName}`.localeCompare(`${b.studentName}${b.parentName}`));
+  }, [portalUsersQuery.data]);
+  useEffect(() => {
+    if (!recipientEmail && recipients[0]) setRecipientEmail(recipients[0].recipientEmail);
+    if (recipientEmail && !recipients.some(recipient => recipient.recipientEmail === recipientEmail)) setRecipientEmail(recipients[0]?.recipientEmail || "");
+  }, [recipientEmail, recipients]);
+  const selectedRecipient = recipients.find(recipient => recipient.recipientEmail === recipientEmail);
+  const handleSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!selectedRecipient) return toast.error("Select a parent recipient first.");
+    try {
+      await createAnnouncementMutation.mutateAsync({ recipientEmail: selectedRecipient.recipientEmail, studentEmail: selectedRecipient.studentEmail, title, message });
+      await announcementsQuery.refetch();
+      setTitle(""); setMessage("");
+      toast.success(`Announcement sent to ${selectedRecipient.parentName} for ${selectedRecipient.studentName}.`);
+    } catch (error: any) { toast.error(error?.message || "Could not send announcement."); }
+  };
+  return <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]">
+    <form onSubmit={handleSubmit} className="rounded-3xl border border-[#eee6f0] bg-white p-6 shadow-sm">
+      <div className="flex items-start justify-between gap-4 border-b border-[#f0e8f8] pb-4"><div><p className="text-xs font-bold uppercase tracking-[0.18em] text-[#ef8656]">Private message</p><h2 className="mt-1 text-2xl font-semibold text-[#2f1f4a]">Send an announcement</h2><p className="mt-2 text-sm text-[#887c91]">Choose one parent and their linked child. Only that parent will see this message.</p></div><Megaphone className="shrink-0 text-[#6d4b9f]" size={24} /></div>
+      {portalUsersQuery.isLoading ? <LoadingState label="Loading parent accounts…" /> : !recipients.length ? <EmptyState title="No linked parent accounts" message="Create a parent account and link it to a student before sending an announcement." /> : <div className="mt-5 space-y-4">
+        <label className="block text-xs font-semibold uppercase tracking-[0.12em] text-[#776c88]">Parent and child<select required value={recipientEmail} onChange={event => setRecipientEmail(event.target.value)} className="mt-2 w-full rounded-2xl border border-[#e6deeb] bg-[#faf7fc] px-4 py-3 text-sm font-medium text-[#2f1f4a] outline-none focus:border-[#5b3b92]">{recipients.map(recipient => <option key={recipient.recipientEmail} value={recipient.recipientEmail}>{recipient.studentName} · {recipient.parentName}</option>)}</select></label>
+        <label className="block text-xs font-semibold uppercase tracking-[0.12em] text-[#776c88]">Title<input required maxLength={160} value={title} onChange={event => setTitle(event.target.value)} placeholder="e.g. Parent meeting reminder" className="mt-2 w-full rounded-2xl border border-[#e6deeb] px-4 py-3 text-sm outline-none focus:border-[#5b3b92]" /></label>
+        <label className="block text-xs font-semibold uppercase tracking-[0.12em] text-[#776c88]">Message<textarea required maxLength={5000} value={message} onChange={event => setMessage(event.target.value)} placeholder="Write the message for this parent…" className="mt-2 min-h-36 w-full rounded-2xl border border-[#e6deeb] px-4 py-3 text-sm leading-6 outline-none focus:border-[#5b3b92]" /></label>
+        <button type="submit" disabled={createAnnouncementMutation.isPending} className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-[#5b3b92] px-5 py-3 text-sm font-semibold text-white shadow-md transition hover:bg-[#482e75] disabled:opacity-50"><Send size={16} />{createAnnouncementMutation.isPending ? "Sending…" : "Send announcement"}</button>
+      </div>}
+    </form>
+    <div className="rounded-3xl border border-[#eee6f0] bg-white p-6 shadow-sm"><div className="flex items-center justify-between border-b border-[#f0e8f8] pb-4"><div><p className="text-xs font-bold uppercase tracking-[0.18em] text-[#ef8656]">Dispatch history</p><h2 className="mt-1 text-xl font-semibold text-[#2f1f4a]">Recent announcements</h2></div><span className="rounded-full bg-[#f3ecf9] px-3 py-1 text-xs font-semibold text-[#6d4b9f]">{announcementsQuery.data?.length || 0}</span></div>{announcementsQuery.isLoading ? <LoadingState label="Loading sent messages…" /> : !announcementsQuery.data?.length ? <EmptyState title="Nothing sent yet" message="Sent announcements will appear here." /> : <div className="mt-5 space-y-3">{announcementsQuery.data.map(announcement => <div className="rounded-2xl bg-[#faf7fc] p-4" key={announcement.id}><div className="flex items-start justify-between gap-3"><div><p className="text-sm font-semibold text-[#2f1f4a]">{announcement.title}</p><p className="mt-1 text-xs text-[#887c91]">To {announcement.recipientEmail} · For {announcement.studentEmail}</p></div><Megaphone className="shrink-0 text-[#8060ac]" size={17} /></div><p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-[#5d506c]">{announcement.message}</p><p className="mt-3 text-[11px] text-[#9a8da4]">{new Date(announcement.createdAt).toLocaleString("en-IN")}</p></div>)}</div>}</div>
+  </div>;
+}
+
 function AdminWorkspace({ user, onLogout }: { user: User; onLogout: () => void }) {
   const allStudents = loadStoredStudents();
   const activeStudents = allStudents.filter(student => student.status !== "inactive" && !!student.email);
@@ -6372,7 +6423,7 @@ function AdminWorkspace({ user, onLogout }: { user: User; onLogout: () => void }
   const sections = Array.from(new Set(activeStudents.filter(student => student.department === selectedDepartment).map(student => student.section))).sort();
   const [selectedSection, setSelectedSection] = useState(sections[0] || "A");
   const targetedStudents = activeStudents.filter(student => student.department === selectedDepartment && student.section === selectedSection);
-  const [active, setActive] = useState<"Overview" | "User Management" | "Students" | "Attendance" | "Schedule" | "Marks" | "Projects" | "Government exams" | "Question paper" | "Unit-wise paper" | "Profile">(() => {
+  const [active, setActive] = useState<"Overview" | "User Management" | "Students" | "Attendance" | "Schedule" | "Marks" | "Projects" | "Announcements" | "Government exams" | "Question paper" | "Unit-wise paper" | "Profile">(() => {
     try {
       const saved = sessionStorage.getItem("rasi_admin_active_tab");
       return (saved as any) || "Attendance";
@@ -6426,6 +6477,7 @@ function AdminWorkspace({ user, onLogout }: { user: User; onLogout: () => void }
     { label: "Schedule", icon: <CalendarDays size={16} /> },
     { label: "Marks", icon: <BarChart3 size={16} /> },
     { label: "Projects", icon: <NotebookPen size={16} /> },
+    { label: "Announcements", icon: <Megaphone size={16} /> },
     { label: "Government exams", icon: <ShieldCheck size={16} /> },
     { label: "Question paper", icon: <FileText size={16} /> },
     { label: "Unit-wise paper", icon: <BookOpen size={16} /> },
@@ -6481,6 +6533,8 @@ function AdminWorkspace({ user, onLogout }: { user: User; onLogout: () => void }
               ? "Filter by department and section to enter student test marks and dispatch directly to parent portals."
               : active === "Projects"
               ? "Assign student project ideas and descriptions with instant dispatch to parents."
+              : active === "Announcements"
+              ? "Send private messages to a parent about their linked child."
               : active === "Government exams"
               ? "Central and Tamil Nadu government examination calendar, criteria, and bulk Excel import."
               : active === "Question paper"
@@ -6746,6 +6800,7 @@ function AdminWorkspace({ user, onLogout }: { user: User; onLogout: () => void }
 
         {active === "Marks" && <AdminMarksManager />}
         {active === "Projects" && <AdminProjectsManager />}
+        {active === "Announcements" && <AdminAnnouncementManager />}
         {active === "Government exams" && <AdminGovernmentExamsManager />}
         {active === "Question paper" && <AdminQuestionPaperManager />}
         {active === "Unit-wise paper" && <AdminUnitPaperManager />}

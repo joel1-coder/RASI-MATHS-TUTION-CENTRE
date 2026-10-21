@@ -97,6 +97,16 @@ export const studentProjects = pgTable("student_projects", {
   updatedAt: timestamp("updatedAt").defaultNow().notNull(),
 });
 
+export const announcements = pgTable("announcements", {
+  id: serial("id").primaryKey(),
+  recipientEmail: varchar("recipientEmail", { length: 320 }).notNull(),
+  studentEmail: varchar("studentEmail", { length: 320 }).notNull(),
+  title: varchar("title", { length: 160 }).notNull(),
+  message: text("message").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().notNull(),
+});
+
 export const colleges = pgTable("colleges", {
   id: serial("id").primaryKey(),
   tier: varchar("tier", { length: 80 }).notNull(),
@@ -143,6 +153,8 @@ export type MarkStatement = typeof markStatements.$inferSelect;
 export type InsertMarkStatement = typeof markStatements.$inferInsert;
 export type StudentProject = typeof studentProjects.$inferSelect;
 export type InsertStudentProject = typeof studentProjects.$inferInsert;
+export type Announcement = typeof announcements.$inferSelect;
+export type InsertAnnouncement = typeof announcements.$inferInsert;
 export type College = typeof colleges.$inferSelect;
 export type InsertCollege = typeof colleges.$inferInsert;
 export type GovernmentExam = typeof governmentExams.$inferSelect;
