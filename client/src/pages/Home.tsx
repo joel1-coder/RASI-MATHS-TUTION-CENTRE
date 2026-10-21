@@ -1603,6 +1603,43 @@ function AdminProjectsManager() {
   const [sections] = useState<SectionItem[]>(loadStoredSections);
 
   const [students] = useState<ManagedStudent[]>(loadStoredStudents);
+  const dbPortalUsersQuery = trpc.admin.listPortalUsers.useQuery({}, {
+    staleTime: 0,
+    refetchOnWindowFocus: true,
+    refetchInterval: 5000,
+  });
+  const databaseStudents = useMemo<ManagedStudent[]>(() => {
+    const users = (dbPortalUsersQuery.data || []) as any[];
+    return users
+      .filter(user => user.role === "student" && String(user.email || "").includes("@"))
+      .map(user => {
+        const alias = users.find(candidate =>
+          candidate.role === "student" &&
+          candidate.linkedStudentEmail?.toLowerCase() === user.email?.toLowerCase()
+        );
+        const parent = users.find(candidate =>
+          candidate.role === "parent" &&
+          candidate.linkedStudentEmail?.toLowerCase() === user.email?.toLowerCase()
+        );
+        return {
+          id: `db-project-student-${user.id}`,
+          studentId: alias?.email || user.email,
+          name: user.name || "Student name not provided",
+          parentName: parent?.name || undefined,
+          parentEmail: parent?.email || undefined,
+          email: user.email,
+          department: user.department || "Unassigned",
+          section: user.section || "A",
+          status: user.status === "inactive" ? "inactive" : "active",
+          joinedDate: user.joinedDate || "—",
+          studentPassword: user.portalPassword || undefined,
+          parentPassword: parent?.portalPassword || undefined,
+        } satisfies ManagedStudent;
+      });
+  }, [dbPortalUsersQuery.data]);
+  const rosterStudents = !dbPortalUsersQuery.isLoading && !dbPortalUsersQuery.isError
+    ? databaseStudents
+    : students;
 
   const [selectedDept, setSelectedDept] = useState(departments[0] || "Grade 10");
   const [selectedSection, setSelectedSection] = useState("A");
@@ -1629,11 +1666,11 @@ function AdminProjectsManager() {
   }, [availableSections, selectedSection]);
 
   const filteredStudents = useMemo(() => {
-    return students.filter(
+    return rosterStudents.filter(
       s => s.department.toLowerCase() === selectedDept.toLowerCase() &&
            s.section.toLowerCase() === selectedSection.toLowerCase()
     );
-  }, [students, selectedDept, selectedSection]);
+  }, [rosterStudents, selectedDept, selectedSection]);
 
   const handleEnter = () => {
     setHasEntered(true);
@@ -1654,7 +1691,7 @@ function AdminProjectsManager() {
       const entriesToSave = filteredStudents
         .filter(s => projectMap[s.studentId]?.title.trim())
         .map(s => ({
-          studentEmail: s.email || `${s.studentId.toLowerCase()}@portal.com`,
+          studentEmail: s.email.trim().toLowerCase(),
           studentName: s.name,
           studentId: s.studentId,
           parentName: s.parentName || `${s.name.split(" ")[0]}'s Parent`,
@@ -1665,6 +1702,15 @@ function AdminProjectsManager() {
           status: "Assigned",
           progress: 0,
         }));
+
+      const invalidEntries = entriesToSave.filter(entry =>
+        !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(entry.studentEmail)
+      );
+      if (invalidEntries.length) {
+        toast.error(`Cannot dispatch projects: ${invalidEntries.map(entry => entry.studentName).join(", ")} have no valid student login email in the database.`);
+        setIsSubmitting(false);
+        return;
+      }
 
       if (!entriesToSave.length) {
         toast.error("Please enter a project idea for at least one student.");
