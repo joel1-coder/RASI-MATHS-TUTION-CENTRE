@@ -74,7 +74,7 @@ function SendConfirmModal({ open, paperType, onCancel, onConfirm, isPending }: S
 
   return (
     <div className="fixed inset-0 z-50 grid place-items-center bg-[#24203b]/50 p-4 backdrop-blur-sm">
-      <div className="w-full max-w-md rounded-2xl border border-white/40 bg-[#f6f1e9] p-6 shadow-2xl">
+      <div className="w-full max-w-md rounded-2xl border border-[#ded4c8] bg-white p-6 shadow-2xl dark:border-[rgba(212,175,55,0.35)] dark:bg-[#0F1B3D]">
         {/* Header */}
         <div className="flex items-start justify-between">
           <div>
@@ -397,7 +397,7 @@ export default function Admin() {
 
   if (loading)
     return (
-      <div className="grid min-h-screen place-items-center bg-[#f6f1e9] text-sm text-[#756a7a]">
+      <div className="grid min-h-screen place-items-center bg-white text-sm text-[#756a7a] dark:bg-[#0B0F1A] dark:text-[#F8F1DC]">
         Checking admin access…
       </div>
     );
@@ -405,8 +405,8 @@ export default function Admin() {
   if (user.role !== "admin") return <AccessDenied onLogout={logout} />;
 
   return (
-    <div className="min-h-screen bg-[#f6f1e9] text-[#282039]">
-      <header className="border-b border-[#e5dbcf] bg-[#f6f1e9]">
+    <div className="min-h-screen bg-white text-[#282039] dark:bg-[#0B0F1A] dark:text-[#F8F1DC]">
+      <header className="border-b border-[#e5dbcf] bg-white dark:border-[rgba(212,175,55,0.35)] dark:bg-[#0F1B3D]">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-5 py-4 lg:px-8">
           <Logo />
           <div className="flex items-center gap-3">
@@ -825,7 +825,7 @@ export default function Admin() {
       {/* Subject Editor Modal */}
       {(editing || form.name !== "" || form.code !== "" || form.summary !== "") && (
         <div className="fixed inset-0 z-40 grid place-items-center bg-[#24203b]/45 p-4 backdrop-blur-sm">
-          <div className="max-h-[92vh] w-full max-w-2xl overflow-auto rounded-2xl border border-white/50 bg-[#f6f1e9] p-6 shadow-2xl">
+          <div className="max-h-[92vh] w-full max-w-2xl overflow-auto rounded-2xl border border-white/50 bg-white p-6 shadow-2xl dark:border-[rgba(212,175,55,0.35)] dark:bg-[#0F1B3D]">
             <div className="flex items-start justify-between">
               <div>
                 <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#e0784f]">
@@ -968,8 +968,8 @@ export default function Admin() {
 
 function SignInState() {
   return (
-    <div className="grid min-h-screen place-items-center bg-[#f6f1e9] px-5">
-      <div className="w-full max-w-md rounded-2xl border border-[#e2d8cc] bg-[#fffdfa] p-8 text-center shadow-[0_18px_40px_rgba(62,45,70,0.08)]">
+    <div className="grid min-h-screen place-items-center bg-white px-5 dark:bg-[#0B0F1A]">
+      <div className="w-full max-w-md rounded-2xl border border-[#e2d8cc] bg-white p-8 text-center shadow-[0_18px_40px_rgba(62,45,70,0.08)] dark:border-[rgba(212,175,55,0.35)] dark:bg-[#0F1B3D]">
         <Logo />
         <div className="mx-auto mt-10 grid h-14 w-14 place-items-center rounded-2xl bg-[#ece8f6] text-[#5968a9]">
           <ShieldCheck size={24} />
@@ -1000,8 +1000,8 @@ function SignInState() {
 
 function AccessDenied({ onLogout }: { onLogout: () => void }) {
   return (
-    <div className="grid min-h-screen place-items-center bg-[#f6f1e9] px-5">
-      <div className="w-full max-w-md rounded-2xl border border-[#edd5d2] bg-[#fffdfa] p-8 text-center">
+    <div className="grid min-h-screen place-items-center bg-white px-5 dark:bg-[#0B0F1A]">
+      <div className="w-full max-w-md rounded-2xl border border-[#edd5d2] bg-white p-8 text-center dark:border-[rgba(212,175,55,0.35)] dark:bg-[#0F1B3D]">
         <ShieldCheck className="mx-auto text-[#c36661]" size={26} />
         <h1 className="mt-5 text-2xl font-extrabold text-[#2f315d]">Admin access required</h1>
         <p className="mt-3 text-sm leading-6 text-[#756a7a]">

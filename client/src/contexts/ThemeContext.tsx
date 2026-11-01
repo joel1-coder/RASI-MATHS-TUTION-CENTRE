@@ -24,17 +24,21 @@ export function ThemeProvider({
   const [theme, setTheme] = useState<Theme>(() => {
     if (switchable) {
       const stored = localStorage.getItem("theme");
-      return (stored as Theme) || defaultTheme;
+      // Default to "light" (white) unless the user explicitly chose "dark" (black)
+      return stored === "dark" ? "dark" : "light";
     }
-    return defaultTheme;
+    return "light";
   });
 
   useEffect(() => {
     const root = document.documentElement;
+    const metaThemeColor = document.querySelector('meta[name="theme-color"]');
     if (theme === "dark") {
       root.classList.add("dark");
+      if (metaThemeColor) metaThemeColor.setAttribute("content", "#0B0F1A");
     } else {
       root.classList.remove("dark");
+      if (metaThemeColor) metaThemeColor.setAttribute("content", "#ffffff");
     }
 
     if (switchable) {

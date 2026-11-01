@@ -126,7 +126,7 @@ function RoleChooser({ onChoose, onClose }: { onChoose: (role: Role) => void; on
       style={{ WebkitOverflowScrolling: "touch" }}
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
-      <div className="relative my-auto w-full max-w-4xl rounded-[28px] bg-[#fffdfb] p-5 sm:p-7 shadow-2xl dark:bg-[#0F1B3D] max-h-[calc(100dvh-1.5rem)] sm:max-h-none overflow-y-auto sm:overflow-visible">
+      <div className="relative my-auto w-full max-w-4xl rounded-[28px] bg-white p-5 sm:p-7 shadow-2xl dark:bg-[#0F1B3D] max-h-[calc(100dvh-1.5rem)] sm:max-h-none overflow-y-auto sm:overflow-visible">
         <ThemeToggle className="absolute right-12 sm:right-14 top-4 sm:top-5" />
         <button
           onClick={onClose}
@@ -259,7 +259,7 @@ function RoleLoginPage({ role, onLogin, onBack }: { role: Role; onLogin: (user: 
   };
 
   return (
-    <div className="login-shell relative min-h-screen bg-[#f5f0f8] text-[#271f3c] dark:bg-[#0B0F1A] dark:text-[#F8F1DC]">
+    <div className="login-shell relative min-h-screen bg-white text-[#271f3c] dark:bg-[#0B0F1A] dark:text-[#F8F1DC]">
       <ThemeToggle className="absolute right-5 top-5 z-10" />
       <div className="mx-auto grid min-h-screen max-w-6xl items-center gap-10 px-5 py-8 md:grid-cols-[.9fr_1.1fr] md:px-10">
         <div className="hidden md:block">
@@ -280,7 +280,7 @@ function RoleLoginPage({ role, onLogin, onBack }: { role: Role; onLogin: (user: 
           <button onClick={onBack} className="mb-6 flex items-center gap-2 text-xs font-semibold text-[#6d4b9f]">
             <ArrowRight className="rotate-180" size={14} /> Choose another login
           </button>
-          <div className="rounded-[28px] bg-[#fffdfb] p-7 shadow-xl shadow-[#b7a6c8]/20 dark:bg-[#0F1B3D] dark:shadow-black/40">
+          <div className="rounded-[28px] bg-white p-7 shadow-xl shadow-[#b7a6c8]/20 dark:bg-[#0F1B3D] dark:shadow-black/40">
             <div className="md:hidden">
               <Logo />
               <div className="mt-7" />
@@ -540,7 +540,7 @@ function MobileTopBar({
   return (
     <>
       {/* Mobile top bar */}
-      <header className="sticky top-0 z-40 flex items-center justify-between border-b border-[#ebe3ef] bg-[#fffdfb]/95 px-5 py-4 backdrop-blur md:hidden">
+      <header className="sticky top-0 z-40 flex items-center justify-between border-b border-[#ebe3ef] bg-white/95 px-5 py-4 backdrop-blur md:hidden dark:border-[rgba(212,175,55,0.35)] dark:bg-[#0F1B3D]/95">
         <button
           id="mobile-menu-toggle"
           onClick={() => setOpen(true)}
@@ -576,7 +576,7 @@ function MobileTopBar({
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
           {/* Drawer panel */}
           <div
-            className="relative z-10 flex h-full w-80 flex-col bg-[#fffdfb] p-6 shadow-2xl"
+            className="relative z-10 flex h-full w-80 flex-col bg-white p-6 shadow-2xl dark:bg-[#0F1B3D]"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between">
@@ -830,7 +830,7 @@ function StudentWorkspace({ user, onLogout }: { user: User; onLogout: () => void
     icon: i === 0 ? <LayoutDashboard size={16} /> : i === 1 ? <ClipboardCheck size={16} /> : i === 2 ? <BarChart3 size={16} /> : i === 3 ? <CalendarDays size={16} /> : i === 4 ? <BookOpen size={16} /> : i === 5 ? <FileText size={16} /> : i === 6 ? <MessageCircle size={16} /> : i === 7 ? <NotebookPen size={16} /> : <UserIcon size={16} />,
   }));
   return (
-    <div className="min-h-screen bg-[#f6f2f8] text-[#2a203e]">
+    <div className="min-h-screen bg-white text-[#2a203e] dark:bg-[#0B0F1A] dark:text-[#F8F1DC]">
       {/* Mobile top bar with hamburger */}
       <MobileTopBar
         user={user}
@@ -840,7 +840,7 @@ function StudentWorkspace({ user, onLogout }: { user: User; onLogout: () => void
         onNav={(label) => { setActive(label); setSelectedTest(null); }}
       />
       {/* Desktop sidebar */}
-      <aside className="fixed inset-y-0 left-0 hidden w-64 border-r border-[#ebe3ef] bg-[#fffdfb] p-6 md:block">
+      <aside className="fixed inset-y-0 left-0 hidden w-64 border-r border-[#ebe3ef] bg-white p-6 md:block dark:border-[rgba(212,175,55,0.35)] dark:bg-[#0F1B3D]">
         <Logo />
         <div className="mt-12">
           <p className="mb-3 text-[10px] font-bold uppercase tracking-[0.2em] text-[#a296ac]">Student workspace</p>
@@ -864,7 +864,7 @@ function StudentWorkspace({ user, onLogout }: { user: User; onLogout: () => void
       </aside>
       <main className="md:ml-64">
         {/* Desktop header */}
-        <header className="hidden items-center justify-between border-b border-[#ebe3ef] bg-[#fffdfb]/80 px-5 py-5 backdrop-blur md:flex md:px-10">
+        <header className="hidden items-center justify-between border-b border-[#ebe3ef] bg-white/80 px-5 py-5 backdrop-blur md:flex md:px-10 dark:border-[rgba(212,175,55,0.35)] dark:bg-[#0F1B3D]/80">
           <div>
             <p className="text-xs text-[#978ca1]">Student portal</p>
             <h1 className="mt-1 text-2xl font-semibold tracking-[-0.04em]">Good morning, {studentFullName.split(" ")[0]}.</h1>
@@ -1041,9 +1041,9 @@ function ParentWorkspace({ user, onLogout }: { user: User; onLogout: () => void 
     icon: item === "Overview" ? <LayoutDashboard size={16} /> : item === "Attendance" ? <ClipboardCheck size={16} /> : item === "Mark statements" ? <BarChart3 size={16} /> : item === "Projects" ? <NotebookPen size={16} /> : item === "Announcements" ? <Megaphone size={16} /> : item === "Colleges" ? <Building2 size={16} /> : item === "Government exams" ? <ShieldCheck size={16} /> : item === "Profile" ? <UserIcon size={16} /> : <BookOpen size={16} />,
   }));
   return (
-    <div className="min-h-screen bg-[#f6f2f8] text-[#2a203e]">
+    <div className="min-h-screen bg-white text-[#2a203e] dark:bg-[#0B0F1A] dark:text-[#F8F1DC]">
       <MobileTopBar user={user} onLogout={onLogout} navItems={parentNavItems} active={active} onNav={setActive} />
-      <aside className="fixed inset-y-0 left-0 hidden w-64 border-r border-[#ebe3ef] bg-[#fffdfb] p-6 md:block">
+      <aside className="fixed inset-y-0 left-0 hidden w-64 border-r border-[#ebe3ef] bg-white p-6 md:block dark:border-[rgba(212,175,55,0.35)] dark:bg-[#0F1B3D]">
         <Logo />
         <div className="mt-12">
           <p className="mb-3 text-[10px] font-bold uppercase tracking-[0.2em] text-[#a296ac]">Parent workspace</p>
@@ -1066,7 +1066,7 @@ function ParentWorkspace({ user, onLogout }: { user: User; onLogout: () => void 
         )}
       </aside>
       <main className="md:ml-64">
-        <header className="flex items-center justify-between border-b border-[#ebe3ef] bg-[#fffdfb]/80 px-5 py-5 backdrop-blur md:px-10">
+        <header className="flex items-center justify-between border-b border-[#ebe3ef] bg-white/80 px-5 py-5 backdrop-blur md:px-10 dark:border-[rgba(212,175,55,0.35)] dark:bg-[#0F1B3D]/80">
           <div>
             <p className="text-xs text-[#978ca1]">Parent portal</p>
             <h1 className="mt-1 text-2xl font-semibold tracking-[-0.04em]">Good morning, {user.name.split(" ")[0]}.</h1>
@@ -5399,6 +5399,135 @@ function AdminAttendanceManager() {
   );
 }
 
+function DispatchClassModal({
+  open,
+  paperTitle,
+  type = "question",
+  departments,
+  onClose,
+  onConfirm,
+  isSubmitting,
+}: {
+  open: boolean;
+  paperTitle: string;
+  type?: "question" | "unit";
+  departments?: string[];
+  onClose: () => void;
+  onConfirm: (targetClass: string, section: string) => void;
+  isSubmitting: boolean;
+}) {
+  const [grade, setGrade] = useState("Grade 10");
+  const [section, setSection] = useState("All Sections");
+
+  if (!open) return null;
+
+  const defaultGrades = [
+    "Grade 1",
+    "Grade 2",
+    "Grade 3",
+    "Grade 4",
+    "Grade 5",
+    "Grade 6",
+    "Grade 7",
+    "Grade 8",
+    "Grade 9",
+    "Grade 10",
+    "Grade 11",
+    "Grade 12",
+    "All classes",
+  ];
+  const grades = Array.from(new Set([...(departments || []), ...defaultGrades]));
+  const sections = ["All Sections", "Section A", "Section B", "Section C", "Section D"];
+
+  const targetDescription = section === "All Sections"
+    ? (grade === "All classes" ? "All classes and sections" : `All sections present in ${grade}`)
+    : `${grade} – ${section}`;
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const finalTargetClass = grade === "All classes" || section === "All Sections" ? grade : `${grade} – ${section}`;
+    onConfirm(finalTargetClass, section);
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
+      <div className="relative w-full max-w-md rounded-3xl border border-[#ded4c8] bg-white p-6 shadow-2xl dark:border-[rgba(212,175,55,0.35)] dark:bg-[#0F1B3D] dark:text-[#F8F1DC]">
+        <div className="flex items-center justify-between border-b border-[#f3ebf6] pb-3 dark:border-white/10">
+          <div>
+            <span className="text-[10px] font-bold uppercase tracking-wider text-[#ef8656]">Target Distribution</span>
+            <h3 className="text-lg font-bold text-[#2a203e] dark:text-white">Choose Department & Section</h3>
+          </div>
+          <button type="button" onClick={onClose} className="rounded-full p-1.5 text-[#81758e] hover:bg-[#f0e9f7] dark:hover:bg-white/10">
+            <X size={18} />
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="mt-4 space-y-4">
+          <p className="text-xs leading-5 text-[#81758e] dark:text-[#B8B3A0]">
+            Sending {type === "unit" ? "unit practice paper" : "question paper"}: <strong className="text-[#2a203e] dark:text-white">{paperTitle || "Untitled"}</strong>
+          </p>
+
+          <div>
+            <label className="block text-xs font-bold uppercase tracking-wider text-[#4a3e5c] dark:text-[#B8B3A0]">
+              Grade / Department *
+            </label>
+            <select
+              value={grade}
+              onChange={e => setGrade(e.target.value)}
+              className="mt-1.5 w-full rounded-2xl border border-[#e4dce9] bg-white px-4 py-2.5 text-sm text-[#2a203e] outline-none focus:border-[#6d4b9f] dark:border-[rgba(212,175,55,0.35)] dark:bg-[#172554] dark:text-white"
+            >
+              {grades.map(g => (
+                <option key={g} value={g}>{g}</option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold uppercase tracking-wider text-[#4a3e5c] dark:text-[#B8B3A0]">
+              Section *
+            </label>
+            <select
+              value={section}
+              onChange={e => setSection(e.target.value)}
+              disabled={grade === "All classes"}
+              className="mt-1.5 w-full rounded-2xl border border-[#e4dce9] bg-white px-4 py-2.5 text-sm text-[#2a203e] outline-none focus:border-[#6d4b9f] disabled:opacity-50 dark:border-[rgba(212,175,55,0.35)] dark:bg-[#172554] dark:text-white"
+            >
+              {sections.map(s => (
+                <option key={s} value={s}>{s}</option>
+              ))}
+            </select>
+          </div>
+
+          <div className="rounded-2xl border border-[#e9ddf4] bg-[#faf7fc] p-3 text-xs text-[#5b3b92] dark:border-white/10 dark:bg-white/5 dark:text-[#F5D76E]">
+            <p className="font-semibold">Dispatch target:</p>
+            <p className="mt-0.5 text-[11px] text-[#796c88] dark:text-[#B8B3A0]">
+              {targetDescription} {section === "All Sections" && grade !== "All classes" ? "(will deliver to all students and parents across all classes in this grade)" : ""}
+            </p>
+          </div>
+
+          <div className="flex justify-end gap-2 pt-2">
+            <button
+              type="button"
+              onClick={onClose}
+              className="rounded-xl px-4 py-2 text-xs font-semibold text-[#81758e] hover:bg-[#f0e9f7] dark:hover:bg-white/10"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className="flex items-center gap-2 rounded-xl bg-[#5b3b92] px-5 py-2 text-xs font-bold text-white shadow-md transition hover:bg-[#4a2e7c] disabled:opacity-60"
+            >
+              {isSubmitting ? <Loader2 className="animate-spin" size={14} /> : <Send size={14} />}
+              Confirm & Dispatch
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
 function AdminQuestionPaperManager() {
   const [departments] = useState<string[]>(() => {
     try {
@@ -5456,6 +5585,7 @@ function AdminQuestionPaperManager() {
   const [searchFilter, setSearchFilter] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [toastMsg, setToastMsg] = useState<string | null>(null);
+  const [showTargetModal, setShowTargetModal] = useState(false);
 
   const showLocalToast = (msg: string) => {
     setToastMsg(msg);
@@ -5481,9 +5611,8 @@ function AdminQuestionPaperManager() {
     reader.readAsDataURL(file);
   };
 
-  const handleDispatch = async (e: React.FormEvent) => {
+  const handleDispatch = (e: React.FormEvent) => {
     e.preventDefault();
-    const finalClass = targetClass === "Custom" ? customClass.trim() : targetClass;
     const finalSubject = subject === "Custom" ? customSubject.trim() : subject;
 
     if (!title.trim()) {
@@ -5494,11 +5623,13 @@ function AdminQuestionPaperManager() {
       showLocalToast("Please enter or select a subject.");
       return;
     }
-    if (!finalClass) {
-      showLocalToast("Please specify the target class.");
-      return;
-    }
 
+    // Open target distribution modal to select Grade and Section
+    setShowTargetModal(true);
+  };
+
+  const confirmDispatch = async (chosenClass: string) => {
+    const finalSubject = subject === "Custom" ? customSubject.trim() : subject;
     const finalLink = uploadedFileData || docLink.trim() || "#";
 
     setIsSubmitting(true);
@@ -5508,7 +5639,7 @@ function AdminQuestionPaperManager() {
       subject: finalSubject,
       link: finalLink,
       type: "paper",
-      targetClass: finalClass,
+      targetClass: chosenClass,
       date: new Date().toISOString().slice(0, 10),
       term: term.trim() || "Term 1 · 2026",
       maxMarks: maxMarks.trim() || "100 Marks",
@@ -5521,18 +5652,19 @@ function AdminQuestionPaperManager() {
         title: newPaper.title,
         subject: newPaper.subject,
         link: newPaper.link,
-        targetClass: newPaper.targetClass || "All classes",
+        targetClass: chosenClass || "All classes",
       });
     } catch {}
 
     setPapers(prev => [newPaper, ...prev]);
     setIsSubmitting(false);
+    setShowTargetModal(false);
     setTitle("");
     setDocLink("");
     setUploadedFileName(null);
     setUploadedFileSize(null);
     setUploadedFileData(null);
-    showLocalToast(`Question paper dispatched to ${finalClass} students and parents!`);
+    showLocalToast(`Question paper dispatched to ${chosenClass} students and parents!`);
   };
 
   const handleDelete = (id: string) => {
@@ -5862,6 +5994,16 @@ function AdminQuestionPaperManager() {
           </div>
         )}
       </div>
+
+      <DispatchClassModal
+        open={showTargetModal}
+        paperTitle={title}
+        type="question"
+        departments={departments}
+        onClose={() => setShowTargetModal(false)}
+        onConfirm={confirmDispatch}
+        isSubmitting={isSubmitting}
+      />
     </div>
   );
 }
@@ -5925,6 +6067,7 @@ function AdminUnitPaperManager() {
   const [searchFilter, setSearchFilter] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [toastMsg, setToastMsg] = useState<string | null>(null);
+  const [showTargetModal, setShowTargetModal] = useState(false);
 
   const showLocalToast = (msg: string) => {
     setToastMsg(msg);
@@ -5950,11 +6093,9 @@ function AdminUnitPaperManager() {
     reader.readAsDataURL(file);
   };
 
-  const handleDispatch = async (e: React.FormEvent) => {
+  const handleDispatch = (e: React.FormEvent) => {
     e.preventDefault();
-    const finalClass = targetClass === "Custom" ? customClass.trim() : targetClass;
     const finalSubject = subject === "Custom" ? customSubject.trim() : subject;
-    const finalSection = section === "Custom" ? customSection.trim() : section;
 
     if (!unitTitle.trim()) {
       showLocalToast("Please enter the unit title / questions topic.");
@@ -5964,11 +6105,13 @@ function AdminUnitPaperManager() {
       showLocalToast("Please enter or select a subject.");
       return;
     }
-    if (!finalClass) {
-      showLocalToast("Please specify the target class.");
-      return;
-    }
 
+    // Open target distribution modal to select Grade and Section
+    setShowTargetModal(true);
+  };
+
+  const confirmDispatch = async (chosenClass: string, chosenSection: string) => {
+    const finalSubject = subject === "Custom" ? customSubject.trim() : subject;
     const finalLink = uploadedFileData || docLink.trim() || "#";
 
     setIsSubmitting(true);
@@ -5976,10 +6119,10 @@ function AdminUnitPaperManager() {
       id: `uq-${Date.now()}`,
       title: `${unitNumber ? `${unitNumber}: ` : ""}${unitTitle.trim()}`,
       subject: finalSubject,
-      section: finalSection,
+      section: chosenSection,
       link: finalLink,
       type: "unit",
-      targetClass: finalClass,
+      targetClass: chosenClass,
       date: new Date().toISOString().slice(0, 10),
       term: unitNumber || "Unit Practice",
       maxMarks: weightage.trim() || "20 Questions",
@@ -5991,20 +6134,21 @@ function AdminUnitPaperManager() {
       await createMutation.mutateAsync({
         title: newUnit.title,
         subject: newUnit.subject,
-        section: newUnit.section || "All Sections",
+        section: chosenSection || "All Sections",
         link: newUnit.link,
-        targetClass: newUnit.targetClass || "All classes",
+        targetClass: chosenClass || "All classes",
       });
     } catch {}
 
     setUnitPapers(prev => [newUnit, ...prev]);
     setIsSubmitting(false);
+    setShowTargetModal(false);
     setUnitTitle("");
     setDocLink("");
     setUploadedFileName(null);
     setUploadedFileSize(null);
     setUploadedFileData(null);
-    showLocalToast(`Unit-wise paper dispatched to ${finalClass} students and parents!`);
+    showLocalToast(`Unit-wise paper dispatched to ${chosenClass} students and parents!`);
   };
 
   const handleDelete = (id: string) => {
@@ -6368,6 +6512,16 @@ function AdminUnitPaperManager() {
           </div>
         )}
       </div>
+
+      <DispatchClassModal
+        open={showTargetModal}
+        paperTitle={unitTitle}
+        type="unit"
+        departments={departments}
+        onClose={() => setShowTargetModal(false)}
+        onConfirm={confirmDispatch}
+        isSubmitting={isSubmitting}
+      />
     </div>
   );
 }
@@ -6483,10 +6637,10 @@ function AdminWorkspace({ user, onLogout }: { user: User; onLogout: () => void }
     { label: "Unit-wise paper", icon: <BookOpen size={16} /> },
     { label: "Profile", icon: <UserIcon size={16} /> },
   ];
-  return <div className="min-h-screen bg-[#f6f2f8] text-[#2a203e]">
+  return <div className="min-h-screen bg-white text-[#2a203e] dark:bg-[#0B0F1A] dark:text-[#F8F1DC]">
     {/* Mobile top bar with hamburger */}
     <MobileTopBar user={user} onLogout={onLogout} navItems={adminNavItems} active={active} onNav={(label) => setActive(label as typeof active)} />
-    <aside className="fixed inset-y-0 left-0 hidden w-64 border-r border-[#ebe3ef] bg-[#fffdfb] p-6 md:block">
+    <aside className="fixed inset-y-0 left-0 hidden w-64 border-r border-[#ebe3ef] bg-white p-6 md:block dark:border-[rgba(212,175,55,0.35)] dark:bg-[#0F1B3D]">
       <Logo />
       <div className="mt-12">
         <p className="mb-3 text-[10px] font-bold uppercase tracking-[0.2em] text-[#a296ac]">Admin workspace</p>
@@ -6505,7 +6659,7 @@ function AdminWorkspace({ user, onLogout }: { user: User; onLogout: () => void }
       </div>
     </aside>
     <main className="md:ml-64">
-      <header className="hidden items-center justify-between border-b border-[#ebe3ef] bg-[#fffdfb]/80 px-5 py-5 backdrop-blur md:flex md:px-10">
+      <header className="hidden items-center justify-between border-b border-[#ebe3ef] bg-white/80 px-5 py-5 backdrop-blur md:flex md:px-10 dark:border-[rgba(212,175,55,0.35)] dark:bg-[#0F1B3D]/80">
         <div>
           <p className="text-xs text-[#978ca1]">Admin portal</p>
           <h1 className="mt-1 text-2xl font-semibold tracking-[-0.04em]">Good morning, {user.name.split(" ")[0]}.</h1>
@@ -7305,7 +7459,7 @@ function TeacherWorkspace({ user, onLogout }: { user: User; onLogout: () => void
   ];
 
   return (
-    <div className="min-h-screen bg-[#f6f2f8] text-[#2a203e]">
+    <div className="min-h-screen bg-white text-[#2a203e] dark:bg-[#0B0F1A] dark:text-[#F8F1DC]">
       {/* Toast Notification */}
       {toastMessage && (
         <div className="fixed bottom-6 right-6 z-50 flex items-center gap-3 rounded-2xl bg-[#0c2340] px-5 py-3.5 text-sm font-medium text-white shadow-2xl transition-all">
@@ -7327,7 +7481,7 @@ function TeacherWorkspace({ user, onLogout }: { user: User; onLogout: () => void
       />
 
       {/* LEFT SIDEBAR (Matching Student and Admin Workspaces) */}
-      <aside className="fixed inset-y-0 left-0 hidden w-64 border-r border-[#ebe3ef] bg-[#fffdfb] p-6 md:block">
+      <aside className="fixed inset-y-0 left-0 hidden w-64 border-r border-[#ebe3ef] bg-white p-6 md:block dark:border-[rgba(212,175,55,0.35)] dark:bg-[#0F1B3D]">
         <Logo />
         <div className="mt-12">
           <p className="mb-3 text-[10px] font-bold uppercase tracking-[0.2em] text-[#a296ac]">Teacher workspace</p>
@@ -7358,7 +7512,7 @@ function TeacherWorkspace({ user, onLogout }: { user: User; onLogout: () => void
 
       {/* MAIN CONTENT AREA */}
       <main className="md:ml-64">
-        <header className="hidden items-center justify-between border-b border-[#ebe3ef] bg-[#fffdfb]/80 px-5 py-5 backdrop-blur md:flex md:px-10">
+        <header className="hidden items-center justify-between border-b border-[#ebe3ef] bg-white/80 px-5 py-5 backdrop-blur md:flex md:px-10 dark:border-[rgba(212,175,55,0.35)] dark:bg-[#0F1B3D]/80">
           <div>
             <p className="text-xs text-[#978ca1]">Teacher portal</p>
             <h1 className="mt-1 text-2xl font-semibold tracking-[-0.04em]">Good morning, {user.name.split(" ")[0]}.</h1>
@@ -8687,7 +8841,7 @@ function Dashboard({ user, onLogout }: { user: User; onLogout: () => void }) {
   );
 
   return (
-    <div className="min-h-screen bg-[#f6f2f8] text-[#2a203e]">
+    <div className="min-h-screen bg-white text-[#2a203e] dark:bg-[#0B0F1A] dark:text-[#F8F1DC]">
       {/* Mobile overlay */}
       {sidebarOpen && (
         <div
@@ -8697,7 +8851,7 @@ function Dashboard({ user, onLogout }: { user: User; onLogout: () => void }) {
       )}
 
       {/* Mobile slide-in sidebar */}
-      <aside className={`fixed inset-y-0 left-0 z-50 w-72 border-r border-[#ebe3ef] bg-[#fffdfb] p-6 transition-transform duration-300 md:hidden ${
+      <aside className={`fixed inset-y-0 left-0 z-50 w-72 border-r border-[#ebe3ef] bg-white p-6 transition-transform duration-300 dark:border-[rgba(212,175,55,0.35)] dark:bg-[#0F1B3D] md:hidden ${
         sidebarOpen ? "translate-x-0" : "-translate-x-full"
       }`}>
         <button
@@ -8710,13 +8864,13 @@ function Dashboard({ user, onLogout }: { user: User; onLogout: () => void }) {
       </aside>
 
       {/* Desktop sidebar */}
-      <aside className="fixed inset-y-0 left-0 hidden w-64 border-r border-[#ebe3ef] bg-[#fffdfb] p-6 md:block">
+      <aside className="fixed inset-y-0 left-0 hidden w-64 border-r border-[#ebe3ef] bg-white p-6 md:block dark:border-[rgba(212,175,55,0.35)] dark:bg-[#0F1B3D]">
         <SidebarContent />
       </aside>
 
       <main className="md:ml-64">
         {/* Header */}
-        <header className="flex items-center justify-between border-b border-[#ebe3ef] bg-[#fffdfb]/80 px-4 py-4 backdrop-blur md:px-10">
+        <header className="flex items-center justify-between border-b border-[#ebe3ef] bg-white/80 px-4 py-4 backdrop-blur md:px-10 dark:border-[rgba(212,175,55,0.35)] dark:bg-[#0F1B3D]/80">
           <div className="flex items-center gap-3">
             {/* Hamburger — mobile only */}
             <button

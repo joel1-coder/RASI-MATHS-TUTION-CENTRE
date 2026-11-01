@@ -94,7 +94,7 @@ export default function CollegesPage() {
   const tier3 = colleges.filter(c => c.tier === "Tier 3");
 
   return (
-    <div className="min-h-screen bg-[#faf7fc]">
+    <div className="min-h-screen bg-white dark:bg-[#0B0F1A] dark:text-[#F8F1DC]">
       <header className="sticky top-0 z-20 border-b border-[#ede6f8] bg-white/90 backdrop-blur-sm">
         <div className="mx-auto flex max-w-5xl items-center gap-4 px-4 py-4 sm:px-6">
           <a href="/" className="flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-semibold text-[#5b3b92] transition hover:bg-[#f0e8f8]">
