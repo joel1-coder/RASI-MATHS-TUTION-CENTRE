@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, or } from "drizzle-orm";
+import { and, asc, desc, eq, or, like } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 import { announcements, colleges, governmentExams, InsertAnnouncement, InsertCollege, InsertGovernmentExam, InsertMarkStatement, InsertStudentAttendance, InsertStudentProject, InsertUser, InsertScheduleSession, markStatements, scheduleSessions, studentAttendance, studentProjects, subjects, InsertSubject, users, questionPapers, unitQuestions, InsertQuestionPaper, InsertUnitQuestion, siteSettings, InsertSiteSetting } from "../drizzle/schema";
@@ -566,8 +566,26 @@ export async function upsertBulkGovernmentExams(records: InsertGovernmentExam[])
 export async function listQuestionPapers(targetClass?: string) {
   const db = await getDb();
   if (!db) return [];
-  if (targetClass) {
-    return db.select().from(questionPapers).where(eq(questionPapers.targetClass, targetClass)).orderBy(desc(questionPapers.createdAt));
+  if (targetClass && targetClass !== "All classes" && targetClass !== "All") {
+    // Match exact class OR any section within that grade.
+    // Stored values: "Grade 10" (all-section broadcast) or "Grade 10 – Section A" (specific).
+    // A student in "Grade 10 – Section A" should see papers sent to:
+    //   1. "Grade 10" (grade-wide broadcast)
+    //   2. "Grade 10 – Section A" (exact match)
+    // Extract base grade (everything before " – ")
+    const baseGrade = targetClass.split(" – ")[0].trim();
+    return db
+      .select()
+      .from(questionPapers)
+      .where(
+        or(
+          eq(questionPapers.targetClass, baseGrade),               // grade-wide broadcast
+          eq(questionPapers.targetClass, targetClass),             // exact section match
+          eq(questionPapers.targetClass, "All classes"),           // sent to everyone
+          like(questionPapers.targetClass, `${baseGrade} –%`),    // any section of that grade
+        )
+      )
+      .orderBy(desc(questionPapers.createdAt));
   }
   return db.select().from(questionPapers).orderBy(desc(questionPapers.createdAt));
 }
@@ -588,16 +606,40 @@ export async function deleteQuestionPaper(id: number) {
 export async function listUnitQuestions(targetClass?: string, section?: string) {
   const db = await getDb();
   if (!db) return [];
-  const conditions = [];
+
   if (targetClass && targetClass !== "All classes" && targetClass !== "All") {
-    conditions.push(eq(unitQuestions.targetClass, targetClass));
+    // Extract base grade for prefix matching
+    const baseGrade = targetClass.split(" – ")[0].trim();
+
+    // Build targetClass conditions: grade-wide, exact section, all-classes, or any section of grade
+    const classConditions = or(
+      eq(unitQuestions.targetClass, baseGrade),
+      eq(unitQuestions.targetClass, targetClass),
+      eq(unitQuestions.targetClass, "All classes"),
+      like(unitQuestions.targetClass, `${baseGrade} –%`),
+    );
+
+    // Optionally further filter by section
+    if (section && section !== "All Sections" && section !== "All") {
+      return db
+        .select()
+        .from(unitQuestions)
+        .where(
+          and(
+            classConditions,
+            or(eq(unitQuestions.section, section), eq(unitQuestions.section, "All Sections"))
+          )
+        )
+        .orderBy(desc(unitQuestions.createdAt));
+    }
+
+    return db
+      .select()
+      .from(unitQuestions)
+      .where(classConditions)
+      .orderBy(desc(unitQuestions.createdAt));
   }
-  if (section && section !== "All Sections" && section !== "All") {
-    conditions.push(or(eq(unitQuestions.section, section), eq(unitQuestions.section, "All Sections")));
-  }
-  if (conditions.length > 0) {
-    return db.select().from(unitQuestions).where(and(...conditions)).orderBy(desc(unitQuestions.createdAt));
-  }
+
   return db.select().from(unitQuestions).orderBy(desc(unitQuestions.createdAt));
 }
 

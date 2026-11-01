@@ -22,7 +22,7 @@ const blankSubject: SubjectForm = {
   sortOrder: 10,
 };
 
-const DEPARTMENTS = [
+const GRADES = [
   "Grade 1",
   "Grade 2",
   "Grade 3",
@@ -37,6 +37,134 @@ const DEPARTMENTS = [
   "Grade 12",
   "All classes",
 ];
+
+const SECTIONS = ["All Sections", "Section A", "Section B", "Section C", "Section D"];
+
+/**
+ * Build a targetClass string for DB storage.
+ * If section is "All Sections" we store just the grade (e.g. "Grade 10").
+ * Otherwise we store "Grade 10 – Section A".
+ * This lets the DB query do a prefix/exact match so a grade-level broadcast
+ * reaches all section rows that start with the same grade prefix.
+ */
+function buildTargetClass(grade: string, section: string): string {
+  if (grade === "All classes" || section === "All Sections") return grade;
+  return `${grade} – ${section}`;
+}
+
+// ── Send Confirmation Modal ────────────────────────────────────────────────────
+interface SendConfirmModalProps {
+  open: boolean;
+  paperType: "question" | "unit";
+  onCancel: () => void;
+  onConfirm: (grade: string, section: string) => void;
+  isPending: boolean;
+}
+
+function SendConfirmModal({ open, paperType, onCancel, onConfirm, isPending }: SendConfirmModalProps) {
+  const [grade, setGrade] = useState("Grade 10");
+  const [section, setSection] = useState("All Sections");
+
+  if (!open) return null;
+
+  const label = paperType === "question" ? "Question Paper" : "Unit Question Paper";
+  const targetLabel = section === "All Sections"
+    ? `All sections of ${grade}`
+    : `${grade} – ${section}`;
+
+  return (
+    <div className="fixed inset-0 z-50 grid place-items-center bg-[#24203b]/50 p-4 backdrop-blur-sm">
+      <div className="w-full max-w-md rounded-2xl border border-white/40 bg-[#f6f1e9] p-6 shadow-2xl">
+        {/* Header */}
+        <div className="flex items-start justify-between">
+          <div>
+            <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#e0784f]">
+              Dispatch {label}
+            </p>
+            <h2 className="mt-2 text-xl font-extrabold tracking-[-0.04em] text-[#2f315d]">
+              Choose target class
+            </h2>
+          </div>
+          <button
+            type="button"
+            onClick={onCancel}
+            className="grid h-9 w-9 place-items-center rounded-full bg-[#fffdfa] text-[#776b7b] hover:bg-[#ede7df]"
+            aria-label="Cancel"
+          >
+            <X size={17} />
+          </button>
+        </div>
+
+        <p className="mt-3 text-sm leading-6 text-[#756a7a]">
+          Select the <strong>grade</strong> and optionally a <strong>section</strong>. If you choose
+          "All Sections", the paper will be delivered to every section in that grade.
+        </p>
+
+        <div className="mt-5 grid gap-4 sm:grid-cols-2">
+          {/* Grade selector */}
+          <label className="block text-xs font-bold uppercase tracking-[0.14em] text-[#756a7a]">
+            Grade / Department
+            <select
+              value={grade}
+              onChange={(e) => setGrade(e.target.value)}
+              className="mt-2 w-full rounded-xl border border-[#ded4c8] bg-[#fffdfa] px-3 py-2.5 text-sm font-normal text-[#322743] outline-none transition focus:border-[#5968a9] focus:ring-2 focus:ring-[#5968a9]/10"
+            >
+              {GRADES.map((g) => (
+                <option key={g} value={g}>{g}</option>
+              ))}
+            </select>
+          </label>
+
+          {/* Section selector */}
+          <label className="block text-xs font-bold uppercase tracking-[0.14em] text-[#756a7a]">
+            Section
+            <select
+              value={section}
+              onChange={(e) => setSection(e.target.value)}
+              disabled={grade === "All classes"}
+              className="mt-2 w-full rounded-xl border border-[#ded4c8] bg-[#fffdfa] px-3 py-2.5 text-sm font-normal text-[#322743] outline-none transition focus:border-[#5968a9] focus:ring-2 focus:ring-[#5968a9]/10 disabled:opacity-50"
+            >
+              {SECTIONS.map((s) => (
+                <option key={s} value={s}>{s}</option>
+              ))}
+            </select>
+          </label>
+        </div>
+
+        {/* Preview */}
+        <div className="mt-4 rounded-xl border border-[#dcd1c5] bg-[#faf7f3] px-4 py-3">
+          <p className="text-xs font-bold uppercase tracking-[0.14em] text-[#756a7a]">Will be sent to</p>
+          <p className="mt-1 text-sm font-semibold text-[#2f315d]">{targetLabel}</p>
+          {section === "All Sections" && grade !== "All classes" && (
+            <p className="mt-1 text-xs text-[#918596]">
+              All students &amp; parents in every section of {grade} will receive this paper.
+            </p>
+          )}
+        </div>
+
+        {/* Actions */}
+        <div className="mt-5 flex justify-end gap-3 border-t border-[#ded4c8] pt-5">
+          <button
+            type="button"
+            onClick={onCancel}
+            className="rounded-xl px-4 py-2.5 text-sm font-bold text-[#756a7a] hover:bg-[#ede7df]"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            disabled={isPending}
+            onClick={() => onConfirm(grade, section)}
+            className="flex items-center gap-2 rounded-xl bg-[#2f315d] px-5 py-2.5 text-sm font-bold text-white shadow-[0_4px_0_#e9b08f] transition hover:bg-[#25274e] disabled:opacity-60 active:translate-y-px"
+          >
+            <Send size={15} />
+            {isPending ? "Sending…" : "Confirm & Send"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 function Logo() {
   return (
@@ -129,6 +257,7 @@ export default function Admin() {
       setPaperTitle("");
       setPaperSubject("Mathematics");
       setPaperLink("");
+      setPaperSendModal(false);
       toast.success(`Question paper sent to ${paperClass} students & parents!`);
     },
   });
@@ -142,6 +271,7 @@ export default function Admin() {
   const [paperSubject, setPaperSubject] = useState("Mathematics");
   const [paperLink, setPaperLink] = useState("");
   const [paperClass, setPaperClass] = useState("Grade 10");
+  const [paperSendModal, setPaperSendModal] = useState(false);
 
   // Unit Questions State
   const unitQuestionsQuery = trpc.admin.listUnitQuestions.useQuery(undefined, {
@@ -154,6 +284,7 @@ export default function Admin() {
       setUnitTitle("");
       setUnitSubject("Mathematics");
       setUnitLink("");
+      setUnitSendModal(false);
       toast.success(`Unit question sent to ${unitClass} students & parents!`);
     },
   });
@@ -168,6 +299,7 @@ export default function Admin() {
   const [unitSection, setUnitSection] = useState("All Sections");
   const [unitLink, setUnitLink] = useState("");
   const [unitClass, setUnitClass] = useState("Grade 10");
+  const [unitSendModal, setUnitSendModal] = useState(false);
 
   function closeEditor() {
     setEditing(null);
@@ -226,11 +358,18 @@ export default function Admin() {
       toast.error("Title and subject are required");
       return;
     }
+    // Open the grade/section confirmation modal
+    setPaperSendModal(true);
+  }
+
+  function confirmSendPaper(grade: string, section: string) {
+    const targetClass = buildTargetClass(grade, section);
+    setPaperClass(targetClass);
     createPaperMutation.mutate({
       title: paperTitle.trim(),
       subject: paperSubject.trim(),
       link: paperLink.trim() || "#",
-      targetClass: paperClass,
+      targetClass,
     });
   }
 
@@ -240,12 +379,19 @@ export default function Admin() {
       toast.error("Title and subject are required");
       return;
     }
+    // Open the grade/section confirmation modal
+    setUnitSendModal(true);
+  }
+
+  function confirmSendUnit(grade: string, section: string) {
+    const targetClass = buildTargetClass(grade, section);
+    setUnitClass(targetClass);
     createUnitMutation.mutate({
       title: unitTitle.trim(),
       subject: unitSubject.trim(),
-      section: unitSection,
+      section: section === "All Sections" ? "All Sections" : section,
       link: unitLink.trim() || "#",
-      targetClass: unitClass,
+      targetClass,
     });
   }
 
@@ -474,21 +620,7 @@ export default function Admin() {
                 <Field label="Paper Title" value={paperTitle} onChange={setPaperTitle} placeholder="e.g. Grade 10 Mid-Term Maths Paper" />
                 <Field label="Subject" value={paperSubject} onChange={setPaperSubject} placeholder="e.g. Mathematics" />
               </div>
-              <div className="grid gap-4 sm:grid-cols-2">
-                <label className="block text-xs font-bold uppercase tracking-[0.14em] text-[#756a7a]">
-                  Target Class / Batch
-                  <select
-                    value={paperClass}
-                    onChange={(e) => setPaperClass(e.target.value)}
-                    className="mt-2 w-full rounded-xl border border-[#ded4c8] bg-[#fffdfa] px-3 py-2.5 text-sm font-normal text-[#322743] outline-none transition focus:border-[#5968a9]"
-                  >
-                    {DEPARTMENTS.map((dept) => (
-                      <option key={dept} value={dept}>
-                        {dept}
-                      </option>
-                    ))}
-                  </select>
-                </label>
+              <div className="grid gap-4 sm:grid-cols-1">
                 <Field label="Document Link (URL or upload below)" value={paperLink} onChange={setPaperLink} placeholder="https://res.cloudinary.com/... or Google Drive URL" />
               </div>
 
@@ -513,7 +645,7 @@ export default function Admin() {
                   disabled={createPaperMutation.isPending}
                   className="flex items-center gap-2 rounded-xl bg-[#2f315d] px-6 py-3 text-sm font-bold text-white shadow-[0_4px_0_#e9b08f] transition hover:bg-[#25274e] disabled:opacity-60"
                 >
-                  <Send size={16} /> {createPaperMutation.isPending ? "Sending..." : `Send to ${paperClass}`}
+                  <Send size={16} /> Choose Class & Send
                 </button>
               </div>
             </form>
@@ -593,39 +725,11 @@ export default function Admin() {
             {/* Upload Form */}
             <form onSubmit={handleSendUnit} className="rounded-2xl border border-[#e2d8cc] bg-[#fffdfa] p-6 shadow-sm space-y-5">
               <h2 className="text-lg font-bold text-[#2f315d]">Upload / Create Unit Question</h2>
-              <div className="grid gap-4 sm:grid-cols-3">
+              <div className="grid gap-4 sm:grid-cols-2">
                 <Field label="Unit Question Title" value={unitTitle} onChange={setUnitTitle} placeholder="e.g. Unit 3 Trigonometry Important Questions" />
                 <Field label="Subject" value={unitSubject} onChange={setUnitSubject} placeholder="e.g. Mathematics" />
-                <label className="block text-xs font-bold uppercase tracking-[0.14em] text-[#756a7a]">
-                  Section
-                  <select
-                    value={unitSection}
-                    onChange={(e) => setUnitSection(e.target.value)}
-                    className="mt-2 w-full rounded-xl border border-[#ded4c8] bg-[#fffdfa] px-3 py-2.5 text-sm font-normal text-[#322743] outline-none transition focus:border-[#5968a9]"
-                  >
-                    {["All Sections", "Section A", "Section B", "Section C", "Section D"].map((sec) => (
-                      <option key={sec} value={sec}>
-                        {sec}
-                      </option>
-                    ))}
-                  </select>
-                </label>
               </div>
-              <div className="grid gap-4 sm:grid-cols-2">
-                <label className="block text-xs font-bold uppercase tracking-[0.14em] text-[#756a7a]">
-                  Target Class / Batch
-                  <select
-                    value={unitClass}
-                    onChange={(e) => setUnitClass(e.target.value)}
-                    className="mt-2 w-full rounded-xl border border-[#ded4c8] bg-[#fffdfa] px-3 py-2.5 text-sm font-normal text-[#322743] outline-none transition focus:border-[#5968a9]"
-                  >
-                    {DEPARTMENTS.map((dept) => (
-                      <option key={dept} value={dept}>
-                        {dept}
-                      </option>
-                    ))}
-                  </select>
-                </label>
+              <div className="grid gap-4 sm:grid-cols-1">
                 <Field label="Document Link (URL or upload below)" value={unitLink} onChange={setUnitLink} placeholder="https://res.cloudinary.com/... or Google Drive URL" />
               </div>
 
@@ -650,7 +754,7 @@ export default function Admin() {
                   disabled={createUnitMutation.isPending}
                   className="flex items-center gap-2 rounded-xl bg-[#2f315d] px-6 py-3 text-sm font-bold text-white shadow-[0_4px_0_#e9b08f] transition hover:bg-[#25274e] disabled:opacity-60"
                 >
-                  <Send size={16} /> {createUnitMutation.isPending ? "Sending..." : `Send to ${unitClass}`}
+                  <Send size={16} /> Choose Class & Send
                 </button>
               </div>
             </form>
@@ -840,6 +944,24 @@ export default function Admin() {
           </div>
         </div>
       )}
+
+      {/* Send Confirmation Modal – Question Papers */}
+      <SendConfirmModal
+        open={paperSendModal}
+        paperType="question"
+        onCancel={() => setPaperSendModal(false)}
+        onConfirm={confirmSendPaper}
+        isPending={createPaperMutation.isPending}
+      />
+
+      {/* Send Confirmation Modal – Unit Questions */}
+      <SendConfirmModal
+        open={unitSendModal}
+        paperType="unit"
+        onCancel={() => setUnitSendModal(false)}
+        onConfirm={confirmSendUnit}
+        isPending={createUnitMutation.isPending}
+      />
     </div>
   );
 }
