@@ -203,6 +203,21 @@ export async function upsertPortalUser(input: {
     loginMethod: "password" as const,
     lastSignedIn: new Date(),
   };
+  // Older portal accounts used an email-only openId. Reuse the matching
+  // role account before inserting so deployments with an email uniqueness
+  // constraint can still save edits and migrate that account to the new key.
+  const existing = await db.select().from(users)
+    .where(and(eq(users.email, emailKey), eq(users.role, input.role)))
+    .limit(1);
+  if (existing[0]) {
+    await db.update(users).set({
+      ...values,
+      updatedAt: new Date(),
+      status: "active",
+    }).where(eq(users.id, existing[0].id));
+    const updated = await db.select().from(users).where(eq(users.id, existing[0].id)).limit(1);
+    return updated[0];
+  }
   await db
     .insert(users)
     .values(values)
