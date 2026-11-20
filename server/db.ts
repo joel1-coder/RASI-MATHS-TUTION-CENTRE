@@ -487,6 +487,14 @@ export async function listAnnouncementsForRecipient(recipientEmail: string) {
     .orderBy(desc(announcements.createdAt));
 }
 
+export async function listAnnouncementsForStudent(studentEmail: string) {
+  const db = await getDb();
+  if (!db) throw new Error("Database is not available while loading announcements");
+  return db.select().from(announcements)
+    .where(eq(announcements.studentEmail, studentEmail.trim().toLowerCase()))
+    .orderBy(desc(announcements.createdAt));
+}
+
 export async function listAllAnnouncements() {
   const db = await getDb();
   if (!db) throw new Error("Database is not available while loading announcements");

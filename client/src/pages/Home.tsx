@@ -514,7 +514,7 @@ function MaterialsView({ type, targetClass }: { type: "paper" | "unit"; targetCl
   );
 }
 
-const studentNav = ["Overview", "Attendance", "Mark statement", "Schedule", "Timetable", "Question paper", "Unit question", "Projects", "Profile"];
+const studentNav = ["Overview", "Attendance", "Mark statement", "Schedule", "Timetable", "Question paper", "Unit question", "Projects", "Announcements", "Profile"];
 
 // ─── Shared Mobile Top Bar ────────────────────────────────────────────────
 function MobileTopBar({
@@ -767,6 +767,7 @@ function StudentWorkspace({ user, onLogout }: { user: User; onLogout: () => void
   const attendanceQuery = trpc.student.attendance.useQuery({ studentEmail: user.email }, portalQueryOptions);
   const scheduleQuery = trpc.student.schedule.useQuery({ studentEmail: user.email }, portalQueryOptions);
   const projectsQuery = trpc.student.projects.useQuery({ studentEmail: user.email }, portalQueryOptions);
+  const announcementsQuery = trpc.student.announcements.useQuery(undefined, portalQueryOptions);
   const liveAttendance = attendanceQuery.data ?? [];
   const liveSchedule = scheduleQuery.data ?? [];
   const marksQuery = trpc.student.marks.useQuery({ studentEmail: user.email }, portalQueryOptions);
@@ -785,8 +786,15 @@ function StudentWorkspace({ user, onLogout }: { user: User; onLogout: () => void
   const attendance = ["Present", "Present", "Late", "Present", "Absent", "Present", "Present", "Present", "Present", "Present", "Present", "Present", "Present", "Absent"];
   const sessions: Record<number, string> = { 3: "Mathematics · Algebra practice", 7: "Physics · Motion and forces", 12: "Mathematics · Weekly problem set", 18: "English · Essay planning", 24: "Physics · Revision workshop" };
   const tests = { "Weekly test": [["Mathematics", "18 / 20", "90%"], ["Physics", "16 / 20", "80%"], ["English", "17 / 20", "85%"]], "Monthly test": [["Mathematics", "86 / 100", "86%"], ["Physics", "82 / 100", "82%"], ["English", "88 / 100", "88%"]] };
-  const pageIntro: Record<string, string> = { Overview: "Your learning space for the week ahead.", Attendance: "A daily view of your attendance and learning rhythm.", "Mark statement": "Open a test card to review subject-wise performance.", Schedule: "Choose a date to see the exercise planned for that session.", Timetable: "Your current weekly class timetable.", "Question paper": "Download and review question papers sent by Admin to your class.", "Important Question papers": "Download and review question papers sent by Admin.", "Unit question": "Teacher-curated unit questions sent by Admin to your class.", "Important questions (Unit wise)": "Teacher-curated questions to strengthen your revision.", Projects: "Projects assigned by your teachers, with due dates and progress.", Profile: "Your personal profile and contact details." };
+  const pageIntro: Record<string, string> = { Overview: "Your learning space for the week ahead.", Attendance: "A daily view of your attendance and learning rhythm.", "Mark statement": "Open a test card to review subject-wise performance.", Schedule: "Choose a date to see the exercise planned for that session.", Timetable: "Your current weekly class timetable.", "Question paper": "Download and review question papers sent by Admin to your class.", "Important Question papers": "Download and review question papers sent by Admin.", "Unit question": "Teacher-curated unit questions sent by Admin to your class.", "Important questions (Unit wise)": "Teacher-curated questions to strengthen your revision.", Projects: "Projects assigned by your teachers, with due dates and progress.", Announcements: "Messages from the centre about your learning.", Profile: "Your personal profile and contact details." };
   const renderPage = () => {
+    if (active === "Announcements") {
+      if (announcementsQuery.isLoading) return <LoadingState label="Loading announcements…" />;
+      if (announcementsQuery.isError) return <EmptyState title="Announcements could not be loaded" message={announcementsQuery.error?.message || "The announcements database is unavailable. Please try again shortly."} />;
+      const announcements = announcementsQuery.data ?? [];
+      if (!announcements.length) return <EmptyState title="No announcements yet" message="Messages from the centre will appear here." />;
+      return <div className="space-y-4">{announcements.map(announcement => <article className="rounded-3xl border border-[#eee6f0] bg-white p-6" key={announcement.id}><div className="flex items-start justify-between gap-4"><div><span className="rounded-full bg-[#f4edf9] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-[#6d4b9f]">Centre announcement</span><h2 className="mt-4 text-xl font-semibold">{announcement.title}</h2></div><Megaphone className="shrink-0 text-[#8060ac]" size={21} /></div><p className="mt-4 whitespace-pre-wrap text-sm leading-6 text-[#5d506c]">{announcement.message}</p><p className="mt-5 text-xs font-semibold text-[#8d8197]">{new Date(announcement.createdAt).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}</p></article>)}</div>;
+    }
     if (active === "Attendance") {
       if (attendanceQuery.isLoading) return <LoadingState label="Loading daily attendance…" />;
       if (attendanceQuery.isError) return <EmptyState title="Attendance could not be loaded" message={attendanceQuery.error?.message || "The attendance database is unavailable. Please try again shortly."} />;
@@ -825,9 +833,9 @@ function StudentWorkspace({ user, onLogout }: { user: User; onLogout: () => void
 
     return <><div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">{studentOverviewCards.map(([value, label, Icon]) => <div key={label} className="rounded-3xl border border-[#eee6f0] bg-white p-5 shadow-sm"><div className="flex items-start justify-between"><p className="text-3xl font-semibold text-[#5b3b92]">{value}</p><span className="rounded-xl bg-[#f4edf9] p-2 text-[#8060ac]"><Icon size={17} /></span></div><p className="mt-6 text-xs text-[#877b91]">{label}</p></div>)}</div><div className="mt-8 grid gap-5 lg:grid-cols-[1.3fr_.7fr]"><div className="rounded-3xl border border-[#eee6f0] bg-white p-6"><div className="flex items-center justify-between"><h2 className="font-semibold">Today’s learning plan</h2><button onClick={() => setActive("Schedule")} className="text-xs font-semibold text-[#6d4b9f]">Open calendar <ChevronRight className="inline" size={14} /></button></div><div className="mt-6 space-y-4">{[["Mathematics", "Weekly problem set · Due today", "On track"], ["Physics", "Next class · Tuesday, 5:00 PM", "Upcoming"], ["Build a bridge", "Project due 18 October", "In progress"]].map(row => <div className="flex items-center justify-between rounded-2xl bg-[#faf7fc] p-4" key={row[0]}><div className="flex items-center gap-3"><span className="grid h-9 w-9 place-items-center rounded-xl bg-[#e9ddf4] text-[#6e4b9e]"><Check size={16} /></span><div><p className="text-sm font-semibold">{row[0]}</p><p className="mt-1 text-xs text-[#8d8197]">{row[1]}</p></div></div><span className="text-[11px] font-semibold text-[#ef8656]">{row[2]}</span></div>)}</div></div><div className="rounded-3xl bg-[#5b3b92] p-6 text-white"><Sparkles className="text-[#f8b08b]" size={20} /><h2 className="mt-8 text-2xl font-semibold">Small steps,<br /><em className="font-serif font-normal">strong habits.</em></h2><p className="mt-4 text-sm leading-6 text-white/65">Keep showing up for the next question.</p><button onClick={() => setActive("Mark statement")} className="mt-8 rounded-full bg-white px-4 py-2.5 text-xs font-semibold text-[#5b3b92]">Review marks <ArrowRight className="ml-1 inline" size={13} /></button></div></div></>;
   };
-  const studentNavItems = studentNav.map((item, i) => ({
+  const studentNavItems = studentNav.map(item => ({
     label: item,
-    icon: i === 0 ? <LayoutDashboard size={16} /> : i === 1 ? <ClipboardCheck size={16} /> : i === 2 ? <BarChart3 size={16} /> : i === 3 ? <CalendarDays size={16} /> : i === 4 ? <BookOpen size={16} /> : i === 5 ? <FileText size={16} /> : i === 6 ? <MessageCircle size={16} /> : i === 7 ? <NotebookPen size={16} /> : <UserIcon size={16} />,
+    icon: item === "Overview" ? <LayoutDashboard size={16} /> : item === "Attendance" ? <ClipboardCheck size={16} /> : item === "Mark statement" ? <BarChart3 size={16} /> : item === "Schedule" ? <CalendarDays size={16} /> : item === "Timetable" ? <BookOpen size={16} /> : item === "Question paper" ? <FileText size={16} /> : item === "Unit question" ? <MessageCircle size={16} /> : item === "Projects" ? <NotebookPen size={16} /> : item === "Announcements" ? <Megaphone size={16} /> : <UserIcon size={16} />,
   }));
   return (
     <div className="min-h-screen bg-[#f6f2f8] text-[#2a203e]">
@@ -847,7 +855,7 @@ function StudentWorkspace({ user, onLogout }: { user: User; onLogout: () => void
           {studentNav.map((item, i) => (
             <button key={item} onClick={() => { setActive(item); setSelectedTest(null); }}
               className={`mb-1 flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-sm ${active === item ? "bg-[#f0e9f7] font-semibold text-[#5b3b92]" : "text-[#81758e] hover:bg-[#faf7fc]"}`}>
-              <span className="text-xs">{i === 0 ? <LayoutDashboard size={16} /> : i === 1 ? <ClipboardCheck size={16} /> : i === 2 ? <BarChart3 size={16} /> : i === 3 ? <CalendarDays size={16} /> : i === 4 ? <BookOpen size={16} /> : i === 5 ? <FileText size={16} /> : i === 6 ? <MessageCircle size={16} /> : i === 7 ? <NotebookPen size={16} /> : <UserIcon size={16} />}</span>
+              <span className="text-xs">{item === "Overview" ? <LayoutDashboard size={16} /> : item === "Attendance" ? <ClipboardCheck size={16} /> : item === "Mark statement" ? <BarChart3 size={16} /> : item === "Schedule" ? <CalendarDays size={16} /> : item === "Timetable" ? <BookOpen size={16} /> : item === "Question paper" ? <FileText size={16} /> : item === "Unit question" ? <MessageCircle size={16} /> : item === "Projects" ? <NotebookPen size={16} /> : item === "Announcements" ? <Megaphone size={16} /> : <UserIcon size={16} />}</span>
               {item}
             </button>
           ))}

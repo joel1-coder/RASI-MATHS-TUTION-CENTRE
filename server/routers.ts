@@ -3,7 +3,7 @@ import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { adminProcedure, protectedProcedure, publicProcedure, router, staffProcedure } from "./_core/trpc";
 import { TRPCError } from "@trpc/server";
-import { createAnnouncement, createSubject, deleteSubject, getDb, listAllAnnouncements, listAnnouncementsForRecipient, listFeaturedSubjects, listScheduleSessions, listStudentAttendance, listAllStudentAttendance, deleteStudentAttendanceById, deleteStudentAttendanceBatch, updateStudentAttendanceById, listSubjects, updateSubject, upsertScheduleSession, upsertStudentAttendance, listColleges, listGovernmentExams, listMarkStatements, listStudentProjects, setUserRoleByEmail, upsertCollege, upsertGovernmentExam, upsertMarkStatement, upsertStudentProject, upsertUser, createQuestionPaper, deleteQuestionPaper, listQuestionPapers, createUnitQuestion, deleteUnitQuestion, listUnitQuestions, upsertBulkMarks, upsertBulkProjects, upsertBulkGovernmentExams, getUserByEmail, upsertPortalUser, updatePortalUser, deletePortalUser, listPortalUsers, getSiteSettings, upsertSiteSettings } from "./db";
+import { createAnnouncement, createSubject, deleteSubject, getDb, listAllAnnouncements, listAnnouncementsForRecipient, listAnnouncementsForStudent, listFeaturedSubjects, listScheduleSessions, listStudentAttendance, listAllStudentAttendance, deleteStudentAttendanceById, deleteStudentAttendanceBatch, updateStudentAttendanceById, listSubjects, updateSubject, upsertScheduleSession, upsertStudentAttendance, listColleges, listGovernmentExams, listMarkStatements, listStudentProjects, setUserRoleByEmail, upsertCollege, upsertGovernmentExam, upsertMarkStatement, upsertStudentProject, upsertUser, createQuestionPaper, deleteQuestionPaper, listQuestionPapers, createUnitQuestion, deleteUnitQuestion, listUnitQuestions, upsertBulkMarks, upsertBulkProjects, upsertBulkGovernmentExams, getUserByEmail, upsertPortalUser, updatePortalUser, deletePortalUser, listPortalUsers, getSiteSettings, upsertSiteSettings } from "./db";
 import { subjects } from "../drizzle/schema";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
@@ -198,6 +198,10 @@ export const appRouter = router({
     }),
   }),
   student: router({
+    announcements: protectedProcedure.query(({ ctx }) => {
+      if (ctx.user.role !== "student" || !ctx.user.email) throw new TRPCError({ code: "FORBIDDEN" });
+      return listAnnouncementsForStudent(ctx.user.email);
+    }),
     attendance: protectedProcedure.input(z.object({ studentEmail: z.string().email() })).query(({ ctx, input }) => { if (ctx.user.role !== "admin" && ctx.user.email !== input.studentEmail && ctx.user.linkedStudentEmail !== input.studentEmail) throw new TRPCError({ code: "FORBIDDEN" }); return listStudentAttendance(input.studentEmail); }),
     schedule: protectedProcedure.input(z.object({ studentEmail: z.string().email() })).query(({ ctx, input }) => { if (ctx.user.role !== "admin" && ctx.user.email !== input.studentEmail && ctx.user.linkedStudentEmail !== input.studentEmail) throw new TRPCError({ code: "FORBIDDEN" }); return listScheduleSessions(input.studentEmail); }),
     marks: protectedProcedure.input(z.object({ studentEmail: z.string().email(), assessmentType: z.enum(["weekly", "monthly"]).optional() })).query(({ ctx, input }) => { if (ctx.user.role !== "admin" && ctx.user.email !== input.studentEmail && ctx.user.linkedStudentEmail !== input.studentEmail) throw new TRPCError({ code: "FORBIDDEN" }); return listMarkStatements(input.studentEmail, input.assessmentType); }),
