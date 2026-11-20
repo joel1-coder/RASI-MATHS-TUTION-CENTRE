@@ -43,8 +43,6 @@
 }
 
 :root {
-  color-scheme: light;
-  --bg-primary: #ffffff;
   --primary: var(--color-blue-700);
   --primary-foreground: var(--color-blue-50);
   --sidebar-primary: var(--color-blue-600);

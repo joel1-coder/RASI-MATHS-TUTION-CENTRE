@@ -37,7 +37,7 @@ function ExamTable({ exams }: { exams: GovExam[] }) {
 
 export default function GovernmentExamsPage() {
   return (
-    <div className="min-h-screen bg-white dark:bg-[#0B0F1A] dark:text-[#F8F1DC]">
+    <div className="min-h-screen bg-[#faf7fc]">
       <header className="sticky top-0 z-20 border-b border-[#ede6f8] bg-white/90 backdrop-blur-sm">
         <div className="mx-auto flex max-w-6xl items-center gap-4 px-4 py-4 sm:px-6">
           <a href="/" className="flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-semibold text-[#5b3b92] transition hover:bg-[#f0e8f8]"><ArrowLeft size={15} /> Back to home</a>
