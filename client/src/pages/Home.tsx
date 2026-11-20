@@ -260,7 +260,6 @@ function RoleLoginPage({ role, onLogin, onBack }: { role: Role; onLogin: (user: 
 
   return (
     <div className="login-shell relative min-h-screen bg-[#f5f0f8] text-[#271f3c] dark:bg-[#0B0F1A] dark:text-[#F8F1DC]">
-      <ThemeToggle className="absolute right-5 top-5 z-10" />
       <div className="mx-auto grid min-h-screen max-w-6xl items-center gap-10 px-5 py-8 md:grid-cols-[.9fr_1.1fr] md:px-10">
         <div className="hidden md:block">
           <Logo />
@@ -285,7 +284,10 @@ function RoleLoginPage({ role, onLogin, onBack }: { role: Role; onLogin: (user: 
               <Logo />
               <div className="mt-7" />
             </div>
-            <Pill>{config.label}</Pill>
+            <div className="flex items-center justify-between gap-3">
+              <Pill>{config.label}</Pill>
+              <ThemeToggle className="shrink-0" />
+            </div>
             <h2 className="mt-4 text-3xl font-semibold text-[#241b3d]">Sign in securely.</h2>
             <p className="mt-2 text-sm text-[#81758e]">Use your {role} account to continue.</p>
             <div className="mt-3"></div>
