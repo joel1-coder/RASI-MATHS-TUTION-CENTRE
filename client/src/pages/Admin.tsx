@@ -3,7 +3,7 @@ import { startLogin } from "@/const";
 import { trpc } from "@/lib/trpc";
 import { ArrowLeft, Check, Edit3, ExternalLink, FilePlus2, FileText, LogOut, Plus, Send, ShieldCheck, Trash2, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
-import type { SubjectRecord } from "./Home";
+import { INITIAL_DEPARTMENTS, SECTION_OPTIONS, classLabel, type SubjectRecord } from "./Home";
 import { CloudinaryUploader } from "@/components/CloudinaryUploader";
 import { UserManagement } from "@/components/UserManagement";
 import { toast } from "sonner";
@@ -22,23 +22,9 @@ const blankSubject: SubjectForm = {
   sortOrder: 10,
 };
 
-const GRADES = [
-  "Grade 1",
-  "Grade 2",
-  "Grade 3",
-  "Grade 4",
-  "Grade 5",
-  "Grade 6",
-  "Grade 7",
-  "Grade 8",
-  "Grade 9",
-  "Grade 10",
-  "Grade 11",
-  "Grade 12",
-  "All classes",
-];
+const GRADES = [...INITIAL_DEPARTMENTS, "All classes"];
 
-const SECTIONS = ["All Sections", "Section A", "Section B", "Section C", "Section D"];
+const SECTIONS = ["All Sections", ...SECTION_OPTIONS.map(section => `Section ${section}`)];
 
 /**
  * Build a targetClass string for DB storage.
@@ -69,8 +55,8 @@ function SendConfirmModal({ open, paperType, onCancel, onConfirm, isPending }: S
 
   const label = paperType === "question" ? "Question Paper" : "Unit Question Paper";
   const targetLabel = section === "All Sections"
-    ? `All sections of ${grade}`
-    : `${grade} – ${section}`;
+    ? `All sections of ${classLabel(grade)}`
+    : `${classLabel(grade)} – ${section}`;
 
   return (
     <div className="fixed inset-0 z-50 grid place-items-center bg-[#24203b]/50 p-4 backdrop-blur-sm">
@@ -96,21 +82,21 @@ function SendConfirmModal({ open, paperType, onCancel, onConfirm, isPending }: S
         </div>
 
         <p className="mt-3 text-sm leading-6 text-[#756a7a]">
-          Select the <strong>grade</strong> and optionally a <strong>section</strong>. If you choose
-          "All Sections", the paper will be delivered to every section in that grade.
+          Select a <strong>class</strong> and optionally a <strong>section</strong>. If you choose
+          "All Sections", the paper will be delivered to every section in that class.
         </p>
 
         <div className="mt-5 grid gap-4 sm:grid-cols-2">
-          {/* Grade selector */}
+          {/* Class selector */}
           <label className="block text-xs font-bold uppercase tracking-[0.14em] text-[#756a7a]">
-            Grade / Department
+            Class
             <select
               value={grade}
               onChange={(e) => setGrade(e.target.value)}
               className="mt-2 w-full rounded-xl border border-[#ded4c8] bg-[#fffdfa] px-3 py-2.5 text-sm font-normal text-[#322743] outline-none transition focus:border-[#5968a9] focus:ring-2 focus:ring-[#5968a9]/10"
             >
               {GRADES.map((g) => (
-                <option key={g} value={g}>{g}</option>
+                <option key={g} value={g}>{classLabel(g)}</option>
               ))}
             </select>
           </label>
@@ -137,7 +123,7 @@ function SendConfirmModal({ open, paperType, onCancel, onConfirm, isPending }: S
           <p className="mt-1 text-sm font-semibold text-[#2f315d]">{targetLabel}</p>
           {section === "All Sections" && grade !== "All classes" && (
             <p className="mt-1 text-xs text-[#918596]">
-              All students &amp; parents in every section of {grade} will receive this paper.
+              All students &amp; parents in every section of {classLabel(grade)} will receive this paper.
             </p>
           )}
         </div>
@@ -617,7 +603,7 @@ export default function Admin() {
             <form onSubmit={handleSendPaper} className="rounded-2xl border border-[#e2d8cc] bg-[#fffdfa] p-6 shadow-sm space-y-5">
               <h2 className="text-lg font-bold text-[#2f315d]">Upload / Create Question Paper</h2>
               <div className="grid gap-4 sm:grid-cols-2">
-                <Field label="Paper Title" value={paperTitle} onChange={setPaperTitle} placeholder="e.g. Grade 10 Mid-Term Maths Paper" />
+                <Field label="Paper Title" value={paperTitle} onChange={setPaperTitle} placeholder="e.g. Class 10 Mid-Term Maths Paper" />
                 <Field label="Subject" value={paperSubject} onChange={setPaperSubject} placeholder="e.g. Mathematics" />
               </div>
               <div className="grid gap-4 sm:grid-cols-1">

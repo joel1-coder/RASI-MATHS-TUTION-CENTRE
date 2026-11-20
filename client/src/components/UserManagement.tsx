@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from "react";
 import { Edit3, Plus, Trash2, Eye, EyeOff, RefreshCw, Search, Shield, User, Users, GraduationCap, Sparkles, Check, X, Calendar, BookOpen, Layers, Clock } from "lucide-react";
 import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
-import { INITIAL_DEPARTMENTS, loadStoredSections } from "../pages/Home";
+import { INITIAL_DEPARTMENTS, SECTION_OPTIONS, classLabel, normalizeClassValue, normalizeSectionValue, loadStoredSections } from "../pages/Home";
 
 export type UserRole = "teacher" | "admin" | "student" | "parent";
 
@@ -29,8 +29,8 @@ function dbUserToAccount(u: any): UserAccount {
     password: u.portalPassword ?? "",
     role: (u.role as UserRole) || "student",
     linkedStudentEmail: u.linkedStudentEmail ?? undefined,
-    department: u.department ?? undefined,
-    section: u.section ?? undefined,
+    department: u.department ? normalizeClassValue(u.department) : undefined,
+    section: u.section ? normalizeSectionValue(u.section) : undefined,
     session: u.session ?? undefined,
     joinedDate: u.joinedDate ?? (u.createdAt ? new Date(u.createdAt).toISOString().split("T")[0] : undefined),
     subject: u.subject ?? undefined,
@@ -306,7 +306,7 @@ export function UserManagement() {
                   <th className="px-4 py-3">User &amp; Email ID</th>
                   <th className="px-4 py-3">Role</th>
                   <th className="px-4 py-3">Date</th>
-                  <th className="px-4 py-3">Department</th>
+                  <th className="px-4 py-3">Class</th>
                   <th className="px-4 py-3">Section</th>
                   <th className="px-4 py-3">Session</th>
                   <th className="px-4 py-3">Password</th>
@@ -352,9 +352,9 @@ export function UserManagement() {
                       )}
                     </td>
 
-                    {/* Department */}
+                    {/* Class */}
                     <td className="px-4 py-3.5 text-xs font-semibold text-[#443854]">
-                      {account.department || (account.role === "teacher" ? account.subject : "—")}
+                      {account.department ? classLabel(account.department) : (account.role === "teacher" ? account.subject : "—")}
                     </td>
 
                     {/* Section */}
@@ -473,7 +473,7 @@ function UserForm({
   // Academic fields for Student & Parent
   const today = new Date().toISOString().split("T")[0];
   const [joinedDate, setJoinedDate] = useState(initialData?.joinedDate || today);
-  const [department, setDepartment] = useState(initialData?.department || INITIAL_DEPARTMENTS[4] || "Grade 10");
+  const [department, setDepartment] = useState(initialData?.department || INITIAL_DEPARTMENTS[9] || "Grade 10");
   const [section, setSection] = useState(initialData?.section || "A");
   const [session, setSession] = useState(initialData?.session || "Evening Session (5:00 PM – 7:00 PM)");
   const [linkedStudentEmail, setLinkedStudentEmail] = useState(initialData?.linkedStudentEmail || "");
@@ -644,7 +644,7 @@ function UserForm({
       {/* ─────────────────────────────────────────────────────────────────────────
           CONDITION FOR PARENT AND STUDENT:
           "It need to have a seperate line under the adding Teacher and admin.. 
-           so that you need to add the Date,Department, Section and session.."
+           so that you need to add the Date, Class, Section and session.."
          ───────────────────────────────────────────────────────────────────────── */}
       {isLearnerOrParent && (
         <div className="relative mt-8 rounded-2xl border-2 border-dashed border-[#d8cde3] bg-[#faf6fd] p-5">
@@ -675,18 +675,18 @@ function UserForm({
                   <option value="">Select registered student to link with this parent…</option>
                   {studentAccounts.map(s => (
                     <option key={s.email} value={s.email}>
-                      {s.name} ({s.email}) — {s.department || "Grade 10"} {s.section ? `Sec ${s.section}` : ""}
+                      {s.name} ({s.email}) — {classLabel(normalizeClassValue(s.department || "Grade 10"))} {s.section ? `Section ${normalizeSectionValue(s.section)}` : ""}
                     </option>
                   ))}
                 </select>
               </label>
               <p className="mt-1 text-[11px] text-[#9181a0]">
-                Selecting a student will automatically populate their admission date, department, section, and session below.
+                Selecting a student will automatically populate their admission date, class, section, and session below.
               </p>
             </div>
           )}
 
-          {/* The 4 fields in a dedicated line / grid: Date, Department, Section, Session */}
+          {/* The 4 fields in a dedicated line / grid: Date, Class, Section, Session */}
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {/* 1. Date */}
             <label className="block text-xs font-bold uppercase tracking-[0.1em] text-[#756a7a]">
@@ -702,10 +702,10 @@ function UserForm({
               />
             </label>
 
-            {/* 2. Department */}
+            {/* 2. Class */}
             <label className="block text-xs font-bold uppercase tracking-[0.1em] text-[#756a7a]">
               <span className="flex items-center gap-1.5">
-                <BookOpen size={13} className="text-[#6d4b9f]" /> Department
+                <BookOpen size={13} className="text-[#6d4b9f]" /> Class
               </span>
               <select
                 value={department}
@@ -713,7 +713,7 @@ function UserForm({
                 className="mt-1 w-full rounded-xl border border-[#d8cde3] bg-white px-3 py-2 text-sm text-[#322743] outline-none focus:border-[#6d4b9f]"
               >
                 {INITIAL_DEPARTMENTS.map(d => (
-                  <option key={d} value={d}>{d}</option>
+                  <option key={d} value={d}>{classLabel(d)}</option>
                 ))}
               </select>
             </label>
@@ -723,13 +723,9 @@ function UserForm({
               <span className="flex items-center gap-1.5">
                 <Layers size={13} className="text-[#6d4b9f]" /> Section
               </span>
-              <input
-                type="text"
-                value={section}
-                onChange={e => setSection(e.target.value)}
-                placeholder="e.g. A, B, Morning Batch"
-                className="mt-1 w-full rounded-xl border border-[#d8cde3] bg-white px-3 py-2 text-sm text-[#322743] outline-none focus:border-[#6d4b9f]"
-              />
+              <select value={normalizeSectionValue(section)} onChange={e => setSection(e.target.value)} className="mt-1 w-full rounded-xl border border-[#d8cde3] bg-white px-3 py-2 text-sm text-[#322743] outline-none focus:border-[#6d4b9f]">
+                {SECTION_OPTIONS.map(sectionName => <option key={sectionName} value={sectionName}>Section {sectionName}</option>)}
+              </select>
             </label>
 
             {/* 4. Session */}

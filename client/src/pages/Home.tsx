@@ -3,7 +3,7 @@ import { toast } from "sonner";
 import Portfolio from "./Portfolio";
 import { startLogin } from "@/const";
 import { useAuth } from "@/_core/hooks/useAuth";
-import { AlertCircle, ArrowRight, ArrowUpRight, BarChart3, BookOpen, Building2, CalendarDays, Check, CheckCircle2, ChevronRight, ClipboardCheck, Clock3, Copy, Download, Edit3, Eye, EyeOff, FileCheck, FileSpreadsheet, FileText, FileUp, Filter, FolderPlus, GraduationCap, LayoutDashboard, Loader2, LogOut, Menu, Megaphone, MessageCircle, NotebookPen, Phone, Plus, Search, Send, ShieldCheck, Sparkles, Trash2, Upload, UploadCloud, User as UserIcon, UserCheck, UserPlus, Users, X } from "lucide-react";
+import { AlertCircle, ArrowRight, ArrowUpRight, BarChart3, Bell, BookOpen, Building2, CalendarDays, Check, CheckCircle2, ChevronRight, ClipboardCheck, Clock3, Copy, Download, Edit3, Eye, EyeOff, FileCheck, FileSpreadsheet, FileText, FileUp, Filter, FolderPlus, GraduationCap, LayoutDashboard, Loader2, LogOut, Menu, Megaphone, MessageCircle, NotebookPen, Phone, Plus, Search, Send, ShieldCheck, Sparkles, Trash2, Upload, UploadCloud, User as UserIcon, UserCheck, UserPlus, Users, X } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { parseAttendanceCsv, summarizeAttendance } from "@shared/portalData";
 
@@ -356,9 +356,9 @@ function MarkStatements({ parent = false, studentEmail }: { parent?: boolean; st
   return <div><div className="mb-5 flex flex-col justify-between gap-4 rounded-3xl border border-[#eee6f0] bg-white p-5 md:flex-row md:items-end"><div><button onClick={() => setView("cards")} className="text-xs font-semibold text-[#6d4b9f]">← Back to assessment cards</button><p className="mt-4 text-xs font-bold uppercase tracking-[0.18em] text-[#ef8656]">{view === "weekly" ? "Weekly test marks" : "Monthly test marks"}</p><h2 className="mt-2 text-2xl font-semibold">{view === "weekly" ? `Week-wise results · ${monthNames[month]} ${year}` : `Month-wise results · ${year}`}</h2></div><div className="flex flex-wrap gap-2"><select value={month} onChange={e => setMonth(Number(e.target.value))} className="rounded-xl border border-[#e6deeb] bg-[#faf7fc] px-3 py-2 text-xs font-semibold text-[#5d506c] outline-none"><option value={-1}>All months</option>{monthNames.map((name, i) => <option value={i} key={name}>{name}</option>)}</select><select value={year} onChange={e => setYear(Number(e.target.value))} className="rounded-xl border border-[#e6deeb] bg-[#faf7fc] px-3 py-2 text-xs font-semibold text-[#5d506c] outline-none">{[now.getFullYear() - 1, now.getFullYear(), now.getFullYear() + 1].map(y => <option value={y} key={y}>{y}</option>)}</select></div></div>{view === "weekly" ? <div className="space-y-3">{weeklyMarks.map(row => <div className="flex items-center justify-between rounded-2xl border border-[#eee6f0] bg-white p-4" key={row[0]}><div><p className="text-sm font-semibold">{row[0]} · {row[1]}</p><p className="mt-1 text-xs text-[#8d8197]">{parent ? "Shared with linked parent account" : "Teacher feedback available"}</p></div><div className="text-right"><p className="text-lg font-semibold text-[#5b3b92]">{row[2]}</p><p className="text-xs font-semibold text-[#ef8656]">{row[3]}</p></div></div>)}</div> : <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{monthlyMarks.map(row => <div className={`rounded-2xl border p-4 ${row[0] === monthNames[month] ? "border-[#b99cda] bg-[#f3ecf9]" : "border-[#eee6f0] bg-white"}`} key={row[0]}><p className="text-sm font-semibold">{row[0]} {year}</p><p className="mt-4 text-2xl font-semibold text-[#5b3b92]">{row[1]}</p><p className="mt-1 text-xs text-[#8d8197]">{row[1] === "Upcoming" ? "Not published yet" : "Monthly test average"}</p></div>)}</div>}<p className="mt-5 text-xs text-[#8d8197]">The month defaults to the current month and the year defaults to the current year automatically.</p></div>;
 }
 
-function MaterialsView({ type, targetClass }: { type: "paper" | "unit"; targetClass: string }) {
-  const dbPapersQuery = trpc.materials.questionPapers.useQuery({});
-  const dbUnitsQuery = trpc.materials.unitQuestions.useQuery({});
+function MaterialsView({ type, targetClass, section }: { type: "paper" | "unit"; targetClass: string; section?: string }) {
+  const dbPapersQuery = trpc.materials.questionPapers.useQuery({ targetClass });
+  const dbUnitsQuery = trpc.materials.unitQuestions.useQuery({ targetClass, section });
 
   const isPaper = type === "paper";
   const dbData = isPaper ? dbPapersQuery.data : dbUnitsQuery.data;
@@ -420,8 +420,11 @@ function MaterialsView({ type, targetClass }: { type: "paper" | "unit"; targetCl
       item.targetClass.toLowerCase().includes(targetClass.toLowerCase()) ||
       targetClass === "All"
   );
+  const sectionFiltered = !isPaper && section
+    ? filtered.filter(item => !item.section || item.section === "All Sections" || item.section.toLowerCase() === section.toLowerCase())
+    : filtered;
 
-  if (!filtered.length) {
+  if (!sectionFiltered.length) {
     return (
       <EmptyState
         title={`No ${isPaper ? "question papers" : "unit questions"} available`}
@@ -430,7 +433,7 @@ function MaterialsView({ type, targetClass }: { type: "paper" | "unit"; targetCl
     );
   }
 
-  const grouped = filtered.reduce((acc, item) => {
+  const grouped = sectionFiltered.reduce((acc, item) => {
     const subj = item.subject || "General";
     if (!acc[subj]) acc[subj] = [];
     acc[subj].push(item);
@@ -516,7 +519,7 @@ function MaterialsView({ type, targetClass }: { type: "paper" | "unit"; targetCl
   );
 }
 
-const studentNav = ["Overview", "Attendance", "Mark statement", "Schedule", "Timetable", "Question paper", "Unit question", "Projects", "Announcements", "Profile"];
+const studentNav = ["Overview", "Attendance", "Mark statement", "Schedule", "Timetable", "Question paper", "Unit question", "Projects", "Announcements", "Government exams", "Profile"];
 
 // ─── Shared Mobile Top Bar ────────────────────────────────────────────────
 function MobileTopBar({
@@ -662,7 +665,7 @@ function StudentProfileSection({ user, studentInfo }: { user: User; studentInfo?
         </div>
         <div>
           <h2 className="text-xl font-semibold text-[#2a203e]">{fullName}</h2>
-          <p className="text-sm text-[#8d7aa8]">{department} · Section {section}</p>
+          <p className="text-sm text-[#8d7aa8]">{classLabel(department)} · Section {normalizeSectionValue(section)}</p>
         </div>
       </div>
       <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -672,8 +675,8 @@ function StudentProfileSection({ user, studentInfo }: { user: User; studentInfo?
         <ProfileField label="Parent Name" value={parentName} />
         <ProfileField label="Parent Phone / WhatsApp" value={parentPhone} />
         <ProfileField label="Parent Email" value={parentEmail} />
-        <ProfileField label="Department" value={department} />
-        <ProfileField label="Section" value={section} />
+        <ProfileField label="Class" value={classLabel(department)} />
+        <ProfileField label="Section" value={normalizeSectionValue(section)} />
       </div>
     </div>
   );
@@ -699,8 +702,8 @@ function ParentProfileSection({ user, linkedStudent }: { user: User; linkedStude
         <ProfileField label="Linked Student Name" value={linkedStudent?.name} />
         <ProfileField label="Linked Student ID" value={linkedStudent?.studentId} />
         <ProfileField label="Linked Student Email" value={linkedStudent?.email} />
-        <ProfileField label="Department" value={linkedStudent?.department} />
-        <ProfileField label="Section" value={linkedStudent?.section} />
+        <ProfileField label="Class" value={linkedStudent?.department ? classLabel(linkedStudent.department) : undefined} />
+        <ProfileField label="Section" value={linkedStudent?.section ? normalizeSectionValue(linkedStudent.section) : undefined} />
       </div>
     </div>
   );
@@ -751,6 +754,50 @@ function AdminProfileSection({ user }: { user: User }) {
 }
 // ──────────────────────────────────────────────────────────────────────────
 
+type PortalNotification = { key: string; title: string; detail: string; destination: string; updatedAt: string };
+
+function buildPortalNotifications(sources: { kind: string; destination: string; records: any[] }[]): PortalNotification[] {
+  return sources.flatMap(({ kind, destination, records }) => records.map(record => {
+    const updatedAt = String(record.updatedAt || record.createdAt || record.attendanceDate || record.sessionDate || "");
+    const detail = kind === "Mark sheet" ? `${record.subject} · ${record.periodLabel} results are ready`
+      : kind === "Attendance" ? `${record.attendanceDate} attendance was recorded`
+      : kind === "Class schedule" ? `${record.sessionDate} · ${record.subject || "Class"}`
+      : kind === "Government exam" ? record.groupName || "Exam information updated"
+      : record.subject ? `${record.subject} · ${record.targetClass || "Your class"}`
+      : record.title || record.name || `${kind} updated`;
+    return { key: `${kind}:${record.id ?? record.name ?? record.title}:${updatedAt}`, title: `${kind}: ${record.title || record.name || record.subject || record.periodLabel || record.groupName || "Update"}`, detail, destination, updatedAt };
+  })).sort((a, b) => (Date.parse(b.updatedAt) || 0) - (Date.parse(a.updatedAt) || 0));
+}
+
+function PortalNotificationBar({ userEmail, items, onNavigate }: { userEmail: string; items: PortalNotification[]; onNavigate: (destination: string) => void }) {
+  const storageKey = `rasi_portal_notifications_read_${userEmail.toLowerCase()}`;
+  const [readKeys, setReadKeys] = useState<Set<string>>(() => {
+    try { return new Set(JSON.parse(localStorage.getItem(storageKey) || "[]")); } catch { return new Set(); }
+  });
+  const [expanded, setExpanded] = useState(false);
+  useEffect(() => {
+    try { localStorage.setItem(storageKey, JSON.stringify(Array.from(readKeys))); } catch {}
+  }, [readKeys, storageKey]);
+  const unreadCount = items.filter(item => !readKeys.has(item.key)).length;
+  const markReadAndOpen = (item: PortalNotification) => {
+    setReadKeys(current => new Set(current).add(item.key));
+    onNavigate(item.destination);
+  };
+  return <section className="mb-6 overflow-hidden rounded-2xl border border-[#f0d8c9] bg-[#fffaf6] shadow-sm dark:border-[rgba(212,175,55,0.35)] dark:bg-[#17213a]" aria-label="Notifications">
+    <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-5">
+      <div className="flex items-center gap-3">
+        <span className="relative grid h-10 w-10 place-items-center rounded-xl bg-[#f7e9df] text-[#bd6843] dark:bg-[#263453] dark:text-[#F5D76E]"><Bell size={19} />{unreadCount > 0 && <span className="absolute -right-1 -top-1 grid h-5 min-w-5 place-items-center rounded-full bg-[#e56f42] px-1 text-[10px] font-bold text-white">{unreadCount > 99 ? "99+" : unreadCount}</span>}</span>
+        <div><p className="text-sm font-semibold text-[#3c2a43] dark:text-[#F8F1DC]">{unreadCount ? `${unreadCount} new update${unreadCount === 1 ? "" : "s"}` : "Updates from your centre"}</p><p className="text-xs text-[#877b91] dark:text-[#c1bbca]">Announcements, marks, papers, schedules and more</p></div>
+      </div>
+      <button type="button" onClick={() => setExpanded(value => !value)} aria-expanded={expanded} className="rounded-xl border border-[#e8d9d0] bg-white px-3 py-2 text-xs font-semibold text-[#6d4b9f] hover:bg-[#f8f1fb] dark:border-white/15 dark:bg-[#0F1B3D] dark:text-[#F5D76E]">{expanded ? "Hide updates" : "View updates"}</button>
+    </div>
+    {expanded && <div className="border-t border-[#f0e4dc] p-3 dark:border-white/10">
+      {items.length ? <div className="max-h-80 space-y-2 overflow-y-auto">{items.slice(0, 12).map(item => <button type="button" key={item.key} onClick={() => markReadAndOpen(item)} className="flex w-full items-start justify-between gap-3 rounded-xl bg-white px-4 py-3 text-left hover:bg-[#faf5fc] dark:bg-[#0F1B3D] dark:hover:bg-[#1b294a]"><span><span className="block text-sm font-semibold text-[#3c2a43] dark:text-[#F8F1DC]">{item.title}</span><span className="mt-1 block text-xs text-[#877b91] dark:text-[#c1bbca]">{item.detail}</span></span><span className={`mt-1 h-2.5 w-2.5 shrink-0 rounded-full ${readKeys.has(item.key) ? "bg-[#d8cfe0]" : "bg-[#e56f42]"}`} aria-label={readKeys.has(item.key) ? "Read" : "Unread"} /></button>)}</div> : <p className="rounded-xl bg-white px-4 py-3 text-sm text-[#877b91] dark:bg-[#0F1B3D] dark:text-[#c1bbca]">No updates yet. New items will appear here automatically.</p>}
+      {unreadCount > 0 && <button type="button" onClick={() => setReadKeys(new Set(items.map(item => item.key)))} className="mt-3 rounded-lg px-3 py-2 text-xs font-semibold text-[#6d4b9f] hover:bg-white dark:text-[#F5D76E] dark:hover:bg-[#0F1B3D]">Mark all as read</button>}
+    </div>}
+  </section>;
+}
+
 function StudentWorkspace({ user, onLogout }: { user: User; onLogout: () => void }) {
   const [active, setActive] = useState("Overview");
   const [showHelp, setShowHelp] = useState(true);
@@ -770,6 +817,9 @@ function StudentWorkspace({ user, onLogout }: { user: User; onLogout: () => void
   const scheduleQuery = trpc.student.schedule.useQuery({ studentEmail: user.email }, portalQueryOptions);
   const projectsQuery = trpc.student.projects.useQuery({ studentEmail: user.email }, portalQueryOptions);
   const announcementsQuery = trpc.student.announcements.useQuery(undefined, portalQueryOptions);
+  const questionPapersQuery = trpc.materials.questionPapers.useQuery({ targetClass: studentDept }, portalQueryOptions);
+  const unitQuestionsQuery = trpc.materials.unitQuestions.useQuery({ targetClass: studentDept, section: studentSection }, portalQueryOptions);
+  const governmentExamsQuery = trpc.guidance.exams.useQuery(undefined, portalQueryOptions);
   const liveAttendance = attendanceQuery.data ?? [];
   const liveSchedule = scheduleQuery.data ?? [];
   const marksQuery = trpc.student.marks.useQuery({ studentEmail: user.email }, portalQueryOptions);
@@ -784,11 +834,21 @@ function StudentWorkspace({ user, onLogout }: { user: User; onLogout: () => void
     [String(liveSchedule.length).padStart(2, "0"), "Upcoming sessions", CalendarDays],
     [String((projectsQuery.data ?? []).length).padStart(2, "0"), "Open projects", NotebookPen],
   ] as const;
+  const portalNotifications = buildPortalNotifications([
+    { kind: "Announcement", destination: "Announcements", records: announcementsQuery.data ?? [] },
+    { kind: "Mark sheet", destination: "Mark statement", records: marksQuery.data ?? [] },
+    { kind: "Question paper", destination: "Question paper", records: questionPapersQuery.data ?? [] },
+    { kind: "Unit-wise paper", destination: "Unit question", records: unitQuestionsQuery.data ?? [] },
+    { kind: "Project", destination: "Projects", records: projectsQuery.data ?? [] },
+    { kind: "Attendance", destination: "Attendance", records: attendanceQuery.data ?? [] },
+    { kind: "Class schedule", destination: "Schedule", records: scheduleQuery.data ?? [] },
+    { kind: "Government exam", destination: "Government exams", records: governmentExamsQuery.data ?? [] },
+  ]);
   const scheduleByDate = Object.fromEntries(liveSchedule.map(session => [Number(session.sessionDate.slice(-2)), `${session.subject} · ${session.exercise}`]));
   const attendance = ["Present", "Present", "Late", "Present", "Absent", "Present", "Present", "Present", "Present", "Present", "Present", "Present", "Present", "Absent"];
   const sessions: Record<number, string> = { 3: "Mathematics · Algebra practice", 7: "Physics · Motion and forces", 12: "Mathematics · Weekly problem set", 18: "English · Essay planning", 24: "Physics · Revision workshop" };
   const tests = { "Weekly test": [["Mathematics", "18 / 20", "90%"], ["Physics", "16 / 20", "80%"], ["English", "17 / 20", "85%"]], "Monthly test": [["Mathematics", "86 / 100", "86%"], ["Physics", "82 / 100", "82%"], ["English", "88 / 100", "88%"]] };
-  const pageIntro: Record<string, string> = { Overview: "Your learning space for the week ahead.", Attendance: "A daily view of your attendance and learning rhythm.", "Mark statement": "Open a test card to review subject-wise performance.", Schedule: "Choose a date to see the exercise planned for that session.", Timetable: "Your current weekly class timetable.", "Question paper": "Download and review question papers sent by Admin to your class.", "Important Question papers": "Download and review question papers sent by Admin.", "Unit question": "Teacher-curated unit questions sent by Admin to your class.", "Important questions (Unit wise)": "Teacher-curated questions to strengthen your revision.", Projects: "Projects assigned by your teachers, with due dates and progress.", Announcements: "Messages from the centre about your learning.", Profile: "Your personal profile and contact details." };
+  const pageIntro: Record<string, string> = { Overview: "Your learning space for the week ahead.", Attendance: "A daily view of your attendance and learning rhythm.", "Mark statement": "Open a test card to review subject-wise performance.", Schedule: "Choose a date to see the exercise planned for that session.", Timetable: "Your current weekly class timetable.", "Question paper": "Download and review question papers sent by Admin to your class.", "Important Question papers": "Download and review question papers sent by Admin.", "Unit question": "Teacher-curated unit questions sent by Admin to your class.", "Important questions (Unit wise)": "Teacher-curated questions to strengthen your revision.", Projects: "Projects assigned by your teachers, with due dates and progress.", Announcements: "Messages from the centre about your learning.", "Government exams": "Review the latest exam pathways and eligibility information.", Profile: "Your personal profile and contact details." };
   const renderPage = () => {
     if (active === "Announcements") {
       if (announcementsQuery.isLoading) return <LoadingState label="Loading announcements…" />;
@@ -820,7 +880,13 @@ function StudentWorkspace({ user, onLogout }: { user: User; onLogout: () => void
       return <MaterialsView type="paper" targetClass={studentDept} />;
     }
     if (active === "Unit question" || active === "Important questions (Unit wise)") {
-      return <MaterialsView type="unit" targetClass={studentDept} />;
+      return <MaterialsView type="unit" targetClass={studentDept} section={studentSection} />;
+    }
+    if (active === "Government exams") {
+      if (governmentExamsQuery.isLoading) return <LoadingState label="Loading government exam guidance…" />;
+      const exams = governmentExamsQuery.data ?? [];
+      if (!exams.length) return <EmptyState title="No exam guidance published" message="Exam pathway updates from the centre will appear here." />;
+      return <div className="space-y-4">{exams.map(exam => <article className="rounded-3xl border border-[#eee6f0] bg-white p-6" key={exam.id}><span className="rounded-full bg-[#f4edf9] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-[#6d4b9f]">{exam.groupName}</span><h2 className="mt-4 text-xl font-semibold">{exam.name}</h2><p className="mt-3 text-sm leading-6 text-[#887c91]">{exam.qualification}</p><div className="mt-4 flex flex-wrap gap-3 text-xs"><span className="rounded-lg bg-[#faf7fc] px-3 py-2">Maximum marks: {exam.maxMarks}</span><span className="rounded-lg bg-[#faf7fc] px-3 py-2">Benchmark: {exam.benchmark}</span></div></article>)}</div>;
     }
     if (active === "Profile") {
       return <StudentProfileSection user={user} studentInfo={studentInfo} />;
@@ -837,7 +903,7 @@ function StudentWorkspace({ user, onLogout }: { user: User; onLogout: () => void
   };
   const studentNavItems = studentNav.map(item => ({
     label: item,
-    icon: item === "Overview" ? <LayoutDashboard size={16} /> : item === "Attendance" ? <ClipboardCheck size={16} /> : item === "Mark statement" ? <BarChart3 size={16} /> : item === "Schedule" ? <CalendarDays size={16} /> : item === "Timetable" ? <BookOpen size={16} /> : item === "Question paper" ? <FileText size={16} /> : item === "Unit question" ? <MessageCircle size={16} /> : item === "Projects" ? <NotebookPen size={16} /> : item === "Announcements" ? <Megaphone size={16} /> : <UserIcon size={16} />,
+    icon: item === "Overview" ? <LayoutDashboard size={16} /> : item === "Attendance" ? <ClipboardCheck size={16} /> : item === "Mark statement" ? <BarChart3 size={16} /> : item === "Schedule" ? <CalendarDays size={16} /> : item === "Timetable" ? <BookOpen size={16} /> : item === "Question paper" ? <FileText size={16} /> : item === "Unit question" ? <MessageCircle size={16} /> : item === "Projects" ? <NotebookPen size={16} /> : item === "Announcements" ? <Megaphone size={16} /> : item === "Government exams" ? <ShieldCheck size={16} /> : <UserIcon size={16} />,
   }));
   return (
     <div className="min-h-screen bg-[#f6f2f8] text-[#2a203e]">
@@ -854,10 +920,10 @@ function StudentWorkspace({ user, onLogout }: { user: User; onLogout: () => void
         <Logo />
         <div className="mt-12">
           <p className="mb-3 text-[10px] font-bold uppercase tracking-[0.2em] text-[#a296ac]">Student workspace</p>
-          {studentNav.map((item, i) => (
+          {studentNav.map(item => (
             <button key={item} onClick={() => { setActive(item); setSelectedTest(null); }}
               className={`mb-1 flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-sm ${active === item ? "bg-[#f0e9f7] font-semibold text-[#5b3b92]" : "text-[#81758e] hover:bg-[#faf7fc]"}`}>
-              <span className="text-xs">{item === "Overview" ? <LayoutDashboard size={16} /> : item === "Attendance" ? <ClipboardCheck size={16} /> : item === "Mark statement" ? <BarChart3 size={16} /> : item === "Schedule" ? <CalendarDays size={16} /> : item === "Timetable" ? <BookOpen size={16} /> : item === "Question paper" ? <FileText size={16} /> : item === "Unit question" ? <MessageCircle size={16} /> : item === "Projects" ? <NotebookPen size={16} /> : item === "Announcements" ? <Megaphone size={16} /> : <UserIcon size={16} />}</span>
+              <span className="text-xs">{item === "Overview" ? <LayoutDashboard size={16} /> : item === "Attendance" ? <ClipboardCheck size={16} /> : item === "Mark statement" ? <BarChart3 size={16} /> : item === "Schedule" ? <CalendarDays size={16} /> : item === "Timetable" ? <BookOpen size={16} /> : item === "Question paper" ? <FileText size={16} /> : item === "Unit question" ? <MessageCircle size={16} /> : item === "Projects" ? <NotebookPen size={16} /> : item === "Announcements" ? <Megaphone size={16} /> : item === "Government exams" ? <ShieldCheck size={16} /> : <UserIcon size={16} />}</span>
               {item}
             </button>
           ))}
@@ -882,7 +948,7 @@ function StudentWorkspace({ user, onLogout }: { user: User; onLogout: () => void
           <div className="flex items-center gap-3">
             <div className="hidden text-right sm:block">
               <p className="text-xs font-semibold">{studentFullName}</p>
-              <p className="text-[11px] text-[#94889e]">{studentDept} · Section {studentSection}</p>
+              <p className="text-[11px] text-[#94889e]">{classLabel(studentDept)} · Section {studentSection}</p>
             </div>
             {/* Profile avatar — click to open Profile */}
             <button onClick={() => { setActive("Profile"); setSelectedTest(null); }} title="View profile" className="flex h-9 w-9 items-center justify-center rounded-full bg-[#e9ddf4] text-xs font-bold text-[#5b3b92] hover:ring-2 hover:ring-[#5b3b92]/30 transition">
@@ -892,6 +958,7 @@ function StudentWorkspace({ user, onLogout }: { user: User; onLogout: () => void
           </div>
         </header>
         <div className="p-5 md:p-10">
+          <PortalNotificationBar userEmail={user.email} items={portalNotifications} onNavigate={destination => { setActive(destination); setSelectedTest(null); }} />
           <div className="mb-8 flex items-center justify-between">
             <div>
               <Pill>{active}</Pill>
@@ -986,7 +1053,23 @@ function ParentWorkspace({ user, onLogout }: { user: User; onLogout: () => void 
     }
   }, [childEmail, linkedStudent?.studentId]);
   const collegesQuery = trpc.guidance.colleges.useQuery();
-  const examsQuery = trpc.guidance.exams.useQuery();
+  const examsQuery = trpc.guidance.exams.useQuery(undefined, portalQueryOptions);
+  const questionPapersQuery = trpc.materials.questionPapers.useQuery({ targetClass: childDept }, portalQueryOptions);
+  const unitQuestionsQuery = trpc.materials.unitQuestions.useQuery({ targetClass: childDept, section: childSection }, portalQueryOptions);
+  const notificationProjects = [
+    ...(projectsQuery.data ?? []),
+    ...localProjects.filter(localProject => !(projectsQuery.data ?? []).some(project => project.title === localProject.title && project.studentEmail.toLowerCase() === String(localProject.studentEmail || "").toLowerCase())),
+  ];
+  const parentPortalNotifications = buildPortalNotifications([
+    { kind: "Announcement", destination: "Announcements", records: announcementsQuery.data ?? [] },
+    { kind: "Mark sheet", destination: "Mark statements", records: marksQuery.data ?? [] },
+    { kind: "Question paper", destination: "Question paper", records: questionPapersQuery.data ?? [] },
+    { kind: "Unit-wise paper", destination: "Unit question", records: unitQuestionsQuery.data ?? [] },
+    { kind: "Project", destination: "Projects", records: notificationProjects },
+    { kind: "Attendance", destination: "Attendance", records: attendanceQuery.data ?? [] },
+    { kind: "Class schedule", destination: "Orientation programs", records: scheduleQuery.data ?? [] },
+    { kind: "Government exam", destination: "Government exams", records: examsQuery.data ?? [] },
+  ]);
   const intro: Record<string, string> = { Overview: `A calm view of ${child}’s learning journey.`, Attendance: "Review your child’s day-by-day attendance record.", "Mark statements": "See the same weekly and monthly test results shared with your child.", "Question paper": "Review question papers sent by Admin to your child's class.", "Unit question": "Review unit-wise questions sent by Admin to your child's class.", Projects: "Track projects assigned by the Admin and their progress.", Announcements: "Private messages from the centre about your child.", "Orientation programs": "Centre meetings and orientation sessions scheduled for your family.", Colleges: "Explore technology and non-technology colleges by tier.", "Government exams": "Compare Central and Tamil Nadu government examination pathways.", Profile: "Your parent profile and your child's linked details." };
   const render = () => {
     if (active === "Attendance") {
@@ -1008,7 +1091,7 @@ function ParentWorkspace({ user, onLogout }: { user: User; onLogout: () => void 
       return <MaterialsView type="paper" targetClass={childDept} />;
     }
     if (active === "Unit question" || active === "Important questions (Unit wise)") {
-      return <MaterialsView type="unit" targetClass={childDept} />;
+      return <MaterialsView type="unit" targetClass={childDept} section={childSection} />;
     }
     if (active === "Profile") {
       return <ParentProfileSection user={user} linkedStudent={linkedStudent} />;
@@ -1070,7 +1153,7 @@ function ParentWorkspace({ user, onLogout }: { user: User; onLogout: () => void 
             <div className="relative rounded-2xl bg-[#f7f1fb] p-4">
               <button onClick={() => setShowLinked(false)} className="absolute right-3 top-3 text-[#aaa0b1] hover:text-[#5b3b92]"><X size={14} /></button>
               <p className="text-xs font-semibold">Linked student</p>
-              <p className="mt-1 text-[11px] leading-4 text-[#8d8197]">{child} · {childDept} · Sec {childSection}</p>
+              <p className="mt-1 text-[11px] leading-4 text-[#8d8197]">{child} · {classLabel(childDept)} · Section {childSection}</p>
             </div>
           </div>
         )}
@@ -1094,6 +1177,7 @@ function ParentWorkspace({ user, onLogout }: { user: User; onLogout: () => void 
           </div>
         </header>
         <div className="p-5 md:p-10">
+          <PortalNotificationBar userEmail={user.email} items={parentPortalNotifications} onNavigate={setActive} />
           <div className="mb-8 flex items-center justify-between">
             <div>
               <Pill>{active}</Pill>
@@ -1130,47 +1214,27 @@ export interface SectionItem {
   department: string;
 }
 
-export const INITIAL_DEPARTMENTS = ["Grade 6", "Grade 7", "Grade 8", "Grade 9", "Grade 10", "Grade 11", "Grade 12"];
-
-export const INITIAL_SECTIONS: SectionItem[] = [
-  // Grade 6
-  { id: "sec-g6-a",  name: "A",            department: "Grade 6"  },
-  { id: "sec-g6-b",  name: "B",            department: "Grade 6"  },
-  { id: "sec-g6-c",  name: "C",            department: "Grade 6"  },
-  // Grade 7
-  { id: "sec-g7-a",  name: "A",            department: "Grade 7"  },
-  { id: "sec-g7-b",  name: "B",            department: "Grade 7"  },
-  { id: "sec-g7-c",  name: "C",            department: "Grade 7"  },
-  // Grade 8
-  { id: "sec-g8-a",  name: "A",            department: "Grade 8"  },
-  { id: "sec-g8-b",  name: "B",            department: "Grade 8"  },
-  { id: "sec-g8-c",  name: "C",            department: "Grade 8"  },
-  // Grade 9
-  { id: "sec-g9-a",  name: "A",            department: "Grade 9"  },
-  { id: "sec-g9-b",  name: "B",            department: "Grade 9"  },
-  { id: "sec-g9-c",  name: "C",            department: "Grade 9"  },
-  // Grade 10
-  { id: "sec-g10-a", name: "A",            department: "Grade 10" },
-  { id: "sec-g10-b", name: "B",            department: "Grade 10" },
-  { id: "sec-g10-c", name: "C",            department: "Grade 10" },
-  // Grade 11
-  { id: "sec-g11-a", name: "A",            department: "Grade 11" },
-  { id: "sec-g11-b", name: "B",            department: "Grade 11" },
-  { id: "sec-g11-c", name: "C",            department: "Grade 11" },
-  { id: "sec-g11-mb", name: "Morning Batch",department: "Grade 11" },
-  { id: "sec-g11-eb", name: "Evening Batch",department: "Grade 11" },
-  // Grade 12
-  { id: "sec-g12-a", name: "A",            department: "Grade 12" },
-  { id: "sec-g12-b", name: "B",            department: "Grade 12" },
-  { id: "sec-g12-c", name: "C",            department: "Grade 12" },
-  { id: "sec-g12-mb", name: "Morning Batch",department: "Grade 12" },
-  { id: "sec-g12-eb", name: "Evening Batch",department: "Grade 12" },
-];
+export const INITIAL_DEPARTMENTS = Array.from({ length: 12 }, (_, index) => `Grade ${index + 1}`);
+export const classLabel = (value: string) => value.replace(/^grade\s*(\d+)$/i, "Class $1").replace(/^class\s*(\d+)$/i, "Class $1");
+export const normalizeClassValue = (value?: string | null) => {
+  const match = String(value || "").trim().match(/^(?:grade|class)\s*(1[0-2]|[1-9])$/i);
+  return match ? `Grade ${Number(match[1])}` : "Grade 1";
+};
+export const normalizeSectionValue = (value?: string | null) => {
+  const section = String(value || "A").trim();
+  if (/^morning\s+batch$/i.test(section)) return "A";
+  if (/^evening\s+batch$/i.test(section)) return "B";
+  const letter = section.match(/^(?:section\s*)?([a-z])$/i);
+  return letter ? letter[1].toUpperCase() : "A";
+};
+export const SECTION_OPTIONS = Array.from({ length: 26 }, (_, index) => String.fromCharCode(65 + index));
+export const INITIAL_SECTIONS: SectionItem[] = INITIAL_DEPARTMENTS.flatMap(className => SECTION_OPTIONS.map(section => ({ id: `sec-${className.replace(/\s+/g, "-").toLowerCase()}-${section.toLowerCase()}`, name: section, department: className })));
 
 export const loadStoredSections = (): SectionItem[] => {
   try {
     const saved = localStorage.getItem("rasi_v2_admin_sections");
     let parsed: SectionItem[] = saved ? JSON.parse(saved) : [...INITIAL_SECTIONS];
+    parsed = parsed.filter(section => /^[a-z]$/i.test(section.name)).map(section => ({ ...section, name: normalizeSectionValue(section.name), department: normalizeClassValue(section.department) }));
     // Guarantee all INITIAL_SECTIONS exist in parsed array
     for (const init of INITIAL_SECTIONS) {
       if (!parsed.some(s => s.name.toLowerCase() === init.name.toLowerCase() && s.department.toLowerCase() === init.department.toLowerCase())) {
@@ -1265,6 +1329,8 @@ export const loadStoredStudents = (): ManagedStudent[] => {
           : initial?.parentPhone;
       return {
         ...s,
+        department: normalizeClassValue(s.department),
+        section: normalizeSectionValue(s.section),
         name: resolvedName,
         parentName: s.parentName || initial?.parentName || "Parent",
         parentPhone: resolvedParentPhone,
@@ -1279,8 +1345,7 @@ export const loadStoredStudents = (): ManagedStudent[] => {
 function AdminMarksManager() {
   const [departments] = useState<string[]>(() => {
     try {
-      const saved = localStorage.getItem("rasi_v2_admin_departments");
-      return saved ? JSON.parse(saved) : INITIAL_DEPARTMENTS;
+      return INITIAL_DEPARTMENTS;
     } catch {
       return INITIAL_DEPARTMENTS;
     }
@@ -1428,14 +1493,14 @@ function AdminMarksManager() {
 
         <div className="flex flex-wrap items-end gap-4 pt-2">
           <label className="block min-w-48 text-xs font-semibold uppercase tracking-[0.12em] text-[#776c88]">
-            Department / Class
+            Class
             <select
               value={selectedDept}
               onChange={e => { setSelectedDept(e.target.value); setHasEntered(false); setSubmittedMessage(""); }}
               className="mt-2 w-full rounded-2xl border border-[#e6deeb] bg-[#faf7fc] px-4 py-3 text-sm font-medium text-[#2f1f4a] outline-none transition focus:border-[#5b3b92]"
             >
               {departments.map(d => (
-                <option key={d} value={d}>{d}</option>
+                <option key={d} value={d}>{classLabel(d)}</option>
               ))}
             </select>
           </label>
@@ -1476,7 +1541,7 @@ function AdminMarksManager() {
           {filteredStudents.length === 0 ? (
             <EmptyState
               title="No students enrolled"
-              message={`No students found in ${selectedDept} - Section ${selectedSection}. Add students in the Students tab first.`}
+              message={`No students found in ${classLabel(selectedDept)} - Section ${selectedSection}. Add students in the Students tab first.`}
             />
           ) : (
             <form onSubmit={handleSubmit} className="space-y-6">
@@ -1485,7 +1550,7 @@ function AdminMarksManager() {
                 <div className="mb-4 flex items-center justify-between border-b border-[#f0e8f8] pb-3">
                   <h3 className="font-semibold text-[#2f1f4a]">Assessment Details</h3>
                   <span className="rounded-full bg-[#f3ecf9] px-3 py-1 text-xs font-semibold text-[#6d4b9f]">
-                    {selectedDept} · Section {selectedSection} ({filteredStudents.length} students)
+                    {classLabel(selectedDept)} · Section {selectedSection} ({filteredStudents.length} students)
                   </span>
                 </div>
                 <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -1611,8 +1676,7 @@ function AdminMarksManager() {
 function AdminProjectsManager() {
   const [departments] = useState<string[]>(() => {
     try {
-      const saved = localStorage.getItem("rasi_v2_admin_departments");
-      return saved ? JSON.parse(saved) : INITIAL_DEPARTMENTS;
+      return INITIAL_DEPARTMENTS;
     } catch {
       return INITIAL_DEPARTMENTS;
     }
@@ -1645,8 +1709,8 @@ function AdminProjectsManager() {
           parentName: parent?.name || undefined,
           parentEmail: parent?.email || undefined,
           email: user.email,
-          department: user.department || "Unassigned",
-          section: user.section || "A",
+          department: normalizeClassValue(user.department),
+          section: normalizeSectionValue(user.section),
           status: user.status === "inactive" ? "inactive" : "active",
           joinedDate: user.joinedDate || "—",
           studentPassword: user.portalPassword || undefined,
@@ -1776,14 +1840,14 @@ function AdminProjectsManager() {
 
         <div className="flex flex-wrap items-end gap-4 pt-2">
           <label className="block min-w-48 text-xs font-semibold uppercase tracking-[0.12em] text-[#776c88]">
-            Department / Class
+            Class
             <select
               value={selectedDept}
               onChange={e => { setSelectedDept(e.target.value); setHasEntered(false); setSubmittedMessage(""); }}
               className="mt-2 w-full rounded-2xl border border-[#e6deeb] bg-[#faf7fc] px-4 py-3 text-sm font-medium text-[#2f1f4a] outline-none transition focus:border-[#5b3b92]"
             >
               {departments.map(d => (
-                <option key={d} value={d}>{d}</option>
+                <option key={d} value={d}>{classLabel(d)}</option>
               ))}
             </select>
           </label>
@@ -1823,7 +1887,7 @@ function AdminProjectsManager() {
           {filteredStudents.length === 0 ? (
             <EmptyState
               title="No students enrolled"
-              message={`No students found in ${selectedDept} - Section ${selectedSection}.`}
+              message={`No students found in ${classLabel(selectedDept)} - Section ${selectedSection}.`}
             />
           ) : (
             <form onSubmit={handleSubmit} className="space-y-6">
@@ -1832,7 +1896,7 @@ function AdminProjectsManager() {
                 <div className="mb-4 flex items-center justify-between border-b border-[#f0e8f8] pb-3">
                   <h3 className="font-semibold text-[#2f1f4a]">Project Parameters</h3>
                   <span className="rounded-full bg-[#f3ecf9] px-3 py-1 text-xs font-semibold text-[#6d4b9f]">
-                    {selectedDept} · Section {selectedSection} ({filteredStudents.length} students)
+                    {classLabel(selectedDept)} · Section {selectedSection} ({filteredStudents.length} students)
                   </span>
                 </div>
                 <div className="grid gap-4 sm:grid-cols-2">
@@ -1962,8 +2026,7 @@ function AdminGovernmentExamsManager() {
 
   const [departments] = useState<string[]>(() => {
     try {
-      const saved = localStorage.getItem("rasi_v2_admin_departments");
-      return saved ? JSON.parse(saved) : INITIAL_DEPARTMENTS;
+      return INITIAL_DEPARTMENTS;
     } catch {
       return INITIAL_DEPARTMENTS;
     }
@@ -2227,7 +2290,7 @@ Tamil Nadu Government,TN TRB PG Teacher,Post Graduation + B.Ed,150,110 / 150`;
               <h3 className="text-xs font-bold uppercase tracking-[0.14em] text-[#6d4b9f]">Send To Class & Section</h3>
               <div className="mt-3 grid gap-4 sm:grid-cols-2">
                 <label className="block text-xs font-semibold text-[#776c88]">
-                  Target Class / Department
+                  Class
                   <select
                     value={bulkClass}
                     onChange={e => setBulkClass(e.target.value)}
@@ -2235,7 +2298,7 @@ Tamil Nadu Government,TN TRB PG Teacher,Post Graduation + B.Ed,150,110 / 150`;
                   >
                     <option value="All Classes">All Classes</option>
                     {departments.map(d => (
-                      <option key={d} value={d}>{d}</option>
+                      <option key={d} value={d}>{classLabel(d)}</option>
                     ))}
                   </select>
                 </label>
@@ -2247,10 +2310,7 @@ Tamil Nadu Government,TN TRB PG Teacher,Post Graduation + B.Ed,150,110 / 150`;
                     className="mt-1.5 w-full rounded-xl border border-[#e4dce9] bg-white px-3 py-2 text-sm outline-none focus:border-[#5b3b92]"
                   >
                     <option value="All Sections">All Sections</option>
-                    <option value="A">Section A</option>
-                    <option value="B">Section B</option>
-                    <option value="C">Section C</option>
-                    <option value="D">Section D</option>
+                    {SECTION_OPTIONS.map(section => <option key={section} value={section}>Section {section}</option>)}
                   </select>
                 </label>
               </div>
@@ -2351,10 +2411,9 @@ Tamil Nadu Government,TN TRB PG Teacher,Post Graduation + B.Ed,150,110 / 150`;
 
 
 function AdminStudentManager() {
-  const [departments, setDepartments] = useState<string[]>(() => {
+  const [departments, setClasses] = useState<string[]>(() => {
     try {
-      const saved = localStorage.getItem("rasi_v2_admin_departments");
-      return saved ? JSON.parse(saved) : INITIAL_DEPARTMENTS;
+      return INITIAL_DEPARTMENTS;
     } catch {
       return INITIAL_DEPARTMENTS;
     }
@@ -2383,8 +2442,8 @@ function AdminStudentManager() {
         parentPhone: undefined,
         parentEmail: parent?.email || undefined,
         email: user.email,
-        department: user.department || "Unassigned",
-        section: user.section || "A",
+        department: normalizeClassValue(user.department),
+        section: normalizeSectionValue(user.section),
         status: user.status === "inactive" ? "inactive" : "active",
         joinedDate: user.joinedDate || "—",
         studentPassword: user.portalPassword || undefined,
@@ -2401,10 +2460,10 @@ function AdminStudentManager() {
   useEffect(() => {
     if (!dbPortalUsersQuery.isLoading && !dbPortalUsersQuery.isError) {
       setStudents(databaseStudents);
-      const databaseDepartments = Array.from(new Set(databaseStudents.map(student => student.department).filter(Boolean))).sort();
-      const databaseSections = databaseDepartments.flatMap(department => Array.from(new Set(databaseStudents.filter(student => student.department === department).map(student => student.section))).map(name => ({ id: `db-${department}-${name}`, name, department })));
-      if (databaseDepartments.length) {
-        setDepartments(current => Array.from(new Set([...current, ...databaseDepartments])).sort());
+      const databaseClasses = Array.from(new Set(databaseStudents.map(student => student.department).filter(department => INITIAL_DEPARTMENTS.includes(department)))).sort();
+      const databaseSections = databaseClasses.flatMap(department => Array.from(new Set(databaseStudents.filter(student => student.department === department).map(student => student.section))).map(name => ({ id: `db-${department}-${name}`, name, department })));
+      if (databaseClasses.length) {
+        setClasses(current => Array.from(new Set([...current, ...databaseClasses])).sort());
       }
       if (databaseSections.length) {
         setSections(current => {
@@ -2483,34 +2542,34 @@ function AdminStudentManager() {
     setSingleStudent(current => departments.includes(current.department) ? current : { ...current, department: departments[0] || "" });
   }, [departments]);
 
-  // Add Department
-  const handleAddDepartment = (e: React.FormEvent) => {
+  // Add Class
+  const handleAddClass = (e: React.FormEvent) => {
     e.preventDefault();
     const trimmed = newDeptName.trim();
     if (!trimmed) return;
     if (departments.some(d => d.toLowerCase() === trimmed.toLowerCase())) {
-      showToast(`Department "${trimmed}" already exists!`);
+      showToast(`Class "${trimmed}" already exists!`);
       return;
     }
-    setDepartments([...departments, trimmed]);
+    setClasses([...departments, trimmed]);
     setNewSectionDept(trimmed);
     setSingleStudent(current => ({ ...current, department: trimmed }));
     setBulkDept(trimmed);
     setNewDeptName("");
-    showToast(`Department "${trimmed}" added successfully.`);
+    showToast(`Class "${trimmed}" added successfully.`);
   };
 
-  const handleDeleteDepartment = (dept: string) => {
-    if (confirm(`Remove department "${dept}"?`)) {
-      setDepartments(departments.filter(d => d !== dept));
-      showToast(`Department "${dept}" removed.`);
+  const handleDeleteClass = (dept: string) => {
+    if (confirm(`Remove class "${dept}"?`)) {
+      setClasses(departments.filter(d => d !== dept));
+      showToast(`Class "${dept}" removed.`);
     }
   };
 
   // Add Section
   const handleAddSection = (e: React.FormEvent) => {
     e.preventDefault();
-    const trimmedSec = newSectionName.trim();
+    const trimmedSec = normalizeSectionValue(newSectionName);
     if (!trimmedSec) return;
     const targetDept = newSectionDept || departments[0] || "General";
     if (sections.some(s => s.name.toLowerCase() === trimmedSec.toLowerCase() && s.department.toLowerCase() === targetDept.toLowerCase())) {
@@ -2636,7 +2695,7 @@ function AdminStudentManager() {
   // Download Sample Template with Student's password & Parent's password columns
   const handleDownloadTemplate = () => {
     exportToCsv("students_import_template.csv", [
-      "studentId", "name", "parentName", "parentPhone", "email", "parentEmail", "Student's password", "Parent's password", "section", "department"
+      "studentId", "name", "parentName", "parentPhone", "email", "parentEmail", "Student's password", "Parent's password", "section", "class"
     ], [
       ["23CS101", "Aarav Patel", "Kishore Patel", "+91 98401 11223", "aarav.p@portal.com", "kishore.patel@gmail.com", "aarav123", "parent123", "A", "Grade 10"],
       ["23CS102", "Meera Krishnan", "Krishnan S.", "+91 98401 11224", "meera.k@portal.com", "krishnan.s@gmail.com", "meera123", "parent456", "A", "Grade 10"],
@@ -2681,7 +2740,7 @@ function AdminStudentManager() {
     const stuPassIdx = header.findIndex(h => (h.includes("student") && h.includes("pass")) || h === "studentpassword" || h.includes("student's password"));
     const parPassIdx = header.findIndex(h => (h.includes("parent") && h.includes("pass")) || h === "parentpassword" || h.includes("parent's password"));
     const secIdx = header.findIndex(h => h.includes("section") || h.includes("batch") || h.includes("sec"));
-    const deptIdx = header.findIndex(h => h.includes("department") || h.includes("dept") || h.includes("class"));
+    const deptIdx = header.findIndex(h => h.includes("class") || h.includes("dept") || h.includes("class"));
 
     let importedCount = 0;
     const newRecords: ManagedStudent[] = [];
@@ -2710,8 +2769,8 @@ function AdminStudentManager() {
       const semail = (emailIdx !== -1 && row[emailIdx]) ? row[emailIdx] : `student_${i}@portal.com`;
       const parsedStudentPassword = (stuPassIdx !== -1 && row[stuPassIdx]) ? row[stuPassIdx] : "123456";
       const parsedParentPassword = (parPassIdx !== -1 && row[parPassIdx]) ? row[parPassIdx] : (sparentEmail ? "123456" : "");
-      const ssec = bulkSection.trim() || (secIdx !== -1 ? row[secIdx] : row[3]) || "A";
-      const sdept = bulkDept.trim() || (deptIdx !== -1 ? row[deptIdx] : row[4]) || departments[0] || "General";
+    const ssec = normalizeSectionValue(bulkSection.trim() || (secIdx !== -1 ? row[secIdx] : row[3]) || "A");
+    const sdept = normalizeClassValue(bulkDept.trim() || (deptIdx !== -1 ? row[deptIdx] : row[4]) || departments[0] || "Grade 1");
 
       if (!students.some(s => s.studentId.toLowerCase() === sid.toLowerCase())) {
         newRecords.push({
@@ -2971,10 +3030,10 @@ function AdminStudentManager() {
     }
   };
 
-  // Bulk Delete All in Filtered Department & Section
+  // Bulk Delete All in Filtered Class & Section
   const handleDeleteAllFiltered = () => {
     if (filteredStudents.length === 0) return;
-    const desc = `${deptFilter !== "All" ? deptFilter : "All Departments"} ${sectionFilter !== "All" ? `(Section ${sectionFilter})` : ""}`;
+    const desc = `${deptFilter !== "All" ? deptFilter : "All Classes"} ${sectionFilter !== "All" ? `(Section ${sectionFilter})` : ""}`;
     if (confirm(`DANGER: Are you sure you want to delete ALL ${filteredStudents.length} students in ${desc} from the database? This action cannot be undone.`)) {
       executeDeleteStudents(filteredStudents);
     }
@@ -3103,7 +3162,7 @@ function AdminStudentManager() {
             </h1>
             <div className="mt-1.5 h-1 w-16 rounded-full bg-[#ef8656]"></div>
             <p className="mt-2 text-xs text-[#81758e]">
-              Manage departments, section batches, and perform comprehensive CRUD operations for students.
+              Manage classes, section batches, and perform comprehensive CRUD operations for students.
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
@@ -3114,7 +3173,7 @@ function AdminStudentManager() {
               ● {activeCount} Active
             </span>
             <span className="rounded-xl border border-[#eee6f0] bg-white px-3.5 py-1.5 text-xs font-semibold text-[#ef8656] shadow-sm">
-              🏛️ {departments.length} Departments
+              🏛️ {departments.length} Classes
             </span>
           </div>
         </div>
@@ -3125,7 +3184,7 @@ function AdminStudentManager() {
         <div className="flex min-w-max gap-1">
           {([
             ["students", "Student List"],
-            ["departments", "Add Department"],
+            ["departments", "Classes"],
             ["sections", "Add Section"],
             ["add-student", "Add Student"],
             ["bulk-import", "Bulk Import"],
@@ -3142,57 +3201,10 @@ function AdminStudentManager() {
         </div>
       </div>
 
-      {/* 2. Add Department Card */}
       {managementTab === "departments" && <div className="rounded-3xl border border-[#eee6f0] bg-white p-6 shadow-sm">
-        <div className="flex items-center gap-2">
-          <span className="text-lg">🏛️</span>
-          <h2 className="text-base font-bold text-[#2a203e]">Add Department</h2>
-        </div>
-        <form onSubmit={handleAddDepartment} className="mt-4 flex flex-col gap-3 sm:flex-row">
-          <input
-            type="text"
-            required
-            value={newDeptName}
-            onChange={e => setNewDeptName(e.target.value)}
-            placeholder="Department name (e.g. Grade 10)"
-            className="flex-1 rounded-2xl border border-[#e4dce9] bg-white px-4 py-3 text-sm transition focus:border-[#5b3b92] focus:outline-none focus:ring-2 focus:ring-[#5b3b92]/20"
-          />
-          <button
-            type="submit"
-            className="flex items-center justify-center gap-2 rounded-2xl bg-[#1b55a8] px-8 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-[#15468d]"
-          >
-            Add
-          </button>
-        </form>
-
-        {/* Existing Departments Tag Cloud */}
-        {departments.length > 0 && (
-          <div className="mt-4 flex flex-wrap items-center gap-2 pt-2">
-            <span className="text-[11px] font-semibold uppercase tracking-[0.1em] text-[#9a8ea4]">Active:</span>
-            {departments.map(dept => {
-              const count = students.filter(s => s.department === dept).length;
-              return (
-                <span
-                  key={dept}
-                  className="group inline-flex items-center gap-1.5 rounded-full border border-[#ebe3ef] bg-[#faf7fc] py-1 pl-3 pr-2 text-xs font-medium text-[#5b3b92]"
-                >
-                  {dept}
-                  <span className="rounded-full bg-[#eee6f4] px-1.5 py-0.5 text-[10px] font-bold text-[#6d4b9f]">
-                    {count}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => handleDeleteDepartment(dept)}
-                    className="ml-1 text-[#aaa0b1] hover:text-[#d32f2f]"
-                    title={`Delete ${dept}`}
-                  >
-                    <X size={12} />
-                  </button>
-                </span>
-              );
-            })}
-          </div>
-        )}
+        <h2 className="text-base font-bold text-[#2a203e]">Available classes</h2>
+        <p className="mt-2 text-sm leading-6 text-[#81758e]">Class choices are fixed from Class 1 through Class 12. Use the Section field to place each student in a section from A to Z.</p>
+        <div className="mt-4 flex flex-wrap gap-2">{INITIAL_DEPARTMENTS.map(className => <span key={className} className="rounded-full bg-[#f3ecf9] px-3 py-1.5 text-xs font-semibold text-[#5b3b92]">{classLabel(className)}</span>)}</div>
       </div>}
 
       {/* 3. Add Section Card */}
@@ -3208,17 +3220,18 @@ function AdminStudentManager() {
             className="rounded-2xl border border-[#e4dce9] bg-white px-4 py-3 text-sm text-[#4a3e5c] focus:border-[#5b3b92] focus:outline-none"
           >
             {departments.map(d => (
-              <option key={d} value={d}>{d}</option>
+              <option key={d} value={d}>{classLabel(d)}</option>
             ))}
           </select>
-          <input
-            type="text"
+          <select
             required
             value={newSectionName}
             onChange={e => setNewSectionName(e.target.value)}
-            placeholder="Section name (e.g. A, B, Morning Batch)"
             className="rounded-2xl border border-[#e4dce9] bg-white px-4 py-3 text-sm transition focus:border-[#5b3b92] focus:outline-none"
-          />
+          >
+            <option value="">Choose a section</option>
+            {SECTION_OPTIONS.map(section => <option key={section} value={section}>Section {section}</option>)}
+          </select>
           <button
             type="submit"
             className="flex items-center justify-center gap-2 rounded-2xl bg-[#1b55a8] px-8 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-[#15468d]"
@@ -3236,7 +3249,7 @@ function AdminStudentManager() {
                 key={sec.id}
                 className="group inline-flex items-center gap-1.5 rounded-full border border-[#ebe3ef] bg-[#faf7fc] py-1 pl-3 pr-2 text-xs font-medium text-[#4a3e5c]"
               >
-                <span className="text-[11px] text-[#8d8197]">{sec.department}:</span>
+                <span className="text-[11px] text-[#8d8197]">{classLabel(sec.department)}:</span>
                 <span className="font-semibold text-[#5b3b92]">{sec.name}</span>
                 <button
                   type="button"
@@ -3344,26 +3357,22 @@ function AdminStudentManager() {
               />
             </div>
             <div>
-              <label className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.1em] text-[#81758e]">Department</label>
+              <label className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.1em] text-[#81758e]">Class</label>
               <select
                 value={singleStudent.department}
                 onChange={e => setSingleStudent({ ...singleStudent, department: e.target.value })}
                 className="w-full rounded-2xl border border-[#e4dce9] bg-white px-3.5 py-2.5 text-sm text-[#4a3e5c] focus:border-[#5b3b92] focus:outline-none"
               >
                 {departments.map(d => (
-                  <option key={d} value={d}>{d}</option>
+                  <option key={d} value={d}>{classLabel(d)}</option>
                 ))}
               </select>
             </div>
             <div>
               <label className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.1em] text-[#81758e]">Section</label>
-              <input
-                type="text"
-                value={singleStudent.section}
-                onChange={e => setSingleStudent({ ...singleStudent, section: e.target.value })}
-                placeholder="e.g. A"
-                className="w-full rounded-2xl border border-[#e4dce9] bg-white px-3.5 py-2.5 text-sm focus:border-[#5b3b92] focus:outline-none"
-              />
+              <select value={singleStudent.section} onChange={e => setSingleStudent({ ...singleStudent, section: e.target.value })} className="w-full rounded-2xl border border-[#e4dce9] bg-white px-3.5 py-2.5 text-sm focus:border-[#5b3b92] focus:outline-none">
+                {SECTION_OPTIONS.map(section => <option key={section} value={section}>Section {section}</option>)}
+              </select>
             </div>
           </div>
           <div className="flex justify-end">
@@ -3385,7 +3394,7 @@ function AdminStudentManager() {
           <h2 className="text-base font-bold text-[#2a203e]">Bulk Import Students (Excel / CSV)</h2>
         </div>
         <p className="mt-2 text-xs leading-5 text-[#81758e]">
-          Upload an Excel (<code className="rounded bg-[#f4edf9] px-1 py-0.5 text-[#5b3b92]">.xlsx</code>) or CSV (<code className="rounded bg-[#f4edf9] px-1 py-0.5 text-[#5b3b92]">.csv</code>) file to add many students at once. Your file should have columns: <strong className="text-[#2a203e]">studentId, name, email, parentEmail, Student's password, Parent's password, section, department</strong>. Student and Parent logins will automatically be created in the database!
+          Upload an Excel (<code className="rounded bg-[#f4edf9] px-1 py-0.5 text-[#5b3b92]">.xlsx</code>) or CSV (<code className="rounded bg-[#f4edf9] px-1 py-0.5 text-[#5b3b92]">.csv</code>) file to add many students at once. Your file should have columns: <strong className="text-[#2a203e]">studentId, name, email, parentEmail, Student's password, Parent's password, section, class</strong>. Student and Parent logins will automatically be created in the database!
         </p>
 
         {/* Download template button */}
@@ -3404,7 +3413,7 @@ function AdminStudentManager() {
         <div className="mt-5 grid gap-4 sm:grid-cols-2">
           <div>
             <label className="block text-[11px] font-bold uppercase tracking-[0.1em] text-[#71647f]">
-              Department (Optional):
+              Class (Optional):
             </label>
             <select
               value={bulkDept}
@@ -3413,7 +3422,7 @@ function AdminStudentManager() {
             >
               <option value="">— Select — (Use file column or default)</option>
               {departments.map(d => (
-                <option key={d} value={d}>{d}</option>
+                <option key={d} value={d}>{classLabel(d)}</option>
               ))}
             </select>
           </div>
@@ -3421,13 +3430,10 @@ function AdminStudentManager() {
             <label className="block text-[11px] font-bold uppercase tracking-[0.1em] text-[#71647f]">
               Section (Optional):
             </label>
-            <input
-              type="text"
-              value={bulkSection}
-              onChange={e => setBulkSection(e.target.value)}
-              placeholder="Leave blank to use file"
-              className="mt-1.5 w-full rounded-2xl border border-[#e4dce9] bg-white px-4 py-2.5 text-sm focus:border-[#5b3b92] focus:outline-none"
-            />
+            <select value={bulkSection} onChange={e => setBulkSection(e.target.value)} className="mt-1.5 w-full rounded-2xl border border-[#e4dce9] bg-white px-4 py-2.5 text-sm focus:border-[#5b3b92] focus:outline-none">
+              <option value="">— Use file value —</option>
+              {SECTION_OPTIONS.map(section => <option key={section} value={section}>Section {section}</option>)}
+            </select>
           </div>
         </div>
 
@@ -3484,7 +3490,7 @@ function AdminStudentManager() {
               type="button"
               onClick={() => {
                 exportToCsv("enrolled_students.csv", [
-                  "Student ID", "Student Name", "Student Password", "Parent Name", "Parent Phone", "Parent Email", "Parent Password", "Email", "Department", "Section", "Status", "Joined Date"
+                  "Student ID", "Student Name", "Student Password", "Parent Name", "Parent Phone", "Parent Email", "Parent Password", "Email", "Class", "Section", "Status", "Joined Date"
                 ], filteredStudents.map(s => [
                   s.studentId, s.name, getStudentPassword(s), s.parentName || "", s.parentPhone || "", s.parentEmail || "", getParentPassword(s), s.email, s.department, s.section, s.status, s.joinedDate
                 ]));
@@ -3499,13 +3505,13 @@ function AdminStudentManager() {
           </div>
         </div>
 
-        {/* Department, Section, Status & Search Filters Bar */}
+        {/* Class, Section, Status & Search Filters Bar */}
         <div className="mt-4 rounded-2xl border border-[#efe7f3] bg-[#faf7fc] p-4">
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            {/* 1. Department Filter */}
+            {/* 1. Class Filter */}
             <div>
               <label className="mb-1 block text-[11px] font-bold uppercase tracking-[0.08em] text-[#6d5d80]">
-                1. Department
+                1. Class
               </label>
               <select
                 value={deptFilter}
@@ -3515,9 +3521,9 @@ function AdminStudentManager() {
                 }}
                 className="w-full rounded-xl border border-[#e4dce9] bg-white px-3.5 py-2 text-xs font-medium text-[#4a3e5c] shadow-2xs focus:border-[#5b3b92] focus:outline-none"
               >
-                <option value="All">All Departments</option>
+                <option value="All">All Classes</option>
                 {departments.map(d => (
-                  <option key={d} value={d}>{d}</option>
+                  <option key={d} value={d}>{classLabel(d)}</option>
                 ))}
               </select>
             </div>
@@ -3640,7 +3646,7 @@ function AdminStudentManager() {
             <p className="mt-1 text-xs text-[#9a8ea4]">
               {deptFilter !== "All" || sectionFilter !== "All"
                 ? `No students found under ${deptFilter} ${sectionFilter !== "All" ? `(Section ${sectionFilter})` : ""}. Try selecting "All Sections" or adding students above.`
-                : "Try adjusting your search query or department filter."}
+                : "Try adjusting your search query or class filter."}
             </p>
           </div>
         ) : (
@@ -3665,7 +3671,7 @@ function AdminStudentManager() {
                   <th className="py-3 px-3">Parent Phone</th>
                   <th className="py-3 px-3">Parent Email</th>
                   <th className="py-3 px-3">Parent Password</th>
-                  <th className="py-3 px-3">Department</th>
+                  <th className="py-3 px-3">Class</th>
                   <th className="py-3 px-3">Section</th>
                   <th className="py-3 px-3">Status</th>
                   <th className="py-3 px-3">Joined</th>
@@ -3755,10 +3761,10 @@ function AdminStudentManager() {
                         )}
                       </td>
 
-                      {/* Department */}
+                      {/* Class */}
                       <td className="py-3 px-3">
                         <span className="rounded-full bg-[#f0eaf7] px-2.5 py-0.5 text-[11px] font-medium text-[#5b3b92]">
-                          {student.department}
+                          {classLabel(student.department)}
                         </span>
                       </td>
 
@@ -3846,9 +3852,9 @@ function AdminStudentManager() {
                 <span className="font-bold text-[#2a203e]">{studentToDelete.name}</span>
               </div>
               <div className="flex justify-between py-0.5">
-                <span className="text-[#81758e]">Department & Section:</span>
+                <span className="text-[#81758e]">Class & Section:</span>
                 <span className="font-semibold text-[#5b3b92]">
-                  {studentToDelete.department} — Sec {studentToDelete.section}
+                  {classLabel(studentToDelete.department)} — Section {normalizeSectionValue(studentToDelete.section)}
                 </span>
               </div>
               <div className="flex justify-between py-0.5">
@@ -3977,25 +3983,22 @@ function AdminStudentManager() {
 
               <div className="grid gap-3 sm:grid-cols-2">
                 <div>
-                  <label className="mb-1 block font-semibold uppercase tracking-[0.08em] text-[#71647f]">Department</label>
+                  <label className="mb-1 block font-semibold uppercase tracking-[0.08em] text-[#71647f]">Class</label>
                   <select
                     value={editingStudent.department}
                     onChange={e => setEditingStudent({ ...editingStudent, department: e.target.value })}
                     className="w-full rounded-2xl border border-[#e4dce9] bg-white px-3.5 py-2.5 focus:border-[#5b3b92] focus:outline-none"
                   >
                     {departments.map(d => (
-                      <option key={d} value={d}>{d}</option>
+                      <option key={d} value={d}>{classLabel(d)}</option>
                     ))}
                   </select>
                 </div>
                 <div>
                   <label className="mb-1 block font-semibold uppercase tracking-[0.08em] text-[#71647f]">Section</label>
-                  <input
-                    type="text"
-                    value={editingStudent.section}
-                    onChange={e => setEditingStudent({ ...editingStudent, section: e.target.value })}
-                    className="w-full rounded-2xl border border-[#e4dce9] px-3.5 py-2.5 focus:border-[#5b3b92] focus:outline-none"
-                  />
+                  <select value={normalizeSectionValue(editingStudent.section)} onChange={e => setEditingStudent({ ...editingStudent, section: e.target.value })} className="w-full rounded-2xl border border-[#e4dce9] bg-white px-3.5 py-2.5 focus:border-[#5b3b92] focus:outline-none">
+                    {SECTION_OPTIONS.map(section => <option key={section} value={section}>Section {section}</option>)}
+                  </select>
                 </div>
               </div>
 
@@ -4100,8 +4103,7 @@ const INITIAL_ATTENDANCE_SESSIONS: AttendanceSessionRecord[] = [
 function AdminAttendanceManager() {
   const [departments] = useState<string[]>(() => {
     try {
-      const saved = localStorage.getItem("rasi_v2_admin_departments");
-      return saved ? JSON.parse(saved) : INITIAL_DEPARTMENTS;
+      return INITIAL_DEPARTMENTS;
     } catch {
       return INITIAL_DEPARTMENTS;
     }
@@ -4203,7 +4205,7 @@ function AdminAttendanceManager() {
     e.preventDefault();
     if (bulkAttendanceMutation.isPending) return;
     if (newBatchStudents.length === 0) {
-      showToast("No students enrolled in this department & section.");
+      showToast("No students enrolled in this class and section.");
       return;
     }
 
@@ -4467,7 +4469,7 @@ function AdminAttendanceManager() {
 
   // Export records to CSV
   const handleExportCSV = () => {
-    const headers = ["Date", "Student ID", "Student Name", "Email", "Department", "Section", "Status"];
+    const headers = ["Date", "Student ID", "Student Name", "Email", "Class", "Section", "Status"];
     const rows = filteredLedger.map(item => [
       item.date,
       item.studentId,
@@ -4644,17 +4646,15 @@ function AdminAttendanceManager() {
         {viewTab !== "issues" && (
           <div className="mt-5 grid gap-3 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-5">
             <div>
-              <label className="text-[10px] font-bold uppercase tracking-wider text-[#817293]">
-                Department
-              </label>
+              <label className="text-[10px] font-bold uppercase tracking-wider text-[#817293]">Class</label>
               <select
                 value={filterDept}
                 onChange={e => setFilterDept(e.target.value)}
                 className="mt-1 w-full rounded-xl border border-[#e4dce9] bg-white px-3 py-2 text-xs text-[#2a203e] focus:border-[#0f4c81] focus:outline-none"
               >
-                <option value="All">All Departments</option>
+                <option value="All">All Classes</option>
                 {departments.map(d => (
-                  <option key={d} value={d}>{d}</option>
+                  <option key={d} value={d}>{classLabel(d)}</option>
                 ))}
               </select>
             </div>
@@ -4763,7 +4763,7 @@ function AdminAttendanceManager() {
                       </td>
                       <td className="py-3.5 px-4">
                         <span className="rounded-lg bg-[#f0eaf7] px-2.5 py-1 text-xs font-semibold text-[#5b3b92]">
-                          {session.department} - Sec {session.section}
+                          {classLabel(session.department)} - Section {session.section}
                         </span>
                       </td>
                       <td className="py-3.5 px-4">
@@ -4882,7 +4882,7 @@ function AdminAttendanceManager() {
                         <div className="text-[10px] text-[#8d8197]">{rec.email}</div>
                       </td>
                       <td className="py-3 px-4 text-[#71647f]">
-                        {rec.department} - Sec {rec.section}
+                        {classLabel(rec.department)} - Section {rec.section}
                       </td>
                       <td className="py-3 px-4">
                         <button
@@ -5078,16 +5078,14 @@ function AdminAttendanceManager() {
                 </div>
 
                 <div>
-                  <label className="text-xs font-bold uppercase tracking-wider text-[#4a3e5c]">
-                    Department
-                  </label>
+                  <label className="text-xs font-bold uppercase tracking-wider text-[#4a3e5c]">Class</label>
                   <select
                     value={newDept}
                     onChange={e => setNewDept(e.target.value)}
                     className="mt-1.5 w-full rounded-xl border border-[#e4dce9] px-3.5 py-2.5 text-xs text-[#2a203e]"
                   >
                     {departments.map(d => (
-                      <option key={d} value={d}>{d}</option>
+                      <option key={d} value={d}>{classLabel(d)}</option>
                     ))}
                   </select>
                 </div>
@@ -5224,7 +5222,7 @@ function AdminAttendanceManager() {
             </button>
 
             <span className="rounded-full bg-[#f0eaf7] px-3 py-1 text-xs font-bold text-[#5b3b92]">
-              {inspectingSession.department} - Sec {inspectingSession.section}
+              {classLabel(inspectingSession.department)} - Section {inspectingSession.section}
             </span>
             <h2 className="mt-2 text-xl font-bold text-[#1b3a6b]">
               Session Breakdown ({inspectingSession.date})
@@ -5410,8 +5408,7 @@ function AdminAttendanceManager() {
 function AdminQuestionPaperManager() {
   const [departments] = useState<string[]>(() => {
     try {
-      const saved = localStorage.getItem("rasi_v2_admin_departments");
-      return saved ? JSON.parse(saved) : INITIAL_DEPARTMENTS;
+      return INITIAL_DEPARTMENTS;
     } catch {
       return INITIAL_DEPARTMENTS;
     }
@@ -5556,7 +5553,7 @@ function AdminQuestionPaperManager() {
     (p.targetClass && p.targetClass.toLowerCase().includes(searchFilter.toLowerCase()))
   );
 
-  const classOptions = ["Grade 10", "Grade 9", "Grade 11", "Grade 12", "All classes", ...departments.map(d => `${d}`), "Custom"];
+  const classOptions = ["All classes", ...INITIAL_DEPARTMENTS];
   const subjectOptions = ["Mathematics", "Physics", "Chemistry", "Computer Science", "English", "Biology", "Custom"];
 
   return (
@@ -5595,7 +5592,7 @@ function AdminQuestionPaperManager() {
             {/* Target Class */}
             <div>
               <label className="block text-xs font-bold uppercase tracking-[0.14em] text-[#4a3e5c]">
-                Target Class / Department
+                Class
               </label>
               <select
                 value={targetClass}
@@ -5603,7 +5600,7 @@ function AdminQuestionPaperManager() {
                 className="mt-2 w-full rounded-2xl border border-[#e4dce9] bg-white px-4 py-3 text-sm text-[#2a203e] shadow-xs focus:border-[#6d4b9f] focus:outline-none"
               >
                 {classOptions.map(cls => (
-                  <option key={cls} value={cls}>{cls}</option>
+                  <option key={cls} value={cls}>{classLabel(cls)}</option>
                 ))}
               </select>
               {targetClass === "Custom" && (
@@ -5877,8 +5874,7 @@ function AdminQuestionPaperManager() {
 function AdminUnitPaperManager() {
   const [departments] = useState<string[]>(() => {
     try {
-      const saved = localStorage.getItem("rasi_v2_admin_departments");
-      return saved ? JSON.parse(saved) : INITIAL_DEPARTMENTS;
+      return INITIAL_DEPARTMENTS;
     } catch {
       return INITIAL_DEPARTMENTS;
     }
@@ -6029,9 +6025,9 @@ function AdminUnitPaperManager() {
     (p.section && p.section.toLowerCase().includes(searchFilter.toLowerCase()))
   );
 
-  const classOptions = ["Grade 10", "Grade 9", "Grade 11", "Grade 12", "All classes", ...departments.map(d => `${d}`), "Custom"];
+  const classOptions = ["All classes", ...INITIAL_DEPARTMENTS];
   const subjectOptions = ["Mathematics", "Physics", "Chemistry", "Computer Science", "English", "Biology", "Custom"];
-  const sectionOptions = ["All Sections", "Section A", "Section B", "Section C", "Section D", "Custom"];
+  const sectionOptions = ["All Sections", ...SECTION_OPTIONS];
 
   return (
     <div className="space-y-8">
@@ -6069,7 +6065,7 @@ function AdminUnitPaperManager() {
             {/* Target Class */}
             <div>
               <label className="block text-xs font-bold uppercase tracking-[0.14em] text-[#4a3e5c]">
-                Target Class / Department
+                Class
               </label>
               <select
                 value={targetClass}
@@ -6077,7 +6073,7 @@ function AdminUnitPaperManager() {
                 className="mt-2 w-full rounded-2xl border border-[#e4dce9] bg-white px-4 py-3 text-sm text-[#2a203e] shadow-xs focus:border-[#6d4b9f] focus:outline-none"
               >
                 {classOptions.map(cls => (
-                  <option key={cls} value={cls}>{cls}</option>
+                  <option key={cls} value={cls}>{classLabel(cls)}</option>
                 ))}
               </select>
               {targetClass === "Custom" && (
@@ -6129,7 +6125,7 @@ function AdminUnitPaperManager() {
                 className="mt-2 w-full rounded-2xl border border-[#e4dce9] bg-white px-4 py-3 text-sm text-[#2a203e] shadow-xs focus:border-[#6d4b9f] focus:outline-none"
               >
                 {sectionOptions.map(sec => (
-                  <option key={sec} value={sec}>{sec}</option>
+                  <option key={sec} value={sec}>{sec === "All Sections" ? sec : `Section ${sec}`}</option>
                 ))}
               </select>
               {section === "Custom" && (
@@ -6138,7 +6134,7 @@ function AdminUnitPaperManager() {
                   required
                   value={customSection}
                   onChange={e => setCustomSection(e.target.value)}
-                  placeholder="Enter custom section"
+                  placeholder="Enter section"
                   className="mt-2 w-full rounded-2xl border border-[#e4dce9] bg-white px-4 py-2.5 text-sm"
                 />
               )}
@@ -6394,10 +6390,10 @@ function AdminAnnouncementManager() {
     return users.filter(user => user.role === "parent" && user.email && user.linkedStudentEmail).map(parent => {
       const child = users.find(user => user.role === "student" && user.email?.toLowerCase() === parent.linkedStudentEmail?.toLowerCase());
       const storedStudent = loadStoredStudents().find(student => student.email?.toLowerCase() === parent.linkedStudentEmail?.toLowerCase());
-      return { recipientEmail: parent.email, parentName: parent.name || parent.email, studentEmail: parent.linkedStudentEmail, studentName: child?.name || storedStudent?.name || parent.linkedStudentEmail, department: child?.department || storedStudent?.department || "", section: child?.section || storedStudent?.section || "" };
+      return { recipientEmail: parent.email, parentName: parent.name || parent.email, studentEmail: parent.linkedStudentEmail, studentName: child?.name || storedStudent?.name || parent.linkedStudentEmail, department: normalizeClassValue(child?.department || storedStudent?.department), section: normalizeSectionValue(child?.section || storedStudent?.section) };
     }).sort((a, b) => `${a.studentName}${a.parentName}`.localeCompare(`${b.studentName}${b.parentName}`));
   }, [portalUsersQuery.data]);
-  const classes = Array.from(new Set(recipients.map(recipient => recipient.department).filter(Boolean))).sort();
+  const classes = INITIAL_DEPARTMENTS.filter(className => recipients.some(recipient => recipient.department === className));
   const sections = Array.from(new Set(recipients.filter(recipient => recipient.department === selectedClass).map(recipient => recipient.section).filter(Boolean))).sort();
   const filteredRecipients = recipients.filter(recipient => recipient.department === selectedClass && recipient.section === selectedSection);
   useEffect(() => {
@@ -6418,7 +6414,7 @@ function AdminAnnouncementManager() {
     <form onSubmit={handleSubmit} className="rounded-3xl border border-[#eee6f0] bg-white p-6 shadow-sm">
       <div className="flex items-start justify-between gap-4 border-b border-[#f0e8f8] pb-4"><div><p className="text-xs font-bold uppercase tracking-[0.18em] text-[#ef8656]">Private message</p><h2 className="mt-1 text-2xl font-semibold text-[#2f1f4a]">Send an announcement</h2><p className="mt-2 text-sm text-[#887c91]">Choose one parent and their linked child. Only that parent will see this message.</p></div><Megaphone className="shrink-0 text-[#6d4b9f]" size={24} /></div>
       {portalUsersQuery.isLoading ? <LoadingState label="Loading parent accounts…" /> : !recipients.length ? <EmptyState title="No linked parent accounts" message="Create a parent account and link it to a student before sending an announcement." /> : <div className="mt-5 space-y-4">
-        <label className="block text-xs font-semibold uppercase tracking-[0.12em] text-[#776c88]">Class<select required value={selectedClass} onChange={event => { setSelectedClass(event.target.value); setSelectedSection(""); setRecipientEmail(""); }} className="mt-2 w-full rounded-2xl border border-[#e6deeb] bg-[#faf7fc] px-4 py-3 text-sm font-medium text-[#2f1f4a] outline-none focus:border-[#5b3b92]"><option value="">Choose a class</option>{classes.map(department => <option key={department} value={department}>{department}</option>)}</select></label>
+        <label className="block text-xs font-semibold uppercase tracking-[0.12em] text-[#776c88]">Class<select required value={selectedClass} onChange={event => { setSelectedClass(event.target.value); setSelectedSection(""); setRecipientEmail(""); }} className="mt-2 w-full rounded-2xl border border-[#e6deeb] bg-[#faf7fc] px-4 py-3 text-sm font-medium text-[#2f1f4a] outline-none focus:border-[#5b3b92]"><option value="">Choose a class</option>{classes.map(department => <option key={department} value={department}>{classLabel(department)}</option>)}</select></label>
         {selectedClass && <label className="block text-xs font-semibold uppercase tracking-[0.12em] text-[#776c88]">Section<select required value={selectedSection} onChange={event => { setSelectedSection(event.target.value); setRecipientEmail(""); }} className="mt-2 w-full rounded-2xl border border-[#e6deeb] bg-[#faf7fc] px-4 py-3 text-sm font-medium text-[#2f1f4a] outline-none focus:border-[#5b3b92]"><option value="">Choose a section</option>{sections.map(section => <option key={section} value={section}>{section}</option>)}</select></label>}
         {selectedClass && selectedSection && <label className="block text-xs font-semibold uppercase tracking-[0.12em] text-[#776c88]">Parent and child<select required value={recipientEmail} onChange={event => setRecipientEmail(event.target.value)} className="mt-2 w-full rounded-2xl border border-[#e6deeb] bg-[#faf7fc] px-4 py-3 text-sm font-medium text-[#2f1f4a] outline-none focus:border-[#5b3b92]"><option value="">Choose a student and parent</option>{filteredRecipients.map(recipient => <option key={recipient.recipientEmail} value={recipient.recipientEmail}>{recipient.studentName} · {recipient.parentName}</option>)}</select>{!filteredRecipients.length && <span className="mt-2 block normal-case tracking-normal text-[#887c91]">No linked parent–student accounts in this section.</span>}</label>}
         <label className="block text-xs font-semibold uppercase tracking-[0.12em] text-[#776c88]">Title<input required maxLength={160} value={title} onChange={event => setTitle(event.target.value)} placeholder="e.g. Parent meeting reminder" className="mt-2 w-full rounded-2xl border border-[#e6deeb] px-4 py-3 text-sm outline-none focus:border-[#5b3b92]" /></label>
@@ -6434,11 +6430,11 @@ function AdminWorkspace({ user, onLogout }: { user: User; onLogout: () => void }
   const [desktopSidebarOpen, setDesktopSidebarOpen] = useState(true);
   const allStudents = loadStoredStudents();
   const activeStudents = allStudents.filter(student => student.status !== "inactive" && !!student.email);
-  const departments = Array.from(new Set(activeStudents.map(student => student.department))).sort();
-  const [selectedDepartment, setSelectedDepartment] = useState(departments[0] || "Grade 10");
-  const sections = Array.from(new Set(activeStudents.filter(student => student.department === selectedDepartment).map(student => student.section))).sort();
+  const departments = INITIAL_DEPARTMENTS.filter(classValue => activeStudents.some(student => student.department === classValue));
+  const [selectedClass, setSelectedClass] = useState(departments[0] || "Grade 10");
+  const sections = SECTION_OPTIONS;
   const [selectedSection, setSelectedSection] = useState(sections[0] || "A");
-  const targetedStudents = activeStudents.filter(student => student.department === selectedDepartment && student.section === selectedSection);
+  const targetedStudents = activeStudents.filter(student => student.department === selectedClass && student.section === selectedSection);
   const [active, setActive] = useState<"Overview" | "User Management" | "Students" | "Attendance" | "Schedule" | "Marks" | "Projects" | "Announcements" | "Government exams" | "Question paper" | "Unit-wise paper" | "Profile">(() => {
     try {
       const saved = sessionStorage.getItem("rasi_admin_active_tab");
@@ -6457,7 +6453,7 @@ function AdminWorkspace({ user, onLogout }: { user: User; onLogout: () => void }
   const [editingSessionId, setEditingSessionId] = useState<number | null>(null);
   useEffect(() => {
     if (!sections.includes(selectedSection)) setSelectedSection(sections[0] || "A");
-  }, [selectedDepartment, sections.join("|"), selectedSection]);
+  }, [selectedClass, sections.join("|"), selectedSection]);
   const scheduleTargetEmail = targetedStudents[0]?.email || activeStudents[0]?.email || "student@portal.com";
   const scheduleQuery = trpc.student.schedule.useQuery({ studentEmail: scheduleTargetEmail }, { retry: false, staleTime: 30000 });
   const scheduleBulkMutation = trpc.admin.scheduleBulk.useMutation({
@@ -6474,7 +6470,7 @@ function AdminWorkspace({ user, onLogout }: { user: User; onLogout: () => void }
   const saveSchedule = (event: React.FormEvent) => {
     event.preventDefault();
     if (!targetedStudents.length) {
-      toast.error("No active students were found for this department and section.");
+      toast.error("No active students were found for this class and section.");
       return;
     }
     scheduleBulkMutation.mutate({ records: targetedStudents.map(student => ({ studentEmail: student.email, sessionDate, subject, exercise: description, sessionTime })) });
@@ -6502,22 +6498,24 @@ function AdminWorkspace({ user, onLogout }: { user: User; onLogout: () => void }
   return <div className="min-h-screen bg-[#f6f2f8] text-[#2a203e]">
     {/* Mobile top bar with hamburger */}
     <MobileTopBar user={user} onLogout={onLogout} navItems={adminNavItems} active={active} onNav={(label) => setActive(label as typeof active)} />
-    <aside className={`${desktopSidebarOpen ? "md:block" : "md:hidden"} fixed inset-y-0 left-0 hidden w-64 border-r border-[#ebe3ef] bg-[#fffdfb] p-6`}>
-      <Logo />
-      <div className="mt-12">
-        <p className="mb-3 text-[10px] font-bold uppercase tracking-[0.2em] text-[#a296ac]">Admin workspace</p>
-        {adminNavItems.map(item => (
-          <button
-            key={item.label}
-            onClick={() => setActive(item.label as typeof active)}
-            className={`mb-1 flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-sm transition ${
-              active === item.label ? "bg-[#f0e9f7] font-semibold text-[#5b3b92]" : "text-[#81758e] hover:bg-[#faf7fc]"
-            }`}
-          >
-            <span>{item.icon}</span>
-            {item.label}
-          </button>
-        ))}
+    <aside className={`${desktopSidebarOpen ? "md:block" : "md:hidden"} fixed inset-y-0 left-0 hidden w-64 overflow-hidden border-r border-[#ebe3ef] bg-[#fffdfb] p-6`}>
+      <div className="flex h-full min-h-0 flex-col">
+        <div className="shrink-0"><Logo /></div>
+        <p className="mb-3 mt-12 shrink-0 text-[10px] font-bold uppercase tracking-[0.2em] text-[#a296ac]">Admin workspace</p>
+        <nav aria-label="Admin navigation" className="min-h-0 flex-1 space-y-1 overflow-y-auto overscroll-contain pr-1">
+          {adminNavItems.map(item => (
+            <button
+              key={item.label}
+              onClick={() => setActive(item.label as typeof active)}
+              className={`mb-1 flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-sm transition ${
+                active === item.label ? "bg-[#f0e9f7] font-semibold text-[#5b3b92]" : "text-[#81758e] hover:bg-[#faf7fc]"
+              }`}
+            >
+              <span>{item.icon}</span>
+              {item.label}
+            </button>
+          ))}
+        </nav>
       </div>
     </aside>
     <main className={desktopSidebarOpen ? "md:ml-64" : "md:ml-0"}>
@@ -6547,11 +6545,11 @@ function AdminWorkspace({ user, onLogout }: { user: User; onLogout: () => void }
           <Pill>{active === "User Management" ? "USER MANAGEMENT" : active === "Students" ? "CREATION / MANAGEMENT" : active === "Attendance" ? "ATTENDANCE" : active === "Government exams" ? "GOV EXAMS" : active === "Question paper" ? "QUESTION PAPERS" : active === "Unit-wise paper" ? "UNIT-WISE PAPERS" : active.toUpperCase()}</Pill>
           {active !== "User Management" && <p className="mt-3 max-w-lg text-sm leading-6 text-[#81758e]">
             {active === "Students"
-              ? "Comprehensive student enrollment, department batches, single & bulk import management."
+              ? "Comprehensive student enrollment, class sections, single & bulk import management."
               : active === "Attendance"
-              ? "Department & section batch attendance with interactive roll number chips and records log."
+              ? "Class & section batch attendance with interactive roll number chips and records log."
               : active === "Marks"
-              ? "Filter by department and section to enter student test marks and dispatch directly to parent portals."
+              ? "Filter by class and section to enter student test marks and dispatch directly to parent portals."
               : active === "Projects"
               ? "Assign student project ideas and descriptions with instant dispatch to parents."
               : active === "Announcements"
@@ -6575,7 +6573,7 @@ function AdminWorkspace({ user, onLogout }: { user: User; onLogout: () => void }
               <Users className="text-[#6d4b9f]" size={24} />
               <h2 className="mt-6 text-xl font-semibold">Student Creation & Management</h2>
               <p className="mt-2 text-sm text-[#887c91]">
-                Full CRUD operations, add departments & sections, single student enrollment & bulk CSV/Excel import.
+                Full CRUD operations, add classes and sections, single student enrollment & bulk CSV/Excel import.
               </p>
             </button>
             <button
@@ -6655,7 +6653,7 @@ function AdminWorkspace({ user, onLogout }: { user: User; onLogout: () => void }
               <UserCheck className="text-[#6d4b9f]" size={24} />
               <h2 className="mt-6 text-xl font-semibold">User Management (Teacher, Admin, Student, Parent)</h2>
               <p className="mt-2 text-sm text-[#887c91]">
-                Add or remove Teacher, Admin, Student, and Parent accounts. Features a separate line for students & parents with Date, Department, Section, and Session.
+                Add or remove Teacher, Admin, Student, and Parent accounts. Features a separate line for students & parents with Date, Class, Section, and Session.
               </p>
             </button>
           </div>
@@ -6673,7 +6671,7 @@ function AdminWorkspace({ user, onLogout }: { user: User; onLogout: () => void }
             <div>
               <Pill>SCHEDULE</Pill>
               <p className="mt-3 max-w-2xl text-sm leading-6 text-[#81758e]">
-                Plan sessions, parent meetings, and orientation programs for a department and section.
+                Plan sessions, parent meetings, and orientation programs for a class and section.
               </p>
             </div>
             <div className="grid gap-5 lg:grid-cols-[1fr_1fr]">
@@ -6743,10 +6741,8 @@ function AdminWorkspace({ user, onLogout }: { user: User; onLogout: () => void }
               </h2>
               <form className="mt-6 space-y-4" onSubmit={saveSchedule}>
                 <div className="grid gap-4 sm:grid-cols-2">
-                  <label className="block text-xs font-semibold uppercase tracking-[0.14em] text-[#776c88]">
-                    Department
-                    <select value={selectedDepartment} onChange={event => setSelectedDepartment(event.target.value)} className="mt-2 w-full rounded-2xl border border-[#e6deeb] bg-white px-4 py-3 text-sm">
-                      {departments.map(department => <option key={department} value={department}>{department}</option>)}
+                  <label className="block text-xs font-semibold uppercase tracking-[0.14em] text-[#776c88]">Class<select value={selectedClass} onChange={event => setSelectedClass(event.target.value)} className="mt-2 w-full rounded-2xl border border-[#e6deeb] bg-white px-4 py-3 text-sm">
+                      {departments.map(department => <option key={department} value={department}>{classLabel(department)}</option>)}
                     </select>
                   </label>
                   <label className="block text-xs font-semibold uppercase tracking-[0.14em] text-[#776c88]">
@@ -6887,8 +6883,7 @@ function TeacherWorkspace({ user, onLogout }: { user: User; onLogout: () => void
   // Load shared departments, sections and students
   const [departments] = useState<string[]>(() => {
     try {
-      const saved = localStorage.getItem("rasi_v2_admin_departments");
-      return saved ? JSON.parse(saved) : INITIAL_DEPARTMENTS;
+      return INITIAL_DEPARTMENTS;
     } catch {
       return INITIAL_DEPARTMENTS;
     }
@@ -6939,7 +6934,7 @@ function TeacherWorkspace({ user, onLogout }: { user: User; onLogout: () => void
     } catch {}
   }, [sessionLogs]);
 
-  // Available sections for chosen department in Home tab
+  // Available sections for chosen class in Home tab
   const availableSections = useMemo(() => {
     const matched = sections.filter(s => s.department === selectedDept);
     return matched.length > 0 ? matched : [{ id: "default-a", name: "A", department: selectedDept }];
@@ -6951,7 +6946,7 @@ function TeacherWorkspace({ user, onLogout }: { user: User; onLogout: () => void
     }
   }, [availableSections, selectedSection]);
 
-  // Available sections for chosen department in Attendance Records tab
+  // Available sections for chosen class in Attendance Records tab
   const availableAttSections = useMemo(() => {
     const matched = sections.filter(s => s.department === fetchAttDept);
     return matched.length > 0 ? matched : [{ id: "default-att-sec", name: "A", department: fetchAttDept }];
@@ -7009,7 +7004,7 @@ function TeacherWorkspace({ user, onLogout }: { user: User; onLogout: () => void
     e.preventDefault();
     if (isSubmittingAttendance) return;
     if (batchStudents.length === 0) {
-      showToast("No students found in this department and section.");
+      showToast("No students found in this class and section.");
       return;
     }
     setIsSubmittingAttendance(true);
@@ -7213,7 +7208,7 @@ function TeacherWorkspace({ user, onLogout }: { user: User; onLogout: () => void
   const handleSaveMarks = (e: React.FormEvent) => {
     e.preventDefault();
     if (marksStudents.length === 0) {
-      showToast("No students in this department and section to save marks for.");
+      showToast("No students in this class and section to save marks for.");
       return;
     }
 
@@ -7273,7 +7268,7 @@ function TeacherWorkspace({ user, onLogout }: { user: User; onLogout: () => void
            r.section.toLowerCase() === fetchSection.toLowerCase() &&
            (!fetchDate || r.date === fetchDate)
     );
-    // If no exact date match, fall back to all records for that department & section so teacher sees past history
+    // If no exact date match, fall back to all records for that class and section so teacher sees past history
     if (matched.length > 0) {
       setFetchedRecords(matched);
       showToast(`Found ${matched.length} mark record(s) for ${fetchDept} Sec ${fetchSection}`);
@@ -7423,7 +7418,7 @@ function TeacherWorkspace({ user, onLogout }: { user: User; onLogout: () => void
                   : activeTab === "attendance_records"
                   ? "Review recorded classroom attendance history and absentee logs."
                   : activeTab === "marks_portal"
-                  ? "Filter by department and section to enter student test marks."
+                  ? "Filter by class and section to enter student test marks."
                   : activeTab === "mark_record"
                   ? "Search and review archived test mark records."
                   : "Your personal profile and contact details."}
@@ -7471,7 +7466,7 @@ function TeacherWorkspace({ user, onLogout }: { user: User; onLogout: () => void
                 <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
                   <div>
                     <label className="block text-xs font-bold uppercase tracking-[0.14em] text-[#4a3e5c]">
-                      DEPARTMENT:
+                      CLASS:
                     </label>
                     <select
                       value={selectedDept}
@@ -7517,10 +7512,10 @@ function TeacherWorkspace({ user, onLogout }: { user: User; onLogout: () => void
                 {batchStudents.length === 0 ? (
                   <div className="my-8 rounded-3xl border border-dashed border-[#d8c89b] bg-[#fdfcf7] p-10 text-center">
                     <p className="italic text-[#7a6f58]">
-                      No students found for {selectedDept} — Section {selectedSection}
+                      No students found for {classLabel(selectedDept)} — Section {selectedSection}
                     </p>
                     <p className="mt-2 text-xs text-[#a0947e]">
-                      Switch department/section above, or ask Admin to enroll students.
+                      Switch class/section above, or ask Admin to enroll students.
                     </p>
                   </div>
                 ) : (
@@ -7618,12 +7613,12 @@ function TeacherWorkspace({ user, onLogout }: { user: User; onLogout: () => void
               </h1>
             </div>
 
-            {/* Filter Card: DEPARTMENT, SECTION, DATE, FETCH & EXPORT */}
+            {/* Filter Card: CLASS, SECTION, DATE, FETCH & EXPORT */}
             <div className="rounded-2xl border border-[#eedfce] bg-white p-6 shadow-2xs">
               <form onSubmit={e => { e.preventDefault(); showToast(`Filtered attendance for ${fetchAttDept} Sec ${fetchAttSection}`); }} className="flex flex-wrap items-end gap-4">
                 <div>
                   <label className="block text-[11px] font-bold uppercase tracking-[0.14em] text-[#6b7280]">
-                    DEPARTMENT
+                    CLASS
                   </label>
                   <select
                     value={fetchAttDept}
@@ -7631,7 +7626,7 @@ function TeacherWorkspace({ user, onLogout }: { user: User; onLogout: () => void
                     className="mt-2 w-36 rounded-xl border border-[#d1d5db] bg-white px-3.5 py-2 text-sm font-semibold text-[#1f2937] focus:border-[#1b55a8] focus:outline-none"
                   >
                     {departments.map(d => (
-                      <option key={d} value={d}>{d}</option>
+                      <option key={d} value={d}>{classLabel(d)}</option>
                     ))}
                   </select>
                 </div>
@@ -7701,7 +7696,7 @@ function TeacherWorkspace({ user, onLogout }: { user: User; onLogout: () => void
                       });
                     });
                     exportToCsv(`attendance_records_${fetchAttDept}_Sec${fetchAttSection}.csv`, [
-                      "S.NO", "STUDENT ID", "STUDENT NAME", "PARENT NAME", "PARENT PHONE", "ATTENDANCE", "DEPARTMENT", "SECTION", "DATE", "DESCRIPTION"
+                      "S.NO", "STUDENT ID", "STUDENT NAME", "PARENT NAME", "PARENT PHONE", "ATTENDANCE", "CLASS", "SECTION", "DATE", "DESCRIPTION"
                     ], rows);
                     showToast("Exported attendance records to CSV!");
                   }}
@@ -7722,7 +7717,7 @@ function TeacherWorkspace({ user, onLogout }: { user: User; onLogout: () => void
                   <div>
                     <div className="flex items-center gap-2">
                       <span className="rounded-lg bg-[#e9f0fc] px-2.5 py-1 text-xs font-bold text-[#1b55a8]">
-                        {activeSelectedAttRecord.department} - Sec {activeSelectedAttRecord.section}
+                        {classLabel(activeSelectedAttRecord.department)} - Section {activeSelectedAttRecord.section}
                       </span>
                       <span className="text-xs text-[#6b7280]">
                         Session Date: {formatDateDisplay(activeSelectedAttRecord.date)} at {activeSelectedAttRecord.recordedAt}
@@ -7861,7 +7856,7 @@ function TeacherWorkspace({ user, onLogout }: { user: User; onLogout: () => void
                           return (
                             <tr>
                               <td colSpan={6} className="py-8 text-center text-xs text-[#8d8197]">
-                                No students found for this department and section.
+                                No students found for this class and section.
                               </td>
                             </tr>
                           );
@@ -7967,7 +7962,7 @@ function TeacherWorkspace({ user, onLogout }: { user: User; onLogout: () => void
                             </td>
                             <td className="py-3.5 px-4">
                               <span className="rounded-lg bg-[#f0eaf7] px-2.5 py-1 text-xs font-semibold text-[#5b3b92]">
-                                {log.department} - Sec {log.section}
+                                {classLabel(log.department)} - Section {log.section}
                               </span>
                             </td>
                             <td className="py-3.5 px-4">
@@ -8061,12 +8056,12 @@ function TeacherWorkspace({ user, onLogout }: { user: User; onLogout: () => void
               </div>
             </div>
 
-            {/* Filter Card: DEPARTMENT, SECTION, DESCRIPTION */}
+            {/* Filter Card: CLASS, SECTION, DESCRIPTION */}
             <div className="rounded-2xl border border-[#eedfce] bg-white p-6 shadow-2xs">
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
                 <div>
                   <label className="block text-[11px] font-bold uppercase tracking-[0.14em] text-[#6b7280]">
-                    DEPARTMENT
+                    CLASS
                   </label>
                   <select
                     value={marksDept}
@@ -8074,7 +8069,7 @@ function TeacherWorkspace({ user, onLogout }: { user: User; onLogout: () => void
                     className="mt-2 w-full rounded-xl border border-[#d1d5db] bg-white px-3.5 py-2.5 text-sm font-semibold text-[#1f2937] focus:border-[#1b55a8] focus:outline-none"
                   >
                     {departments.map(d => (
-                      <option key={d} value={d}>{d}</option>
+                      <option key={d} value={d}>{classLabel(d)}</option>
                     ))}
                   </select>
                 </div>
@@ -8209,12 +8204,12 @@ function TeacherWorkspace({ user, onLogout }: { user: User; onLogout: () => void
               </h1>
             </div>
 
-            {/* Filter Card: DEPARTMENT, SECTION, DATE, FETCH & EXPORT BUTTON */}
+            {/* Filter Card: CLASS, SECTION, DATE, FETCH & EXPORT BUTTON */}
             <div className="rounded-2xl border border-[#eedfce] bg-white p-6 shadow-2xs">
               <form onSubmit={handleFetchRecords} className="flex flex-wrap items-end gap-4">
                 <div>
                   <label className="block text-[11px] font-bold uppercase tracking-[0.14em] text-[#6b7280]">
-                    DEPARTMENT
+                    CLASS
                   </label>
                   <select
                     value={fetchDept}
@@ -8222,7 +8217,7 @@ function TeacherWorkspace({ user, onLogout }: { user: User; onLogout: () => void
                     className="mt-2 w-36 rounded-xl border border-[#d1d5db] bg-white px-3.5 py-2 text-sm font-semibold text-[#1f2937] focus:border-[#1b55a8] focus:outline-none"
                   >
                     {departments.map(d => (
-                      <option key={d} value={d}>{d}</option>
+                      <option key={d} value={d}>{classLabel(d)}</option>
                     ))}
                   </select>
                 </div>
@@ -8286,7 +8281,7 @@ function TeacherWorkspace({ user, onLogout }: { user: User; onLogout: () => void
                       });
                     });
                     exportToCsv(`marks_records_${fetchDept}_Sec${fetchSection}.csv`, [
-                      "S.NO", "NAME OF THE STUDENT", "NAME OF THE PARENT", "MARK", "EXAM DESCRIPTION", "DEPARTMENT", "SECTION", "DATE"
+                      "S.NO", "NAME OF THE STUDENT", "NAME OF THE PARENT", "MARK", "EXAM DESCRIPTION", "CLASS", "SECTION", "DATE"
                     ], rows);
                     showToast("Exported mark statement to CSV!");
                   }}
@@ -8331,7 +8326,7 @@ function TeacherWorkspace({ user, onLogout }: { user: User; onLogout: () => void
                           <div>
                             <div className="flex items-center gap-2">
                               <span className="rounded-lg bg-[#e9f0fc] px-2.5 py-1 text-xs font-bold text-[#1b55a8]">
-                                {record.department} - Sec {record.section}
+                                {classLabel(record.department)} - Section {record.section}
                               </span>
                               <span className="text-xs text-[#6b7280]">
                                 Recorded on {formatDateDisplay(record.date)} at {record.recordedAt}
@@ -8488,7 +8483,7 @@ function TeacherWorkspace({ user, onLogout }: { user: User; onLogout: () => void
                 </h3>
               </div>
               <p className="mt-1 text-xs text-[#81758e]">
-                {whatsappModalRecord.department} - Section {whatsappModalRecord.section} · {formatDateDisplay(whatsappModalRecord.date)} · ({whatsappModalRecord.presentCount} Present, {whatsappModalRecord.absentCount} Absent)
+                {classLabel(whatsappModalRecord.department)} - Section {whatsappModalRecord.section} · {formatDateDisplay(whatsappModalRecord.date)} · ({whatsappModalRecord.presentCount} Present, {whatsappModalRecord.absentCount} Absent)
               </p>
             </div>
             <button
