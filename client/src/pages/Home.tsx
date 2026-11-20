@@ -1612,9 +1612,8 @@ function AdminProjectsManager() {
 
   const [students] = useState<ManagedStudent[]>(loadStoredStudents);
   const dbPortalUsersQuery = trpc.admin.listPortalUsers.useQuery({}, {
-    staleTime: 0,
+    staleTime: 30_000,
     refetchOnWindowFocus: true,
-    refetchInterval: 5000,
   });
   const databaseStudents = useMemo<ManagedStudent[]>(() => {
     const users = (dbPortalUsersQuery.data || []) as any[];
@@ -2356,9 +2355,8 @@ function AdminStudentManager() {
   const [students, setStudents] = useState<ManagedStudent[]>([]);
   const bulkCreateLoginsMutation = trpc.admin.bulkCreateStudentLogins.useMutation();
   const dbPortalUsersQuery = trpc.admin.listPortalUsers.useQuery({}, {
-    staleTime: 0,
+    staleTime: 30_000,
     refetchOnWindowFocus: true,
-    refetchInterval: 5000,
   });
   const { data: dbPortalUsers = [] } = dbPortalUsersQuery;
   const databaseStudents = useMemo<ManagedStudent[]>(() => {
@@ -6373,8 +6371,8 @@ function AdminUnitPaperManager() {
 }
 
 function AdminAnnouncementManager() {
-  const portalUsersQuery = trpc.admin.listPortalUsers.useQuery({}, { staleTime: 0, refetchOnWindowFocus: true, refetchInterval: 10000 });
-  const announcementsQuery = trpc.admin.announcements.useQuery(undefined, { staleTime: 0, refetchOnWindowFocus: true, refetchInterval: 10000 });
+  const portalUsersQuery = trpc.admin.listPortalUsers.useQuery({}, { staleTime: 30_000, refetchOnWindowFocus: true });
+  const announcementsQuery = trpc.admin.announcements.useQuery(undefined, { staleTime: 30_000, refetchOnWindowFocus: true });
   const createAnnouncementMutation = trpc.admin.createAnnouncement.useMutation();
   const [recipientEmail, setRecipientEmail] = useState("");
   const [title, setTitle] = useState("");
@@ -8906,6 +8904,14 @@ export default function Home() {
     ? { role: auth.user.role as Role, name: auth.user.name ?? auth.user.email ?? "Portal user", email: auth.user.email ?? "" }
     : null;
 
+  // Browser storage can preserve the admin screen after its API session has
+  // expired or changed roles. Do not leave that stale admin UI active: admin
+  // mutations will be rejected by adminProcedure until the user signs in again.
+  const adminSessionMismatch = user?.role === "admin" && !auth.loading && (
+    secureUser?.role !== "admin" ||
+    secureUser?.email.toLowerCase() !== user.email.toLowerCase()
+  );
+
   // Active user priority:
   // 1. Explicit user state in this tab (from recent login or tab-scoped sessionStorage)
   // 2. Cookie session (ONLY if pathRole matches or no explicit tab user was set)
@@ -8941,6 +8947,23 @@ export default function Home() {
     setUser(null);
     setActivePortal(false);
   };
+
+  if (user?.role === "admin" && auth.loading) {
+    return <PortfolioLoadingScreen />;
+  }
+
+  if (adminSessionMismatch) {
+    return (
+      <RoleLoginPage
+        role="admin"
+        onBack={logout}
+        onLogin={(u) => {
+          setUser(u);
+          setActivePortal(true);
+        }}
+      />
+    );
+  }
 
   if (currentUser && (activePortal || isPortalUrl)) {
     if (currentUser.role === "student") return <div className="portal-shell"><StudentWorkspace user={currentUser} onLogout={logout} /></div>;

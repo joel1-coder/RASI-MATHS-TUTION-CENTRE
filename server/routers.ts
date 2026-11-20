@@ -60,8 +60,9 @@ export const appRouter = router({
           (!input.role || input.role === "admin")
         ) {
           // Seed this admin into the DB so it persists
+          let bootstrapUser: Awaited<ReturnType<typeof upsertPortalUser>> | undefined;
           try {
-            await upsertPortalUser({
+            bootstrapUser = await upsertPortalUser({
               email: emailKey,
               name: BOOTSTRAP_ADMIN_NAME,
               password: BOOTSTRAP_ADMIN_PASSWORD,
@@ -70,7 +71,10 @@ export const appRouter = router({
           } catch (e) {
             console.warn("[Auth] Bootstrap admin DB seed warning:", e);
           }
-          const openId = `portal_user_${emailKey.replace(/[^a-z0-9]/g, "_")}`;
+          // Use the persisted role-scoped ID. Signing the legacy ID here can
+          // authenticate as an older non-admin row for the same email, which
+          // makes every admin-only query return 403 after a successful login.
+          const openId = bootstrapUser?.openId ?? `portal_user_${emailKey.replace(/[^a-z0-9]/g, "_")}`;
           const token = await sdk.signSession({ openId, appId: ENV.appId, name: BOOTSTRAP_ADMIN_NAME });
           const cookieOptions = getSessionCookieOptions(ctx.req);
           ctx.res.cookie(COOKIE_NAME, token, cookieOptions);

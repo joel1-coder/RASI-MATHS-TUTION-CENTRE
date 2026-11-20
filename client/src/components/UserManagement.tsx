@@ -54,9 +54,8 @@ export function UserManagement() {
   // ── Server data ────────────────────────────────────────────────────────────
   const utils = trpc.useUtils();
   const { data: rawUsers = [], isLoading, refetch } = trpc.admin.listPortalUsers.useQuery({}, {
-    staleTime: 0,
+    staleTime: 30_000,
     refetchOnWindowFocus: true,
-    refetchInterval: 5000,
   });
 
   const createMutation = trpc.admin.createPortalUser.useMutation();

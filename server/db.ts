@@ -79,14 +79,16 @@ export async function getDb() {
         console.error("[Database] Could not ensure announcements table:", error);
       });
       // Ensure site_settings table exists for persistent portfolio content
-      _client.unsafe(`
+      await _client.unsafe(`
         CREATE TABLE IF NOT EXISTS "site_settings" (
           "id" serial PRIMARY KEY,
           "key" varchar(80) NOT NULL UNIQUE,
           "value" text NOT NULL,
           "updatedAt" timestamp DEFAULT now() NOT NULL
         );
-      `).catch(() => {});
+      `).catch((error) => {
+        console.error("[Database] Could not ensure site_settings table:", error);
+      });
     } catch (error) {
       console.warn("[Database] Failed to connect:", error);
       _db = null;
