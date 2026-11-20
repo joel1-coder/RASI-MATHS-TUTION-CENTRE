@@ -6421,6 +6421,7 @@ function AdminAnnouncementManager() {
 }
 
 function AdminWorkspace({ user, onLogout }: { user: User; onLogout: () => void }) {
+  const [desktopSidebarOpen, setDesktopSidebarOpen] = useState(true);
   const allStudents = loadStoredStudents();
   const activeStudents = allStudents.filter(student => student.status !== "inactive" && !!student.email);
   const departments = Array.from(new Set(activeStudents.map(student => student.department))).sort();
@@ -6491,7 +6492,7 @@ function AdminWorkspace({ user, onLogout }: { user: User; onLogout: () => void }
   return <div className="min-h-screen bg-[#f6f2f8] text-[#2a203e]">
     {/* Mobile top bar with hamburger */}
     <MobileTopBar user={user} onLogout={onLogout} navItems={adminNavItems} active={active} onNav={(label) => setActive(label as typeof active)} />
-    <aside className="fixed inset-y-0 left-0 hidden w-64 border-r border-[#ebe3ef] bg-[#fffdfb] p-6 md:block">
+    <aside className={`${desktopSidebarOpen ? "md:block" : "md:hidden"} fixed inset-y-0 left-0 hidden w-64 border-r border-[#ebe3ef] bg-[#fffdfb] p-6`}>
       <Logo />
       <div className="mt-12">
         <p className="mb-3 text-[10px] font-bold uppercase tracking-[0.2em] text-[#a296ac]">Admin workspace</p>
@@ -6509,11 +6510,16 @@ function AdminWorkspace({ user, onLogout }: { user: User; onLogout: () => void }
         ))}
       </div>
     </aside>
-    <main className="md:ml-64">
+    <main className={desktopSidebarOpen ? "md:ml-64" : "md:ml-0"}>
       <header className="hidden items-center justify-between border-b border-[#ebe3ef] bg-[#fffdfb]/80 px-5 py-5 backdrop-blur md:flex md:px-10">
-        <div>
-          <p className="text-xs text-[#978ca1]">Admin portal</p>
-          <h1 className="mt-1 text-2xl font-semibold tracking-[-0.04em]">Good morning, {user.name.split(" ")[0]}.</h1>
+        <div className="flex items-center gap-4">
+          <button type="button" onClick={() => setDesktopSidebarOpen(open => !open)} aria-label={desktopSidebarOpen ? "Hide navigation menu" : "Show navigation menu"} aria-expanded={desktopSidebarOpen} title={desktopSidebarOpen ? "Hide menu" : "Show menu"} className="flex h-11 w-11 items-center justify-center rounded-xl border border-[#e4dce9] bg-white text-[#5b3b92] shadow-sm transition hover:bg-[#f7f1fb]">
+            <Menu size={21} />
+          </button>
+          <div>
+            <p className="text-xs text-[#978ca1]">Admin portal</p>
+            <h1 className="mt-1 text-2xl font-semibold tracking-[-0.04em]">Good morning, {user.name.split(" ")[0]}.</h1>
+          </div>
         </div>
         <div className="flex items-center gap-3">
           <ThemeToggle />
