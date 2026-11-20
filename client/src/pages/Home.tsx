@@ -6374,6 +6374,8 @@ function AdminAnnouncementManager() {
   const portalUsersQuery = trpc.admin.listPortalUsers.useQuery({}, { staleTime: 30_000, refetchOnWindowFocus: true });
   const announcementsQuery = trpc.admin.announcements.useQuery(undefined, { staleTime: 30_000, refetchOnWindowFocus: true });
   const createAnnouncementMutation = trpc.admin.createAnnouncement.useMutation();
+  const [selectedClass, setSelectedClass] = useState("");
+  const [selectedSection, setSelectedSection] = useState("");
   const [recipientEmail, setRecipientEmail] = useState("");
   const [title, setTitle] = useState("");
   const [message, setMessage] = useState("");
@@ -6381,14 +6383,17 @@ function AdminAnnouncementManager() {
     const users = (portalUsersQuery.data || []) as any[];
     return users.filter(user => user.role === "parent" && user.email && user.linkedStudentEmail).map(parent => {
       const child = users.find(user => user.role === "student" && user.email?.toLowerCase() === parent.linkedStudentEmail?.toLowerCase());
-      return { recipientEmail: parent.email, parentName: parent.name || parent.email, studentEmail: parent.linkedStudentEmail, studentName: child?.name || parent.linkedStudentEmail };
+      const storedStudent = loadStoredStudents().find(student => student.email?.toLowerCase() === parent.linkedStudentEmail?.toLowerCase());
+      return { recipientEmail: parent.email, parentName: parent.name || parent.email, studentEmail: parent.linkedStudentEmail, studentName: child?.name || storedStudent?.name || parent.linkedStudentEmail, department: child?.department || storedStudent?.department || "", section: child?.section || storedStudent?.section || "" };
     }).sort((a, b) => `${a.studentName}${a.parentName}`.localeCompare(`${b.studentName}${b.parentName}`));
   }, [portalUsersQuery.data]);
+  const classes = Array.from(new Set(recipients.map(recipient => recipient.department).filter(Boolean))).sort();
+  const sections = Array.from(new Set(recipients.filter(recipient => recipient.department === selectedClass).map(recipient => recipient.section).filter(Boolean))).sort();
+  const filteredRecipients = recipients.filter(recipient => recipient.department === selectedClass && recipient.section === selectedSection);
   useEffect(() => {
-    if (!recipientEmail && recipients[0]) setRecipientEmail(recipients[0].recipientEmail);
-    if (recipientEmail && !recipients.some(recipient => recipient.recipientEmail === recipientEmail)) setRecipientEmail(recipients[0]?.recipientEmail || "");
-  }, [recipientEmail, recipients]);
-  const selectedRecipient = recipients.find(recipient => recipient.recipientEmail === recipientEmail);
+    if (recipientEmail && !filteredRecipients.some(recipient => recipient.recipientEmail === recipientEmail)) setRecipientEmail("");
+  }, [recipientEmail, filteredRecipients]);
+  const selectedRecipient = filteredRecipients.find(recipient => recipient.recipientEmail === recipientEmail);
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
     if (!selectedRecipient) return toast.error("Select a parent recipient first.");
@@ -6403,7 +6408,9 @@ function AdminAnnouncementManager() {
     <form onSubmit={handleSubmit} className="rounded-3xl border border-[#eee6f0] bg-white p-6 shadow-sm">
       <div className="flex items-start justify-between gap-4 border-b border-[#f0e8f8] pb-4"><div><p className="text-xs font-bold uppercase tracking-[0.18em] text-[#ef8656]">Private message</p><h2 className="mt-1 text-2xl font-semibold text-[#2f1f4a]">Send an announcement</h2><p className="mt-2 text-sm text-[#887c91]">Choose one parent and their linked child. Only that parent will see this message.</p></div><Megaphone className="shrink-0 text-[#6d4b9f]" size={24} /></div>
       {portalUsersQuery.isLoading ? <LoadingState label="Loading parent accounts…" /> : !recipients.length ? <EmptyState title="No linked parent accounts" message="Create a parent account and link it to a student before sending an announcement." /> : <div className="mt-5 space-y-4">
-        <label className="block text-xs font-semibold uppercase tracking-[0.12em] text-[#776c88]">Parent and child<select required value={recipientEmail} onChange={event => setRecipientEmail(event.target.value)} className="mt-2 w-full rounded-2xl border border-[#e6deeb] bg-[#faf7fc] px-4 py-3 text-sm font-medium text-[#2f1f4a] outline-none focus:border-[#5b3b92]">{recipients.map(recipient => <option key={recipient.recipientEmail} value={recipient.recipientEmail}>{recipient.studentName} · {recipient.parentName}</option>)}</select></label>
+        <label className="block text-xs font-semibold uppercase tracking-[0.12em] text-[#776c88]">Class<select required value={selectedClass} onChange={event => { setSelectedClass(event.target.value); setSelectedSection(""); setRecipientEmail(""); }} className="mt-2 w-full rounded-2xl border border-[#e6deeb] bg-[#faf7fc] px-4 py-3 text-sm font-medium text-[#2f1f4a] outline-none focus:border-[#5b3b92]"><option value="">Choose a class</option>{classes.map(department => <option key={department} value={department}>{department}</option>)}</select></label>
+        {selectedClass && <label className="block text-xs font-semibold uppercase tracking-[0.12em] text-[#776c88]">Section<select required value={selectedSection} onChange={event => { setSelectedSection(event.target.value); setRecipientEmail(""); }} className="mt-2 w-full rounded-2xl border border-[#e6deeb] bg-[#faf7fc] px-4 py-3 text-sm font-medium text-[#2f1f4a] outline-none focus:border-[#5b3b92]"><option value="">Choose a section</option>{sections.map(section => <option key={section} value={section}>{section}</option>)}</select></label>}
+        {selectedClass && selectedSection && <label className="block text-xs font-semibold uppercase tracking-[0.12em] text-[#776c88]">Parent and child<select required value={recipientEmail} onChange={event => setRecipientEmail(event.target.value)} className="mt-2 w-full rounded-2xl border border-[#e6deeb] bg-[#faf7fc] px-4 py-3 text-sm font-medium text-[#2f1f4a] outline-none focus:border-[#5b3b92]"><option value="">Choose a student and parent</option>{filteredRecipients.map(recipient => <option key={recipient.recipientEmail} value={recipient.recipientEmail}>{recipient.studentName} · {recipient.parentName}</option>)}</select>{!filteredRecipients.length && <span className="mt-2 block normal-case tracking-normal text-[#887c91]">No linked parent–student accounts in this section.</span>}</label>}
         <label className="block text-xs font-semibold uppercase tracking-[0.12em] text-[#776c88]">Title<input required maxLength={160} value={title} onChange={event => setTitle(event.target.value)} placeholder="e.g. Parent meeting reminder" className="mt-2 w-full rounded-2xl border border-[#e6deeb] px-4 py-3 text-sm outline-none focus:border-[#5b3b92]" /></label>
         <label className="block text-xs font-semibold uppercase tracking-[0.12em] text-[#776c88]">Message<textarea required maxLength={5000} value={message} onChange={event => setMessage(event.target.value)} placeholder="Write the message for this parent…" className="mt-2 min-h-36 w-full rounded-2xl border border-[#e6deeb] px-4 py-3 text-sm leading-6 outline-none focus:border-[#5b3b92]" /></label>
         <button type="submit" disabled={createAnnouncementMutation.isPending} className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-[#5b3b92] px-5 py-3 text-sm font-semibold text-white shadow-md transition hover:bg-[#482e75] disabled:opacity-50"><Send size={16} />{createAnnouncementMutation.isPending ? "Sending…" : "Send announcement"}</button>
