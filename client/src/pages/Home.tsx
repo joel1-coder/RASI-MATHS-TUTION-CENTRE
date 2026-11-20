@@ -9058,6 +9058,14 @@ export default function Home() {
     ? { role: auth.user.role as Role, name: auth.user.name ?? auth.user.email ?? "Portal user", email: auth.user.email ?? "" }
     : null;
 
+  // Browser storage can preserve the admin screen after its API session has
+  // expired or changed roles. Do not leave that stale admin UI active: admin
+  // mutations will be rejected by adminProcedure until the user signs in again.
+  const adminSessionMismatch = user?.role === "admin" && !auth.loading && (
+    secureUser?.role !== "admin" ||
+    secureUser?.email.toLowerCase() !== user.email.toLowerCase()
+  );
+
   // Active user priority:
   // 1. Explicit user state in this tab (from recent login or tab-scoped sessionStorage)
   // 2. Cookie session (ONLY if pathRole matches or no explicit tab user was set)
@@ -9093,6 +9101,23 @@ export default function Home() {
     setUser(null);
     setActivePortal(false);
   };
+
+  if (user?.role === "admin" && auth.loading) {
+    return <PortfolioLoadingScreen />;
+  }
+
+  if (adminSessionMismatch) {
+    return (
+      <RoleLoginPage
+        role="admin"
+        onBack={logout}
+        onLogin={(u) => {
+          setUser(u);
+          setActivePortal(true);
+        }}
+      />
+    );
+  }
 
   if (currentUser && (activePortal || isPortalUrl)) {
     if (currentUser.role === "student") return <div className="portal-shell"><StudentWorkspace user={currentUser} onLogout={logout} /></div>;
