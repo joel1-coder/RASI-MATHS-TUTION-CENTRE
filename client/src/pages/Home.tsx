@@ -1612,9 +1612,8 @@ function AdminProjectsManager() {
 
   const [students] = useState<ManagedStudent[]>(loadStoredStudents);
   const dbPortalUsersQuery = trpc.admin.listPortalUsers.useQuery({}, {
-    staleTime: 0,
+    staleTime: 30_000,
     refetchOnWindowFocus: true,
-    refetchInterval: 5000,
   });
   const databaseStudents = useMemo<ManagedStudent[]>(() => {
     const users = (dbPortalUsersQuery.data || []) as any[];
@@ -2356,9 +2355,8 @@ function AdminStudentManager() {
   const [students, setStudents] = useState<ManagedStudent[]>([]);
   const bulkCreateLoginsMutation = trpc.admin.bulkCreateStudentLogins.useMutation();
   const dbPortalUsersQuery = trpc.admin.listPortalUsers.useQuery({}, {
-    staleTime: 0,
+    staleTime: 30_000,
     refetchOnWindowFocus: true,
-    refetchInterval: 5000,
   });
   const { data: dbPortalUsers = [] } = dbPortalUsersQuery;
   const databaseStudents = useMemo<ManagedStudent[]>(() => {
@@ -6527,8 +6525,8 @@ function AdminUnitPaperManager() {
 }
 
 function AdminAnnouncementManager() {
-  const portalUsersQuery = trpc.admin.listPortalUsers.useQuery({}, { staleTime: 0, refetchOnWindowFocus: true, refetchInterval: 10000 });
-  const announcementsQuery = trpc.admin.announcements.useQuery(undefined, { staleTime: 0, refetchOnWindowFocus: true, refetchInterval: 10000 });
+  const portalUsersQuery = trpc.admin.listPortalUsers.useQuery({}, { staleTime: 30_000, refetchOnWindowFocus: true });
+  const announcementsQuery = trpc.admin.announcements.useQuery(undefined, { staleTime: 30_000, refetchOnWindowFocus: true });
   const createAnnouncementMutation = trpc.admin.createAnnouncement.useMutation();
   const [recipientEmail, setRecipientEmail] = useState("");
   const [title, setTitle] = useState("");
